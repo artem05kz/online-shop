@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+
+{% if banners %}
+<div class="banner-carousel">
+    {% for banner in banners %}
+        <a class="banner-slide" href="{{ banner.link_url|default:'#' }}">
+            <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
+        </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if query %}
+    <h1 class="section-title">Результаты поиска: «{{ query }}»</h1>
+    {% if search_results %}
+        <div class="product-grid">
+            {% for product in search_results %}
+                {% include "catalog/_product_card.html" %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Ничего не найдено.</p>
+    {% endif %}
+{% else %}
+    {% for brand in brands %}
+        <h1 class="section-title">Каталог {{ brand.name }}</h1>
+        <div class="category-row">
+            {% for category in brand.categories.all %}
+                <a class="category-chip" href="{% url 'catalog:category' brand.slug category.slug %}">{{ category.name }}</a>
+            {% empty %}
+                <span class="category-chip">Пока нет категорий — добавьте товары через админку</span>
+            {% endfor %}
+        </div>
+        {% for category in brand.categories.all %}
+            {% if category.products.all %}
+                <h2 class="section-title" style="font-size:1.05rem;">
+                    <a href="{% url 'catalog:category' brand.slug category.slug %}">{{ category.name }} →</a>
+                </h2>
+                <div class="product-grid">
+                    {% for product in category.products.all|slice:":8" %}
+                        {% include "catalog/_product_card.html" %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endfor %}
+    {% empty %}
+        <p>Каталог пока пуст. Импортируйте товары из 1С через <code>python manage.py import_1c</code> или добавьте в админке.</p>
+    {% endfor %}
+{% endif %}
+
+{% endblock %}

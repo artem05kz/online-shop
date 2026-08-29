@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Профиль: {{ user.username }}</h1>
+
+<h3>Адреса доставки</h3>
+{% for address in addresses %}
+    <p>{{ address.full_name }}, {{ address.phone }} — {{ address.city }}, {{ address.street_and_details }}{% if address.is_default %} (по умолчанию){% endif %}</p>
+{% empty %}
+    <p>Адресов пока нет — добавите при первом заказе.</p>
+{% endfor %}
+
+<h3>Последние заказы</h3>
+{% for order in orders %}
+    <p><a href="{% url 'orders:order_list' %}">Заказ №{{ order.pk }} — {{ order.get_status_display }}</a></p>
+{% empty %}
+    <p>Заказов пока нет.</p>
+{% endfor %}
+{% endblock %}

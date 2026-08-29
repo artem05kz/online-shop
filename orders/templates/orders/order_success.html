@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block title %}Заказ оформлен{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Спасибо! Заказ №{{ order.pk }} принят</h1>
+<p>Статус: {{ order.get_status_display }}. Менеджер свяжется с вами для подтверждения.</p>
+<p><a class="btn" href="{% url 'catalog:home' %}">На главную</a></p>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Корзина{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Корзина</h1>
+
+{% if cart|length == 0 %}
+    <p>Корзина пуста. <a href="{% url 'catalog:home' %}">Перейти в каталог</a></p>
+{% else %}
+    <table class="simple">
+        <thead><tr><th>Товар</th><th>Фасовка</th><th>Цена</th><th>Кол-во</th><th>Сумма</th><th></th></tr></thead>
+        <tbody>
+        {% for item in cart %}
+            <tr>
+                <td>{{ item.variant.product.name }}</td>
+                <td>{{ item.variant.pack_label }}</td>
+                <td>{{ item.price|floatformat:0 }} ₸</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.subtotal|floatformat:0 }} ₸</td>
+                <td>
+                    <form action="{% url 'orders:cart_remove' item.variant.pk %}" method="post">
+                        {% csrf_token %}
+                        <button class="btn btn-outline" type="submit">Убрать</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p><strong>Итого: {{ cart.total|floatformat:0 }} ₸</strong></p>
+    <a class="btn" href="{% url 'orders:checkout' %}">Оформить заказ</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<p><a href="{{ product.category.get_absolute_url }}">← {{ product.category.brand.name }} / {{ product.category.name }}</a></p>
+
+<div style="display:flex; gap:32px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:260px; max-width:400px;">
+        {% with image=product.primary_image %}
+            <img src="{% if image %}{{ image.image.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
+                 alt="{{ product.name }}" style="width:100%; border-radius:8px; background:#fafafa;">
+        {% endwith %}
+    </div>
+    <div style="flex:2; min-width:280px;">
+        <h1>{{ product.name }}</h1>
+        {% if product.ph %}<p><strong>pH:</strong> {{ product.ph }}</p>{% endif %}
+
+        <table class="simple">
+            <thead>
+                <tr><th>Фасовка</th><th>Артикул</th><th>Цена</th><th>Наличие</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for variant in product.variants.all %}
+                <tr>
+                    <td>{{ variant.pack_label }}</td>
+                    <td>{{ variant.article }}</td>
+                    <td>{% if variant.price %}{{ variant.price|floatformat:0 }} ₸{% else %}уточняется{% endif %}</td>
+                    <td>{% if variant.in_stock %}в наличии{% else %}<span class="stock-out">нет в наличии</span>{% endif %}</td>
+                    <td>
+                        <form action="{% url 'orders:cart_add' variant.pk %}" method="post" style="display:flex; gap:6px;">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <input type="number" name="quantity" value="1" min="1" style="width:56px;">
+                            <button class="btn" type="submit" {% if not variant.in_stock %}disabled{% endif %}>В корзину</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if product.description %}
+            <h3>Описание</h3>
+            <p style="white-space: pre-line;">{{ product.description }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

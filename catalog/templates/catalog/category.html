@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}{{ category.name }} — {{ category.brand.name }}{% endblock %}
+
+{% block content %}
+<h1 class="section-title">{{ category.brand.name }} / {{ category.name }}</h1>
+<div class="product-grid">
+    {% for product in products %}
+        {% include "catalog/_product_card.html" %}
+    {% empty %}
+        <p>В этой категории пока нет товаров.</p>
+    {% endfor %}
+</div>
+{% endblock %}

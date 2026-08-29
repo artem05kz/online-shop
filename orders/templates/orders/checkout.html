@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Оформление заказа{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Оформление заказа</h1>
+
+<p><strong>Оплата — наличными или картой курьеру при получении.</strong> Заказ подтвердит менеджер.</p>
+
+<form class="stacked" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Подтвердить заказ</button>
+</form>
+
+<h3>Ваш заказ</h3>
+<table class="simple">
+    <tbody>
+    {% for item in cart %}
+        <tr><td>{{ item.variant.product.name }} ({{ item.variant.pack_label }})</td><td>{{ item.quantity }} шт</td><td>{{ item.subtotal|floatformat:0 }} ₸</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+<p><strong>Итого: {{ cart.total|floatformat:0 }} ₸</strong></p>
+{% endblock %}
