@@ -1,0 +1,174 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+  .import-toolbar { margin: 10px 0; display: flex; gap: 10px; align-items: center; }
+  .import-toolbar input[type=text] { width: 320px; padding: 5px; }
+  table.import-table { border-collapse: collapse; width: 100%; margin-bottom: 28px; font-size: 0.85rem; }
+  table.import-table th, table.import-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
+  table.import-table thead th { background: #f4f4f4; cursor: pointer; user-select: none; white-space: nowrap; }
+  table.import-table thead th.sorted-asc::after { content: " \25B2"; }
+  table.import-table thead th.sorted-desc::after { content: " \25BC"; }
+  table.import-table tbody tr:nth-child(even) { background: #fafafa; }
+  table.import-table tbody tr.row-hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Проверьте перед записью в базу</h1>
+<p>Пока ничего не сохранено. Снимите галочки с тех строк, которые грузить не нужно, затем нажмите
+   «Загрузить в каталог» внизу. Поиск и клик по заголовку столбца работают прямо на этой странице.</p>
+
+<form method="post" action="{% url 'admin:catalog_import_confirm' %}">
+    {% csrf_token %}
+    {% if price_temp_name %}<input type="hidden" name="price_temp_name" value="{{ price_temp_name }}">{% endif %}
+    {% if stock_temp_name %}<input type="hidden" name="stock_temp_name" value="{{ stock_temp_name }}">{% endif %}
+
+    {% if price_rows %}
+        <h2>Прайс-лист: {{ price_rows|length }} товаров, {{ price_variant_count }} артикулов.
+            Бренды: {% for b in price_brands %}{{ b }}{% if not forloop.last %}, {% endif %}{% endfor %}</h2>
+        {% if price_result.warnings %}
+            <ul class="messagelist">
+                {% for w in price_result.warnings|slice:":15" %}<li class="warning">{{ w }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        <div class="import-toolbar">
+            <input type="text" id="price-search" placeholder="Поиск по названию, категории, артикулу...">
+            <button type="button" onclick="toggleAll('price', true)">Выбрать все</button>
+            <button type="button" onclick="toggleAll('price', false)">Снять все</button>
+            <span id="price-count"></span>
+        </div>
+        <table class="import-table" id="price-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th data-sort="text">Бренд</th>
+                    <th data-sort="text">Категория</th>
+                    <th data-sort="text">Товар</th>
+                    <th data-sort="text">Артикулы</th>
+                    <th data-sort="text">Фото</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for row in price_rows %}
+                <tr>
+                    <td><input type="checkbox" name="selected_products" value="{{ row.key }}" checked></td>
+                    <td>{{ row.product.brand }}</td>
+                    <td>{{ row.product.category_path }}</td>
+                    <td>{{ row.product.name }}</td>
+                    <td>{% for v in row.product.variants %}{{ v.article }}({{ v.pack_label }}){% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{% if row.product.image_bytes %}есть{% else %}—{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if stock_rows %}
+        <h2>Остатки: {{ stock_rows|length }} артикулов</h2>
+        {% if stock_result.warnings %}
+            <ul class="messagelist">
+                {% for w in stock_result.warnings|slice:":15" %}<li class="warning">{{ w }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        <div class="import-toolbar">
+            <input type="text" id="stock-search" placeholder="Поиск по артикулу...">
+            <button type="button" onclick="toggleAll('stock', true)">Выбрать все</button>
+            <button type="button" onclick="toggleAll('stock', false)">Снять все</button>
+            <span id="stock-count"></span>
+        </div>
+        <table class="import-table" id="stock-table">
+            <thead>
+                <tr><th></th><th data-sort="text">Артикул</th><th data-sort="number">Остаток</th></tr>
+            </thead>
+            <tbody>
+            {% for article, qty in stock_rows %}
+                <tr>
+                    <td><input type="checkbox" name="selected_stock" value="{{ article }}" checked></td>
+                    <td>{{ article }}</td>
+                    <td>{{ qty }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <div class="submit-row">
+        <input type="submit" value="Загрузить в каталог" class="default">
+        <a class="button" href="{% url 'admin:catalog_import_upload' %}">Отмена</a>
+    </div>
+</form>
+
+<script>
+function toggleAll(prefix, checked) {
+    document.querySelectorAll('#' + prefix + '-table tbody input[type=checkbox]').forEach(function (cb) {
+        var row = cb.closest('tr');
+        if (row.classList.contains('row-hidden')) return; // only affects rows visible under the current search
+        cb.checked = checked;
+    });
+    updateCount(prefix);
+}
+
+function updateCount(prefix) {
+    var table = document.getElementById(prefix + '-table');
+    var span = document.getElementById(prefix + '-count');
+    if (!table || !span) return;
+    var boxes = table.querySelectorAll('tbody input[type=checkbox]');
+    var checked = table.querySelectorAll('tbody input[type=checkbox]:checked').length;
+    span.textContent = 'выбрано ' + checked + ' из ' + boxes.length;
+}
+
+function setupSearch(inputId, tableId, prefix) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    input.addEventListener('input', function () {
+        var term = input.value.toLowerCase();
+        document.querySelectorAll('#' + tableId + ' tbody tr').forEach(function (row) {
+            var match = row.textContent.toLowerCase().indexOf(term) > -1;
+            row.classList.toggle('row-hidden', !match);
+        });
+    });
+}
+
+function setupSort(tableId) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var allHeaders = table.querySelectorAll('th');
+    allHeaders.forEach(function (th, colIndex) {
+        if (!th.hasAttribute('data-sort')) return;
+        th.addEventListener('click', function () {
+            var tbody = table.querySelector('tbody');
+            var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+            var type = th.getAttribute('data-sort');
+            var asc = !th.classList.contains('sorted-asc');
+            allHeaders.forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+            th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
+            rows.sort(function (a, b) {
+                var av = a.children[colIndex].textContent.trim();
+                var bv = b.children[colIndex].textContent.trim();
+                if (type === 'number') { return (parseFloat(av) || 0) - (parseFloat(bv) || 0); }
+                return av.localeCompare(bv, 'ru');
+            });
+            if (!asc) rows.reverse();
+            rows.forEach(function (row) { tbody.appendChild(row); });
+        });
+    });
+}
+
+document.querySelectorAll('.import-table').forEach(function (table) {
+    table.addEventListener('change', function (e) {
+        if (e.target.matches('input[type=checkbox]')) {
+            updateCount(table.id.replace('-table', ''));
+        }
+    });
+});
+
+setupSearch('price-search', 'price-table', 'price');
+setupSearch('stock-search', 'stock-table', 'stock');
+setupSort('price-table');
+setupSort('stock-table');
+updateCount('price');
+updateCount('stock');
+</script>
+{% endblock %}
