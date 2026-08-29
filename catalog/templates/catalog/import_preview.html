@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Проверка перед загрузкой{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Проверьте перед записью в базу</h1>
+<p>Пока ничего не сохранено. Если всё выглядит правильно — нажмите «Загрузить в каталог» внизу.</p>
+
+{% if price_result %}
+    {% with p=price_result %}
+    <h3>Прайс-лист</h3>
+    <p>
+        Найдено товаров: <strong>{{ p.products|length }}</strong>,
+        артикулов (фасовок): <strong>{{ price_variant_count }}</strong>
+    </p>
+    <p>Бренды: {% for b in price_brands %}{{ b }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+    {% if p.warnings %}
+        <p style="color:#a33;">Предупреждения ({{ p.warnings|length }}):</p>
+        <ul>
+            {% for w in p.warnings|slice:":15" %}<li>{{ w }}</li>{% endfor %}
+        </ul>
+        {% if p.warnings|length > 15 %}<p>...и ещё {{ p.warnings|length|add:"-15" }}.</p>{% endif %}
+    {% endif %}
+
+    <table class="simple">
+        <thead><tr><th>Бренд</th><th>Категория</th><th>Товар</th><th>Артикулы</th><th>Фото</th></tr></thead>
+        <tbody>
+        {% for product in p.products|slice:":25" %}
+            <tr>
+                <td>{{ product.brand }}</td>
+                <td>{{ product.category_path }}</td>
+                <td>{{ product.name }}</td>
+                <td>{% for v in product.variants %}{{ v.article }}({{ v.pack_label }}){% if not forloop.last %}, {% endif %}{% endfor %}</td>
+                <td>{% if product.image_bytes %}есть{% else %}—{% endif %}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if p.products|length > 25 %}<p>...и ещё {{ p.products|length|add:"-25" }} товаров.</p>{% endif %}
+    {% endwith %}
+{% endif %}
+
+{% if stock_result %}
+    {% with s=stock_result %}
+    <h3>Остатки</h3>
+    <p>Разобрано артикулов: <strong>{{ s.quantities|length }}</strong></p>
+    {% if s.warnings %}
+        <p style="color:#a33;">Предупреждения ({{ s.warnings|length }}):</p>
+        <ul>{% for w in s.warnings|slice:":15" %}<li>{{ w }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% endwith %}
+{% endif %}
+
+<form method="post" action="{% url 'catalog:import_confirm' %}">
+    {% csrf_token %}
+    {% if price_temp_name %}<input type="hidden" name="price_temp_name" value="{{ price_temp_name }}">{% endif %}
+    {% if stock_temp_name %}<input type="hidden" name="stock_temp_name" value="{{ stock_temp_name }}">{% endif %}
+    <button class="btn" type="submit">Загрузить в каталог</button>
+    <a class="btn btn-outline" href="{% url 'catalog:import_upload' %}">Отмена</a>
+</form>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка из 1С{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Загрузка товаров из 1С</h1>
+<p>Выберите один или оба файла, которые вы выгрузили из 1С. На следующем шаге покажу, что получится — записывать в базу сразу ничего не буду.</p>
+
+<form class="stacked" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-row">
+        <label>Прайс-лист (название, фото, описание, цена)</label>
+        <input type="file" name="price_list" accept=".xlsx">
+    </div>
+    <div class="form-row">
+        <label>Остатки (артикул, количество на складе)</label>
+        <input type="file" name="stock" accept=".xlsx">
+    </div>
+    <button class="btn" type="submit">Посмотреть, что получится</button>
+</form>
+{% endblock %}

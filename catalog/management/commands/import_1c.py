@@ -10,14 +10,15 @@ Always run with --dry-run first on a file you haven't imported before — it
 parses and prints a full summary (categories/products/variants found,
 warnings about rows it couldn't classify) without writing anything to the
 database.
+
+There's also a browser-based version of this for the manager at /import/
+(staff login required) — see catalog/import_views.py. This command and that
+page share the same parsing/apply code in catalog/importers/.
 """
 from django.core.management.base import BaseCommand, CommandError
-from django.core.files.base import ContentFile
-from django.db import transaction
-from django.utils import timezone
 
+from catalog.importers.apply import EMPTY_STATS, apply_price_list, apply_stock
 from catalog.importers.onec import parse_price_list, parse_stock
-from catalog.models import Brand, Category, Product, ProductVariant, ProductImage
 
 
 class Command(BaseCommand):
@@ -73,15 +74,11 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('Dry-run: в базу ничего не записано.'))
             return
 
-        stats = {'brands': 0, 'categories': 0, 'products_created': 0, 'products_updated': 0,
-                  'variants_created': 0, 'variants_updated': 0, 'images_added': 0,
-                  'stock_matched': 0, 'stock_unmatched': []}
-
-        with transaction.atomic():
-            if price_result:
-                self._apply_price_list(price_result, stats)
-            if stock_result:
-                self._apply_stock(stock_result, stats)
+        stats = dict(EMPTY_STATS)
+        if price_result:
+            apply_price_list(price_result, stats)
+        if stock_result:
+            apply_stock(stock_result, stats)
 
         self.stdout.write(self.style.SUCCESS(
             'Готово. ' + ', '.join(f'{k}={v}' for k, v in stats.items() if k != 'stock_unmatched')
@@ -91,80 +88,3 @@ class Command(BaseCommand):
                 f"Остатки без совпадения по товару в каталоге ({len(stats['stock_unmatched'])}): "
                 + ', '.join(stats['stock_unmatched'][:30])
             ))
-
-    def _apply_price_list(self, result, stats):
-        now = timezone.now()
-        for parsed in result.products:
-            brand, brand_created = Brand.objects.get_or_create(name=parsed.brand)
-            stats['brands'] += int(brand_created)
-
-            category, cat_created = Category.objects.get_or_create(
-                brand=brand, parent=None, name=parsed.category_path,
-            )
-            stats['categories'] += int(cat_created)
-
-            product, product_created = Product.objects.get_or_create(
-                category=category, name=parsed.name,
-                defaults={
-                    'description': parsed.description,
-                    'ph': parsed.ph,
-                    'source_group_path': parsed.source_group_path,
-                },
-            )
-            if not product_created:
-                product.description = parsed.description or product.description
-                product.ph = parsed.ph or product.ph
-                product.source_group_path = parsed.source_group_path
-                product.save(update_fields=['description', 'ph', 'source_group_path', 'updated_at'])
-                stats['products_updated'] += 1
-            else:
-                stats['products_created'] += 1
-
-            if parsed.image_bytes and not product.images.exists():
-                ext = parsed.image_ext or 'jpg'
-                product.images.create(
-                    image=ContentFile(parsed.image_bytes, name=f'{parsed.variants[0].article}.{ext}'),
-                    is_primary=True,
-                )
-                stats['images_added'] += 1
-
-            for v in parsed.variants:
-                if not v.article:
-                    continue
-                variant, variant_created = ProductVariant.objects.get_or_create(
-                    article=v.article,
-                    defaults={
-                        'product': product,
-                        'pack_label': v.pack_label,
-                        'volume_value': v.volume_value,
-                        'volume_unit': v.volume_unit,
-                        'box_qty': v.box_qty,
-                        'pallet_qty': v.pallet_qty,
-                        'wholesale_price': v.wholesale_price,
-                        'last_price_import_at': now,
-                    },
-                )
-                if not variant_created:
-                    variant.product = product
-                    variant.pack_label = v.pack_label
-                    variant.volume_value = v.volume_value
-                    variant.volume_unit = v.volume_unit
-                    variant.box_qty = v.box_qty
-                    variant.pallet_qty = v.pallet_qty
-                    variant.wholesale_price = v.wholesale_price
-                    variant.last_price_import_at = now
-                    variant.save()
-                    stats['variants_updated'] += 1
-                else:
-                    stats['variants_created'] += 1
-
-    def _apply_stock(self, result, stats):
-        now = timezone.now()
-        matched_articles = set()
-        for variant in ProductVariant.objects.filter(article__in=result.quantities.keys()):
-            variant.stock_qty = result.quantities[variant.article]
-            variant.last_stock_import_at = now
-            variant.save(update_fields=['stock_qty', 'last_stock_import_at'])
-            matched_articles.add(variant.article)
-            stats['stock_matched'] += 1
-        stats['stock_unmatched'] = sorted(set(result.quantities) - matched_articles)

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка завершена{% endblock %}
+
+{% block content %}
+<h1 class="section-title">Готово</h1>
+<table class="simple">
+    <tbody>
+        <tr><td>Новых брендов</td><td>{{ stats.brands }}</td></tr>
+        <tr><td>Новых категорий</td><td>{{ stats.categories }}</td></tr>
+        <tr><td>Новых товаров</td><td>{{ stats.products_created }}</td></tr>
+        <tr><td>Обновлено товаров</td><td>{{ stats.products_updated }}</td></tr>
+        <tr><td>Новых артикулов</td><td>{{ stats.variants_created }}</td></tr>
+        <tr><td>Обновлено артикулов</td><td>{{ stats.variants_updated }}</td></tr>
+        <tr><td>Добавлено фото</td><td>{{ stats.images_added }}</td></tr>
+        <tr><td>Остатки: сопоставлено</td><td>{{ stats.stock_matched }}</td></tr>
+    </tbody>
+</table>
+
+{% if stats.stock_unmatched %}
+    <p style="color:#a33;">Артикулов из остатков без совпадения в каталоге: {{ stats.stock_unmatched|length }}</p>
+    <p>Это нормально, если товар из этой выгрузки ещё не загружался через прайс-лист.</p>
+{% endif %}
+
+<p>
+    <a class="btn" href="{% url 'catalog:import_upload' %}">Загрузить ещё файл</a>
+    <a class="btn btn-outline" href="{% url 'catalog:home' %}">На сайт</a>
+</p>
+{% endblock %}
