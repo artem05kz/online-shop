@@ -88,6 +88,7 @@ _default_get_urls = admin.site.get_urls
 def _get_urls_with_import():
     custom_urls = [
         path('catalog/import/', admin.site.admin_view(import_views.import_upload), name='catalog_import_upload'),
+        path('catalog/import/stock/', admin.site.admin_view(import_views.import_stock_upload), name='catalog_import_stock_upload'),
         path('catalog/import/confirm/', admin.site.admin_view(import_views.import_confirm), name='catalog_import_confirm'),
     ]
     return custom_urls + _default_get_urls()

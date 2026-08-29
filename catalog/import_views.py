@@ -37,6 +37,18 @@ def _product_key(parsed_product) -> str:
     return parsed_product.variants[0].article
 
 
+def import_stock_upload(request):
+    """A shortcut entry point for the most common, lowest-risk action:
+    refresh stock quantities on products that already exist, without
+    touching names/prices/photos. Same processing as import_upload() below
+    (its POST handling doesn't care which page linked to it) — this view
+    just serves a GET page with only the "Остатки" field, no price-list
+    input to avoid confusing it with a full catalog reload."""
+    context = admin.site.each_context(request)
+    context['title'] = 'Обновить остаток на складе'
+    return render(request, 'admin/catalog/import_stock_upload.html', context)
+
+
 def import_upload(request):
     """Step 1: pick the file(s). admin.site.admin_view() (applied in
     catalog/admin.py where this is wired into the urls) already enforces
