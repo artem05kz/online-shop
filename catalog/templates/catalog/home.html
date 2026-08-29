@@ -4,13 +4,27 @@
 {% block content %}
 
 {% if banners %}
-<div class="banner-carousel">
+<div class="banner-carousel" id="banner-carousel">
     {% for banner in banners %}
-        <a class="banner-slide" href="{{ banner.link_url|default:'#' }}">
-            <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
-        </a>
+        <div class="banner-slide{% if forloop.first %} active{% endif %}">
+            {% if banner.link_url %}
+                <a href="{{ banner.link_url }}"><img src="{{ banner.image.url }}" alt="{{ banner.title }}"></a>
+            {% else %}
+                <img src="{{ banner.image.url }}" alt="{{ banner.title }}">
+            {% endif %}
+        </div>
     {% endfor %}
+    {% if banners|length > 1 %}
+        <button type="button" class="banner-nav banner-prev" aria-label="Предыдущий баннер">‹</button>
+        <button type="button" class="banner-nav banner-next" aria-label="Следующий баннер">›</button>
+        <div class="banner-dots">
+            {% for banner in banners %}
+                <button type="button" class="banner-dot{% if forloop.first %} active{% endif %}" aria-label="Баннер {{ forloop.counter }}"></button>
+            {% endfor %}
+        </div>
+    {% endif %}
 </div>
+<script src="{% static 'js/banner_carousel.js' %}"></script>
 {% endif %}
 
 {% if query %}

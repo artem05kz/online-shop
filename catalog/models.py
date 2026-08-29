@@ -9,7 +9,12 @@ class Brand(models.Model):
 
     name = models.CharField('Название', max_length=100, unique=True)
     slug = models.SlugField('Ярлык для ссылки', max_length=110, unique=True, blank=True)
-    order = models.PositiveIntegerField('Порядок показа', default=0)
+    order = models.PositiveIntegerField(
+        'Очерёдность на главной странице', default=0,
+        help_text='Бренды выводятся по этому числу от меньшего к большему. '
+                   'Например, у бренда с числом 1 карточка будет выше, чем у бренда с числом 2. '
+                   'Если оставить одинаковые числа — отсортируются по названию.',
+    )
     is_active = models.BooleanField('Показывать на сайте', default=True)
 
     class Meta:
@@ -38,7 +43,12 @@ class Category(models.Model):
     )
     name = models.CharField('Название', max_length=200)
     slug = models.SlugField('Ярлык для ссылки', max_length=220, blank=True)
-    order = models.PositiveIntegerField('Порядок показа', default=0)
+    order = models.PositiveIntegerField(
+        'Очерёдность в списке категорий', default=0,
+        help_text='Категории выводятся по этому числу от меньшего к большему. '
+                   'Например, у категории с числом 1 она будет показана раньше, чем с числом 2. '
+                   'Если оставить одинаковые числа — отсортируются по названию.',
+    )
     is_active = models.BooleanField('Показывать на сайте', default=True)
 
     class Meta:
@@ -68,7 +78,11 @@ class Product(models.Model):
     name = models.CharField('Название', max_length=300)
     slug = models.SlugField('Ярлык для ссылки', max_length=320, blank=True)
     description = models.TextField('Описание', blank=True)
-    ph = models.CharField('pH', max_length=50, blank=True)
+    ph = models.CharField(
+        'Кислотность (pH)', max_length=50, blank=True,
+        help_text='Необязательно. Заполняйте, только если для этого товара важно указать pH — '
+                   'если оставить пустым, на сайте эта строка просто не появится.',
+    )
     is_active = models.BooleanField('Показывать на сайте', default=True)
 
     # Traceability back to the raw 1C export, useful while tuning the importer.
@@ -88,6 +102,9 @@ class Product(models.Model):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name, allow_unicode=True)[:320]
+        # A stray space typed into "pH" shouldn't count as a value — otherwise
+        # the site would show an empty "pH:" line instead of hiding it.
+        self.ph = self.ph.strip()
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
@@ -142,7 +159,10 @@ class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images', verbose_name='Товар')
     image = models.ImageField('Фотография', upload_to='products/%Y/%m/')
     is_primary = models.BooleanField('Основная фотография', default=False)
-    order = models.PositiveIntegerField('Порядок показа', default=0)
+    order = models.PositiveIntegerField(
+        'Очерёдность фотографий', default=0,
+        help_text='Если фотографий несколько, они выводятся по этому числу от меньшего к большему.',
+    )
 
     class Meta:
         ordering = ['order', 'id']

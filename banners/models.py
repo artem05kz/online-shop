@@ -22,7 +22,11 @@ class Banner(models.Model):
         'Ссылка при нажатии', max_length=300, blank=True,
         help_text='Куда вести при клике на баннер, например /catalog/grass/ (необязательно)',
     )
-    order = models.PositiveIntegerField('Порядок показа', default=0)
+    order = models.PositiveIntegerField(
+        'Очерёдность в слайдере', default=0,
+        help_text='Определяет, в каком порядке баннеры сменяют друг друга на главной странице: '
+                   'от меньшего числа к большему. Например, баннер с числом 1 покажется первым.',
+    )
     is_active = models.BooleanField('Показывать на сайте', default=True)
     starts_at = models.DateTimeField('Показывать с', null=True, blank=True, help_text='Необязательно')
     ends_at = models.DateTimeField('Показывать до', null=True, blank=True, help_text='Необязательно')

@@ -26,6 +26,14 @@ class CategoryAdmin(StyledAdminMixin, admin.ModelAdmin):
     search_fields = ['name']
     prepopulated_fields = {'slug': ('name',)}
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Default Django wording for "no parent selected" is a row of dashes
+        # ("---------"), which reads as a placeholder, not an actual choice —
+        # spell it out so it's obvious there's simply no parent category.
+        if db_field.name == 'parent':
+            kwargs['empty_label'] = 'Нет'
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
@@ -51,17 +59,28 @@ class ProductAdmin(StyledAdminMixin, admin.ModelAdmin):
     inlines = [ProductVariantInline, ProductImageInline]
 
     # Grouped so the fields a manager actually edits after an import
-    # (name/description/pH) are front and center; import bookkeeping is
-    # kept but pushed down and marked read-only.
+    # (name/description) are front and center. pH only matters for some
+    # products, so it starts collapsed and out of the way — the little
+    # script in Media.js below opens it back up automatically if a product
+    # already has a pH value, so nothing existing looks hidden.
     fieldsets = [
         ('Основное', {'fields': ['name', 'slug', 'category', 'is_active']}),
-        ('Описание', {'fields': ['description', 'ph']}),
+        ('Описание', {'fields': ['description']}),
+        ('Кислотность (pH)', {
+            'fields': ['ph'],
+            'classes': ['collapse'],
+            'description': 'Нужно не для каждого товара — заполняйте, только если это важно указать.',
+        }),
         ('Импорт из 1С (справочно)', {
             'fields': ['source_group_path', 'created_at', 'updated_at'],
             'classes': ['collapse'],
         }),
     ]
     readonly_fields = ['source_group_path', 'created_at', 'updated_at']
+
+    class Media:
+        css = {'all': ('css/admin_custom.css',)}
+        js = ('js/product_admin.js',)
 
     @admin.display(description='Бренд', ordering='category__brand')
     def brand(self, obj):

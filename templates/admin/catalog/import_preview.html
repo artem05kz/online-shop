@@ -11,14 +11,15 @@
 
   /* Always a plain dark table, on purpose — not theme-adaptive, so it
      never flips to a half-white/half-black look depending on the admin's
-     light/dark setting. Long text wraps instead of stretching the column,
-     and the table scrolls inside its own box if it still doesn't fit —
-     never the whole page. */
-  .import-table-wrap { overflow-x: auto; margin-bottom: 28px; }
+     light/dark setting. Long text wraps instead of stretching the column.
+     The box has a fixed height and scrolls on its own — that way typing in
+     the search box (which hides rows) never changes the page's overall
+     height, so the page itself doesn't jump around while you search. */
+  .import-table-wrap { overflow: auto; max-height: 65vh; margin-bottom: 28px; border: 1px solid #3a3a3a; }
   table.import-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 0.85rem; background: #1c1c1c; }
   table.import-table th, table.import-table td { border: 1px solid #3a3a3a; padding: 6px 8px; text-align: left; background: #1c1c1c; color: #e8e8e8; word-break: break-word; }
   table.import-table td:first-child, table.import-table th:first-child { width: 32px; }
-  table.import-table thead th { background: #262626; cursor: pointer; user-select: none; }
+  table.import-table thead th { background: #262626; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 1; }
   table.import-table thead th.sorted-asc::after { content: " \25B2"; }
   table.import-table thead th.sorted-desc::after { content: " \25BC"; }
   table.import-table tbody tr.row-hidden { display: none; }
