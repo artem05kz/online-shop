@@ -90,7 +90,12 @@ def import_upload(request):
 def import_confirm(request):
     """Step 2: only the rows whose checkbox was still ticked get applied —
     unticked rows are simply absent from the POST data (normal checkbox
-    behaviour), so we filter the freshly re-parsed file down to those."""
+    behaviour), so we filter the freshly re-parsed file down to those.
+
+    Also applies any edits made on the preview page: name/category/brand
+    per product, quantity per stock row. The preview names those inputs
+    `<field>_<key>`, so we look them up by the same key we used to build
+    the checkboxes and overwrite the freshly-parsed value before saving."""
     if request.method != 'POST':
         return redirect('admin:catalog_import_upload')
 
@@ -106,14 +111,32 @@ def import_confirm(request):
         price_path = TMP_DIR / price_temp_name
         if price_path.exists():
             result = parse_price_list(str(price_path))
-            result.products = [p for p in result.products if _product_key(p) in selected_products]
+            kept = []
+            for p in result.products:
+                key = _product_key(p)
+                if key not in selected_products:
+                    continue
+                p.brand = request.POST.get(f'brand_{key}', p.brand).strip() or p.brand
+                p.category_path = request.POST.get(f'category_{key}', p.category_path).strip() or p.category_path
+                p.name = request.POST.get(f'name_{key}', p.name).strip() or p.name
+                kept.append(p)
+            result.products = kept
             apply_price_list(result, stats)
             used_paths.append(price_path)
     if stock_temp_name:
         stock_path = TMP_DIR / stock_temp_name
         if stock_path.exists():
             result = parse_stock(str(stock_path))
-            result.quantities = {k: v for k, v in result.quantities.items() if k in selected_stock}
+            quantities = {}
+            for article in result.quantities:
+                if article not in selected_stock:
+                    continue
+                raw = request.POST.get(f'qty_{article}')
+                try:
+                    quantities[article] = int(raw) if raw is not None else result.quantities[article]
+                except ValueError:
+                    quantities[article] = result.quantities[article]
+            result.quantities = quantities
             apply_stock(result, stats)
             used_paths.append(stock_path)
 

@@ -5,20 +5,28 @@
 <style>
   .import-toolbar { margin: 10px 0; display: flex; gap: 10px; align-items: center; }
   .import-toolbar input[type=text] { width: 320px; padding: 5px; }
-  table.import-table { border-collapse: collapse; width: 100%; margin-bottom: 28px; font-size: 0.85rem; }
-  table.import-table th, table.import-table td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; }
-  table.import-table thead th { background: #f4f4f4; cursor: pointer; user-select: none; white-space: nowrap; }
+
+  /* Always a plain dark table, on purpose — not theme-adaptive, so it
+     never flips to a half-white/half-black look depending on the admin's
+     light/dark setting. */
+  table.import-table { border-collapse: collapse; width: 100%; margin-bottom: 28px; font-size: 0.85rem; background: #1c1c1c; }
+  table.import-table th, table.import-table td { border: 1px solid #3a3a3a; padding: 6px 8px; text-align: left; background: #1c1c1c; color: #e8e8e8; }
+  table.import-table thead th { background: #262626; cursor: pointer; user-select: none; white-space: nowrap; }
   table.import-table thead th.sorted-asc::after { content: " \25B2"; }
   table.import-table thead th.sorted-desc::after { content: " \25BC"; }
-  table.import-table tbody tr:nth-child(even) { background: #fafafa; }
   table.import-table tbody tr.row-hidden { display: none; }
+  table.import-table input[type=text], table.import-table input[type=number] {
+    width: 100%; box-sizing: border-box; background: #2a2a2a; color: #f5f5f5;
+    border: 1px solid #4a4a4a; border-radius: 3px; padding: 4px 6px;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <h1>Проверьте перед записью в базу</h1>
-<p>Пока ничего не сохранено. Снимите галочки с тех строк, которые грузить не нужно, затем нажмите
-   «Загрузить в каталог» внизу. Поиск и клик по заголовку столбца работают прямо на этой странице.</p>
+<p>Пока ничего не сохранено. Поля названия/категории/бренда/остатка можно поправить прямо здесь —
+   изменения уйдут в базу вместе с загрузкой. Снимите галочки с тех строк, которые грузить не нужно,
+   затем нажмите «Загрузить в каталог» внизу. Поиск и клик по заголовку столбца работают на этой странице.</p>
 
 <form method="post" action="{% url 'admin:catalog_import_confirm' %}">
     {% csrf_token %}
@@ -54,9 +62,9 @@
             {% for row in price_rows %}
                 <tr>
                     <td><input type="checkbox" name="selected_products" value="{{ row.key }}" checked></td>
-                    <td>{{ row.product.brand }}</td>
-                    <td>{{ row.product.category_path }}</td>
-                    <td>{{ row.product.name }}</td>
+                    <td><input type="text" name="brand_{{ row.key }}" value="{{ row.product.brand }}"></td>
+                    <td><input type="text" name="category_{{ row.key }}" value="{{ row.product.category_path }}"></td>
+                    <td><input type="text" name="name_{{ row.key }}" value="{{ row.product.name }}"></td>
                     <td>{% for v in row.product.variants %}{{ v.article }}({{ v.pack_label }}){% if not forloop.last %}, {% endif %}{% endfor %}</td>
                     <td>{% if row.product.image_bytes %}есть{% else %}—{% endif %}</td>
                 </tr>
@@ -87,7 +95,7 @@
                 <tr>
                     <td><input type="checkbox" name="selected_stock" value="{{ article }}" checked></td>
                     <td>{{ article }}</td>
-                    <td>{{ qty }}</td>
+                    <td><input type="number" name="qty_{{ article }}" value="{{ qty }}" min="0"></td>
                 </tr>
             {% endfor %}
             </tbody>
@@ -119,14 +127,22 @@ function updateCount(prefix) {
     span.textContent = 'выбрано ' + checked + ' из ' + boxes.length;
 }
 
-function setupSearch(inputId, tableId, prefix) {
+// Editable fields (name/category/brand/qty) live inside <input> elements,
+// whose typed value isn't part of textContent — so search/sort read the
+// input's current value when a cell has one, falling back to plain text.
+function cellText(cell) {
+    var input = cell.querySelector('input:not([type=checkbox])');
+    return (input ? input.value : cell.textContent).trim();
+}
+
+function setupSearch(inputId, tableId) {
     var input = document.getElementById(inputId);
     if (!input) return;
     input.addEventListener('input', function () {
         var term = input.value.toLowerCase();
         document.querySelectorAll('#' + tableId + ' tbody tr').forEach(function (row) {
-            var match = row.textContent.toLowerCase().indexOf(term) > -1;
-            row.classList.toggle('row-hidden', !match);
+            var text = Array.prototype.map.call(row.children, cellText).join(' ').toLowerCase();
+            row.classList.toggle('row-hidden', text.indexOf(term) === -1);
         });
     });
 }
@@ -145,8 +161,8 @@ function setupSort(tableId) {
             allHeaders.forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
             th.classList.add(asc ? 'sorted-asc' : 'sorted-desc');
             rows.sort(function (a, b) {
-                var av = a.children[colIndex].textContent.trim();
-                var bv = b.children[colIndex].textContent.trim();
+                var av = cellText(a.children[colIndex]);
+                var bv = cellText(b.children[colIndex]);
                 if (type === 'number') { return (parseFloat(av) || 0) - (parseFloat(bv) || 0); }
                 return av.localeCompare(bv, 'ru');
             });
@@ -164,8 +180,8 @@ document.querySelectorAll('.import-table').forEach(function (table) {
     });
 });
 
-setupSearch('price-search', 'price-table', 'price');
-setupSearch('stock-search', 'stock-table', 'stock');
+setupSearch('price-search', 'price-table');
+setupSearch('stock-search', 'stock-table');
 setupSort('price-table');
 setupSort('stock-table');
 updateCount('price');
