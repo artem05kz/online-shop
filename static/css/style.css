@@ -194,19 +194,66 @@ h3 { font-size: 1.1rem; }
     place-items: center;
 }
 
-/* Меню каталога, раскрывается по кнопке «Каталог» */
+/* Каталог выезжает сбоку как боковое меню. Панель прикреплена к окну
+   (position: fixed), поэтому открывается на месте, с какой бы части
+   страницы её ни вызвали — не нужно мотать наверх. */
+.catalog-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 24, 32, .45);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease;
+    z-index: 60;
+}
+.catalog-backdrop.open { opacity: 1; visibility: visible; }
+
 .catalog-menu {
-    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(400px, 88vw);
+    background: var(--bg);
+    box-shadow: 4px 0 26px rgba(16, 24, 32, .16);
+    transform: translateX(-100%);
+    transition: transform .24s ease;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+}
+.catalog-menu.open { transform: translateX(0); }
+
+.catalog-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
     border-bottom: 1px solid var(--line);
-    background: var(--bg-soft);
-    padding: 22px 0;
+    flex: 0 0 auto;
 }
-.catalog-menu.open { display: block; }
-.catalog-menu-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 22px;
+.catalog-menu-head strong { font-size: 1.05rem; }
+.catalog-close {
+    border: none;
+    background: transparent;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0 4px;
 }
+.catalog-close:hover { color: var(--ink); }
+
+/* Прокручивается только список разделов, шапка панели остаётся на месте. */
+.catalog-menu-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 18px 20px 28px;
+}
+.catalog-menu-group + .catalog-menu-group { margin-top: 22px; }
 .catalog-menu h4 {
     margin: 0 0 10px;
     font-size: .78rem;
@@ -215,9 +262,15 @@ h3 { font-size: 1.1rem; }
     color: var(--muted);
 }
 .catalog-menu ul { list-style: none; margin: 0; padding: 0; }
-.catalog-menu li { margin-bottom: 7px; }
-.catalog-menu li a { font-size: .92rem; }
-.catalog-menu li a:hover { color: var(--green-dark); }
+.catalog-menu li { margin-bottom: 2px; }
+.catalog-menu li a {
+    display: block;
+    padding: 9px 10px;
+    margin-left: -10px;
+    border-radius: var(--radius);
+    font-size: .94rem;
+}
+.catalog-menu li a:hover { background: var(--green-soft); color: var(--green-dark); }
 
 /* ---------- Кнопки ---------- */
 .btn {
@@ -850,15 +903,24 @@ textarea.field { resize: vertical; }
    ========================================================================== */
 @media (max-width: 1000px) {
     .catalog-layout { grid-template-columns: 1fr; }
+    /* Важно снять и ограничение высоты с прокруткой, а не только
+       «прилипание» — иначе блок остаётся обрезанной коробкой и до его
+       нижней части не добраться. */
     .filters {
         display: none;
         position: static;
         margin-bottom: 18px;
+        max-height: none;
+        overflow: visible;
     }
     .filters.open { display: block; }
     .filters-toggle { display: inline-flex; }
     .two-col { grid-template-columns: 1fr; }
-    .sticky-side { position: static; }
+    .sticky-side {
+        position: static;
+        max-height: none;
+        overflow: visible;
+    }
     .product-page { grid-template-columns: 1fr; gap: 24px; }
     .gallery { max-width: 420px; }
 }
@@ -924,6 +986,11 @@ textarea.field { resize: vertical; }
     .spec-list li span:first-child { min-width: 0; font-size: .8rem; }
 
     .footer { margin-top: 36px; padding: 28px 0 22px; }
+    /* Две колонки вместо одной длинной ленты, и перенос длинных адресов
+       почты, чтобы ничего не уезжало за край экрана. */
+    .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
+    .footer-grid > div { min-width: 0; }
+    .footer a, .footer p, .footer li { overflow-wrap: anywhere; }
     #map { height: 260px; }
 }
 

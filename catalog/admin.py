@@ -79,8 +79,10 @@ class ProductAdmin(StyledAdminMixin, admin.ModelAdmin):
     readonly_fields = ['source_group_path', 'created_at', 'updated_at']
 
     class Media:
+        # Своё объявление перекрывает Media из StyledAdminMixin, поэтому
+        # общий стиль и подсветку правок перечисляем здесь заново.
         css = {'all': ('css/admin_custom.css',)}
-        js = ('js/product_admin.js',)
+        js = ('js/admin_edit_highlight.js', 'js/product_admin.js')
 
     @admin.display(description='Бренд', ordering='category__brand')
     def brand(self, obj):

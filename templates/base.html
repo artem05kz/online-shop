@@ -72,10 +72,15 @@
     </div>
 </header>
 
-<div class="catalog-menu" id="catalog-menu">
-    <div class="container catalog-menu-grid">
+<div class="catalog-backdrop" id="catalog-backdrop" hidden></div>
+<nav class="catalog-menu" id="catalog-menu" aria-label="Каталог товаров" aria-hidden="true">
+    <div class="catalog-menu-head">
+        <strong>Каталог товаров</strong>
+        <button type="button" class="catalog-close" id="catalog-close" aria-label="Закрыть каталог">×</button>
+    </div>
+    <div class="catalog-menu-body">
         {% for brand in nav_brands %}
-            <div>
+            <div class="catalog-menu-group">
                 <h4>{{ brand.name }}</h4>
                 <ul>
                     {% for category in brand.categories.all %}
@@ -88,8 +93,18 @@
         {% empty %}
             <p class="muted">Каталог пока пуст.</p>
         {% endfor %}
+        <div class="catalog-menu-group">
+            <h4>Ещё</h4>
+            <ul>
+                <li><a href="{% url 'company:store_list' %}">Адреса магазинов</a></li>
+                <li><a href="{% url 'orders:cart' %}">Корзина</a></li>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'orders:order_list' %}">Мои заказы</a></li>
+                {% endif %}
+            </ul>
+        </div>
     </div>
-</div>
+</nav>
 
 <main class="container">
     {% if messages %}

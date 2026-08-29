@@ -39,17 +39,84 @@ h1, .module h2, .module caption {
 }
 
 /* Если таблица шире экрана — прокручивается только она сама, а не вся
-   страница вместе с левым меню. */
-#changelist,
-#changelist .results,
-.module {
+   страница вместе с левым меню.
+   Важно: горизонтальную прокрутку вешаем ТОЛЬКО на обёртку таблицы. Если
+   задать её всему блоку .module, браузер делает блок прокручиваемым и по
+   вертикали тоже — тогда на телефоне низ страницы становится недоступен. */
+#changelist .results {
   max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
+#changelist, .module { max-width: 100%; }
 
 .submit-row input, .submit-row a.button {
   font-size: 15px;
   padding: 10px 18px;
+}
+
+/* ---------- Боковое меню разделов ---------- */
+/* Панель прилипает к экрану и прокручивается сама — не нужно листать всю
+   страницу до конца, чтобы добраться до нижних разделов. */
+@media (min-width: 768px) {
+  #nav-sidebar {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    height: 100vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Заголовки разделов в боковом меню были крупнее пунктов под ними —
+   делаем их мельче и спокойнее, как подписи групп. */
+#nav-sidebar .module caption,
+#nav-sidebar .module caption a,
+#nav-sidebar h2 {
+  font-size: .74rem !important;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+#nav-sidebar .module th,
+#nav-sidebar .module td { font-size: .87rem; }
+#nav-sidebar .module th a,
+#nav-sidebar .module td a { padding-top: 7px; padding-bottom: 7px; }
+
+/* ---------- Подсветка изменённых, но ещё не сохранённых строк ---------- */
+tr.row-edited > th,
+tr.row-edited > td {
+  background: rgba(98, 178, 44, .13) !important;
+}
+tr.row-edited > th:first-child,
+tr.row-edited > td:first-child {
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+.unsaved-note {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--primary);
+  color: #fff;
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.unsaved-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--primary);
+  background: rgba(98, 178, 44, .16);
+  font-size: .9rem;
 }
 
 /* Блок «Частые действия» на главной странице панели: плитки с понятным
@@ -90,6 +157,35 @@ h1, .module h2, .module caption {
   font-size: .85rem;
   line-height: 1.45;
   color: var(--body-quiet-color, #b8bfc6);
+}
+
+/* Главная страница панели: разделы шли одной узкой колонкой, справа
+   пустовало место. Django жёстко ограничивает её шириной 600 пикселей —
+   снимаем ограничение и раскладываем разделы плиткой по ширине экрана. */
+.dashboard #content {
+  width: auto;
+  max-width: 100%;
+}
+.dashboard #content-main .app-list,
+.dashboard #content-main {
+  max-width: 100%;
+}
+/* Раскладываем разделы сеткой. Именно сеткой, а не inline-block: у
+   inline-block пробелы между тегами в разметке съедают ширину, и вторая
+   плитка не помещается в строку. */
+@media (min-width: 900px) {
+  .dashboard #content-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+  }
+  /* Блок «Частые действия» остаётся во всю ширину над разделами. */
+  .dashboard #content-main > .quick-actions { grid-column: 1 / -1; }
+  .dashboard #content-main > .module { margin-bottom: 0; }
+}
+@media (min-width: 1500px) {
+  .dashboard #content-main { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Список фильтров справа от таблицы отъедал у неё ширину — переносим его
