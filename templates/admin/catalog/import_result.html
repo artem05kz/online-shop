@@ -1,19 +1,24 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/admin_custom.css' %}">{% endblock %}
 
 {% block content %}
 <h1>Готово</h1>
-<table style="border-collapse: collapse;">
-    <tbody>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Новых брендов</th><td>{{ stats.brands }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Новых категорий</th><td>{{ stats.categories }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Новых товаров</th><td>{{ stats.products_created }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Обновлено товаров</th><td>{{ stats.products_updated }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Новых артикулов</th><td>{{ stats.variants_created }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Обновлено артикулов</th><td>{{ stats.variants_updated }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Добавлено фото</th><td>{{ stats.images_added }}</td></tr>
-        <tr><th style="text-align:left; padding:4px 12px 4px 0;">Остатки: сопоставлено</th><td>{{ stats.stock_matched }}</td></tr>
-    </tbody>
-</table>
+<div class="module">
+    <table>
+        <tbody>
+            <tr><th>Новых брендов</th><td>{{ stats.brands }}</td></tr>
+            <tr><th>Новых категорий</th><td>{{ stats.categories }}</td></tr>
+            <tr><th>Новых товаров</th><td>{{ stats.products_created }}</td></tr>
+            <tr><th>Обновлено товаров</th><td>{{ stats.products_updated }}</td></tr>
+            <tr><th>Новых артикулов</th><td>{{ stats.variants_created }}</td></tr>
+            <tr><th>Обновлено артикулов</th><td>{{ stats.variants_updated }}</td></tr>
+            <tr><th>Добавлено фотографий</th><td>{{ stats.images_added }}</td></tr>
+            <tr><th>Остатков сопоставлено</th><td>{{ stats.stock_matched }}</td></tr>
+        </tbody>
+    </table>
+</div>
 
 {% if stats.stock_unmatched %}
     <p class="errornote">Артикулов из остатков без совпадения в каталоге: {{ stats.stock_unmatched|length }}.

@@ -2,18 +2,25 @@ from django.contrib import admin
 from django.urls import path
 
 from . import import_views
+from .admin_style import StyledAdminMixin
 from .models import Brand, Category, Product, ProductVariant, ProductImage
+
+# Own name for the admin panel instead of the default "Django site admin" —
+# this is the screen the manager works in every day.
+admin.site.site_header = 'Управление магазином GRASS'
+admin.site.site_title = 'Управление магазином GRASS'
+admin.site.index_title = 'Главная страница'
 
 
 @admin.register(Brand)
-class BrandAdmin(admin.ModelAdmin):
+class BrandAdmin(StyledAdminMixin, admin.ModelAdmin):
     list_display = ['name', 'order', 'is_active']
     list_editable = ['order', 'is_active']
     prepopulated_fields = {'slug': ('name',)}
 
 
 @admin.register(Category)
-class CategoryAdmin(admin.ModelAdmin):
+class CategoryAdmin(StyledAdminMixin, admin.ModelAdmin):
     list_display = ['name', 'brand', 'parent', 'order', 'is_active']
     list_filter = ['brand', 'is_active']
     search_fields = ['name']
@@ -33,7 +40,7 @@ class ProductImageInline(admin.TabularInline):
 
 
 @admin.register(Product)
-class ProductAdmin(admin.ModelAdmin):
+class ProductAdmin(StyledAdminMixin, admin.ModelAdmin):
     # Sortable (click a column header) and searchable out of the box —
     # Django admin does this automatically for real model fields.
     list_display = ['name', 'brand', 'category', 'variant_count', 'is_active', 'updated_at']
@@ -60,13 +67,13 @@ class ProductAdmin(admin.ModelAdmin):
     def brand(self, obj):
         return obj.category.brand
 
-    @admin.display(description='Фасовок')
+    @admin.display(description='Количество фасовок')
     def variant_count(self, obj):
         return obj.variants.count()
 
 
 @admin.register(ProductVariant)
-class ProductVariantAdmin(admin.ModelAdmin):
+class ProductVariantAdmin(StyledAdminMixin, admin.ModelAdmin):
     """A flat, fast-editing list of every SKU — this is the screen the
     manager will actually live in day-to-day: search by article, fix a
     price/stock number, done. No hunting through product forms."""

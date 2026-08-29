@@ -65,6 +65,8 @@ def import_upload(request):
         messages.error(request, 'Выберите хотя бы один файл: прайс-лист и/или остатки.')
         return redirect('admin:catalog_import_upload')
 
+    context['title'] = 'Проверьте перед записью в базу'
+
     try:
         if price_list_file:
             price_path = _save_temp(price_list_file)

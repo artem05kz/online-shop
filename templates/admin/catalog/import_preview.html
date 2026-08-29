@@ -1,4 +1,7 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/admin_custom.css' %}">{% endblock %}
 
 {% block extrahead %}
 {{ block.super }}
@@ -8,10 +11,14 @@
 
   /* Always a plain dark table, on purpose — not theme-adaptive, so it
      never flips to a half-white/half-black look depending on the admin's
-     light/dark setting. */
-  table.import-table { border-collapse: collapse; width: 100%; margin-bottom: 28px; font-size: 0.85rem; background: #1c1c1c; }
-  table.import-table th, table.import-table td { border: 1px solid #3a3a3a; padding: 6px 8px; text-align: left; background: #1c1c1c; color: #e8e8e8; }
-  table.import-table thead th { background: #262626; cursor: pointer; user-select: none; white-space: nowrap; }
+     light/dark setting. Long text wraps instead of stretching the column,
+     and the table scrolls inside its own box if it still doesn't fit —
+     never the whole page. */
+  .import-table-wrap { overflow-x: auto; margin-bottom: 28px; }
+  table.import-table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 0.85rem; background: #1c1c1c; }
+  table.import-table th, table.import-table td { border: 1px solid #3a3a3a; padding: 6px 8px; text-align: left; background: #1c1c1c; color: #e8e8e8; word-break: break-word; }
+  table.import-table td:first-child, table.import-table th:first-child { width: 32px; }
+  table.import-table thead th { background: #262626; cursor: pointer; user-select: none; }
   table.import-table thead th.sorted-asc::after { content: " \25B2"; }
   table.import-table thead th.sorted-desc::after { content: " \25BC"; }
   table.import-table tbody tr.row-hidden { display: none; }
@@ -47,7 +54,12 @@
             <button type="button" onclick="toggleAll('price', false)">Снять все</button>
             <span id="price-count"></span>
         </div>
+        <div class="import-table-wrap">
         <table class="import-table" id="price-table">
+            <colgroup>
+                <col style="width:32px"><col style="width:12%"><col style="width:18%">
+                <col style="width:26%"><col style="width:22%"><col style="width:8%">
+            </colgroup>
             <thead>
                 <tr>
                     <th></th>
@@ -71,6 +83,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
     {% endif %}
 
     {% if stock_rows %}
@@ -86,7 +99,9 @@
             <button type="button" onclick="toggleAll('stock', false)">Снять все</button>
             <span id="stock-count"></span>
         </div>
+        <div class="import-table-wrap" style="max-width:480px;">
         <table class="import-table" id="stock-table">
+            <colgroup><col style="width:32px"><col style="width:55%"><col style="width:35%"></colgroup>
             <thead>
                 <tr><th></th><th data-sort="text">Артикул</th><th data-sort="number">Остаток</th></tr>
             </thead>
@@ -100,6 +115,7 @@
             {% endfor %}
             </tbody>
         </table>
+        </div>
     {% endif %}
 
     <div class="submit-row">

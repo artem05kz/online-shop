@@ -7,13 +7,15 @@ class Brand(models.Model):
     """Top-level product line, e.g. 'Ifoam' or 'Grass'. Shown as the big
     catalog headers on the home page."""
 
-    name = models.CharField(max_length=100, unique=True)
-    slug = models.SlugField(max_length=110, unique=True, blank=True)
-    order = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    name = models.CharField('Название', max_length=100, unique=True)
+    slug = models.SlugField('Ярлык для ссылки', max_length=110, unique=True, blank=True)
+    order = models.PositiveIntegerField('Порядок показа', default=0)
+    is_active = models.BooleanField('Показывать на сайте', default=True)
 
     class Meta:
         ordering = ['order', 'name']
+        verbose_name = 'Бренд'
+        verbose_name_plural = 'Бренды'
 
     def __str__(self):
         return self.name
@@ -29,19 +31,20 @@ class Category(models.Model):
     Supports nesting (parent) because 1C exports its groups as a tree
     (category -> subcategory -> product)."""
 
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='categories')
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='categories', verbose_name='Бренд')
     parent = models.ForeignKey(
         'self', on_delete=models.CASCADE, related_name='children',
-        null=True, blank=True,
+        null=True, blank=True, verbose_name='Родительская категория',
     )
-    name = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=220, blank=True)
-    order = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    name = models.CharField('Название', max_length=200)
+    slug = models.SlugField('Ярлык для ссылки', max_length=220, blank=True)
+    order = models.PositiveIntegerField('Порядок показа', default=0)
+    is_active = models.BooleanField('Показывать на сайте', default=True)
 
     class Meta:
         ordering = ['order', 'name']
-        verbose_name_plural = 'categories'
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
         unique_together = [('brand', 'parent', 'name')]
 
     def __str__(self):
@@ -61,21 +64,23 @@ class Product(models.Model):
     variants (pack sizes) with their own article/price/stock — 1C treats a
     22kg canister and a 1kg bottle of the same product as separate SKUs."""
 
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products')
-    name = models.CharField(max_length=300)
-    slug = models.SlugField(max_length=320, blank=True)
-    description = models.TextField(blank=True)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='products', verbose_name='Категория')
+    name = models.CharField('Название', max_length=300)
+    slug = models.SlugField('Ярлык для ссылки', max_length=320, blank=True)
+    description = models.TextField('Описание', blank=True)
     ph = models.CharField('pH', max_length=50, blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField('Показывать на сайте', default=True)
 
     # Traceability back to the raw 1C export, useful while tuning the importer.
-    source_group_path = models.CharField(max_length=500, blank=True)
+    source_group_path = models.CharField('Путь категории в файле 1С', max_length=500, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата изменения', auto_now=True)
 
     class Meta:
         ordering = ['name']
+        verbose_name = 'Товар'
+        verbose_name_plural = 'Товары'
 
     def __str__(self):
         return self.name
@@ -101,27 +106,29 @@ class Product(models.Model):
 class ProductVariant(models.Model):
     """One purchasable SKU: a specific article/pack size of a product."""
 
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='variants', verbose_name='Товар')
     article = models.CharField('Артикул', max_length=50, unique=True, db_index=True)
     pack_label = models.CharField('Фасовка', max_length=50, blank=True)  # e.g. "22 кг", "600 мл"
-    volume_value = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    volume_unit = models.CharField(max_length=20, blank=True)  # кг / л / мл / шт
+    volume_value = models.DecimalField('Объём, число', max_digits=10, decimal_places=3, null=True, blank=True)
+    volume_unit = models.CharField('Единица измерения', max_length=20, blank=True)  # кг / л / мл / шт
 
-    box_qty = models.PositiveIntegerField('Фасовка, шт (в коробке)', null=True, blank=True)
-    pallet_qty = models.PositiveIntegerField('Штук на паллете', null=True, blank=True)
+    box_qty = models.PositiveIntegerField('Количество в коробке', null=True, blank=True)
+    pallet_qty = models.PositiveIntegerField('Количество на паллете', null=True, blank=True)
 
-    wholesale_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    wholesale_price = models.DecimalField('Оптовая цена', max_digits=12, decimal_places=2, null=True, blank=True)
     price = models.DecimalField('Розничная цена', max_digits=12, decimal_places=2, null=True, blank=True)
     old_price = models.DecimalField('Цена до скидки', max_digits=12, decimal_places=2, null=True, blank=True)
 
     stock_qty = models.IntegerField('Остаток на складе', default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField('Показывать на сайте', default=True)
 
-    last_price_import_at = models.DateTimeField(null=True, blank=True)
-    last_stock_import_at = models.DateTimeField(null=True, blank=True)
+    last_price_import_at = models.DateTimeField('Дата последней загрузки цены', null=True, blank=True)
+    last_stock_import_at = models.DateTimeField('Дата последнего обновления остатка', null=True, blank=True)
 
     class Meta:
         ordering = ['volume_value']
+        verbose_name = 'Артикул товара'
+        verbose_name_plural = 'Артикулы товаров'
 
     def __str__(self):
         return f'{self.product.name} ({self.pack_label or self.article})'
@@ -132,13 +139,15 @@ class ProductVariant(models.Model):
 
 
 class ProductImage(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='products/%Y/%m/')
-    is_primary = models.BooleanField(default=False)
-    order = models.PositiveIntegerField(default=0)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images', verbose_name='Товар')
+    image = models.ImageField('Фотография', upload_to='products/%Y/%m/')
+    is_primary = models.BooleanField('Основная фотография', default=False)
+    order = models.PositiveIntegerField('Порядок показа', default=0)
 
     class Meta:
         ordering = ['order', 'id']
+        verbose_name = 'Фотография товара'
+        verbose_name_plural = 'Фотографии товаров'
 
     def __str__(self):
-        return f'image for {self.product.name}'
+        return f'фото товара «{self.product.name}»'

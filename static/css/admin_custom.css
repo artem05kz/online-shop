@@ -1,0 +1,53 @@
+/* Небольшая настройка внешнего вида админки поверх стандартной темы Django:
+   крупнее шрифт для удобного чтения, спокойный зелёный акцент вместо
+   стандартного синего (в тон сайту), и защита от горизонтальной прокрутки
+   всей страницы из-за широких таблиц. */
+
+:root {
+  --primary: #2f7d3c;
+  --primary-fg: #fff;
+  --accent: #2f7d3c;
+  --link-fg: #235c2c;
+  --link-hover-color: #1c4823;
+  --link-selected-fg: #235c2c;
+  --button-bg: #2f7d3c;
+  --button-hover-bg: #235c2c;
+  --default-button-bg: #2f7d3c;
+  --default-button-hover-bg: #235c2c;
+  --header-bg: #1f3d24;
+  --header-color: #fff;
+  --selected-bg: #eaf3ec;
+  --selected-row: #eaf3ec;
+}
+
+body, table, input, select, textarea, .button, input[type=submit], input[type=button] {
+  font-size: 15px;
+}
+
+h1, .module h2, .module caption {
+  font-size: 1.15rem;
+}
+
+/* Просторнее строки в таблицах — легче попасть в нужную строку и прочитать. */
+#changelist table thead th,
+#changelist table tbody td,
+#changelist table tbody th,
+.module table td,
+.module table th {
+  padding: 10px 12px !important;
+  line-height: 1.4;
+}
+
+/* Если таблица шире экрана — прокручивается только она сама, а не вся
+   страница вместе с левым меню. */
+#changelist,
+#changelist .results,
+.module {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.submit-row input, .submit-row a.button {
+  font-size: 15px;
+  padding: 10px 18px;
+}

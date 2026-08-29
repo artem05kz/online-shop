@@ -1,13 +1,16 @@
 {% extends "admin/index.html" %}
+{% load static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'css/admin_custom.css' %}">{% endblock %}
 
 {% block content %}
 <div class="module" style="margin-bottom: 20px;">
     <table>
-        <caption>
-            <a href="{% url 'admin:catalog_import_upload' %}">📥 Загрузить товары из 1С (прайс-лист / остатки)</a>
-            &nbsp;·&nbsp;
-            <a href="{% url 'admin:catalog_import_stock_upload' %}">🔄 Обновить только остаток на складе</a>
-        </caption>
+        <caption>Загрузка товаров</caption>
+        <tbody>
+            <tr><th><a href="{% url 'admin:catalog_import_upload' %}">Загрузить товары из 1С (прайс-лист и остатки)</a></th></tr>
+            <tr><th><a href="{% url 'admin:catalog_import_stock_upload' %}">Обновить только остаток на складе</a></th></tr>
+        </tbody>
     </table>
 </div>
 {{ block.super }}
