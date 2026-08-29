@@ -1,8 +1,16 @@
-from .models import Brand
+from django.db.models import Prefetch
+
+from orders.cart import Cart
+from .models import Brand, Category
 
 
-def nav_brands(request):
-    """Makes the brand list available in the header on every page, not just
-    the home view — cached per-request via request, not globally, so admin
-    edits show up immediately without a server restart."""
-    return {'nav_brands': Brand.objects.filter(is_active=True)}
+def site_nav(request):
+    """Header data needed on every page: the catalog dropdown (brands with
+    their categories) and the number of items in the cart."""
+    brands = Brand.objects.filter(is_active=True).prefetch_related(
+        Prefetch('categories', queryset=Category.objects.filter(is_active=True, parent=None))
+    )
+    return {
+        'nav_brands': brands,
+        'cart_count': len(Cart(request)),
+    }

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Заказ №{{ order.pk }} — GRASS Актау{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'catalog:home' %}">Главная</a>
+    <span class="sep">/</span>
+    <a href="{% url 'orders:order_list' %}">История заказов</a>
+    <span class="sep">/</span>
+    <span>Заказ №{{ order.pk }}</span>
+</nav>
+
+<div class="panel">
+    <div class="order-head">
+        <div>
+            <div class="o-num">Заказ №{{ order.pk }}</div>
+            <div class="o-date">оформлен {{ order.created_at|date:"d.m.Y, H:i" }}</div>
+        </div>
+        <span class="status status-{{ order.status }}">{{ order.get_status_display }}</span>
+    </div>
+
+    {% if order.progress_steps %}
+    <div class="tracker">
+        {% for step in order.progress_steps %}
+            <div class="tracker-step{% if step.is_done %} done{% endif %}{% if step.is_current %} current{% endif %}">
+                <div class="tracker-bar"></div>
+                <div class="tracker-label">{{ step.label }}</div>
+            </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p class="muted">Заказ отменён.</p>
+    {% endif %}
+</div>
+
+<div class="two-col">
+    <div class="panel">
+        <h3>Состав заказа</h3>
+        {% for item in order.items.all %}
+        <div class="line-item">
+            <a class="thumb" href="{{ item.variant.product.get_absolute_url }}">
+                {% with image=item.variant.product.primary_image %}
+                    <img src="{% if image %}{{ image.image.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
+                         alt="{{ item.product_name }}">
+                {% endwith %}
+            </a>
+            <div>
+                <a class="li-name" href="{{ item.variant.product.get_absolute_url }}">{{ item.product_name }}</a>
+                <div class="li-meta">
+                    Фасовка: {{ item.pack_label|default:"—" }}{% if item.article %} · Артикул: {{ item.article }}{% endif %}
+                </div>
+                <div class="li-meta">{{ item.price|floatformat:0 }} ₸ × {{ item.quantity }} шт.</div>
+            </div>
+            <div class="li-right"><strong>{{ item.subtotal|floatformat:0 }} ₸</strong></div>
+        </div>
+        {% endfor %}
+        <div class="summary-row total">
+            <span>Итого ({{ order.total_quantity }} шт.)</span>
+            <span>{{ order.total|floatformat:0 }} ₸</span>
+        </div>
+    </div>
+
+    <div>
+        <div class="panel">
+            <h3>Доставка</h3>
+            <ul class="spec-list">
+                <li><span>Получатель</span><span>{{ order.contact_name }}</span></li>
+                <li><span>Телефон</span><span>{{ order.contact_phone }}</span></li>
+                <li><span>Город</span><span>{{ order.city }}</span></li>
+                <li><span>Адрес</span><span>{{ order.street_and_details }}</span></li>
+                {% if order.comment %}<li><span>Комментарий</span><span>{{ order.comment }}</span></li>{% endif %}
+            </ul>
+        </div>
+        <div class="panel">
+            <h3>Оплата</h3>
+            <p class="muted">Наличными или картой при получении. Заказ подтверждает менеджер по телефону.</p>
+            <a class="btn btn-ghost btn-block" href="{% url 'orders:order_list' %}">Ко всем заказам</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

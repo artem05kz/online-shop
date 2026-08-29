@@ -1,25 +1,100 @@
 {% extends "base.html" %}
 
-{% block title %}Оформление заказа{% endblock %}
+{% block title %}Оформление заказа — GRASS Актау{% endblock %}
 
 {% block content %}
-<h1 class="section-title">Оформление заказа</h1>
+<h1>Оформление заказа</h1>
 
-<p><strong>Оплата — наличными или картой курьеру при получении.</strong> Заказ подтвердит менеджер.</p>
-
-<form class="stacked" method="post">
+<form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn" type="submit">Подтвердить заказ</button>
-</form>
+    <div class="two-col">
+        <div>
+            {% if addresses %}
+            <div class="panel">
+                <h3>Адрес доставки</h3>
+                <div class="form-row">
+                    <label for="{{ form.saved_address.id_for_label }}">{{ form.saved_address.label }}</label>
+                    {{ form.saved_address }}
+                    <span class="help">Выберите сохранённый адрес или заполните поля ниже вручную.</span>
+                </div>
+            </div>
+            {% endif %}
 
-<h3>Ваш заказ</h3>
-<table class="simple">
-    <tbody>
-    {% for item in cart %}
-        <tr><td>{{ item.variant.product.name }} ({{ item.variant.pack_label }})</td><td>{{ item.quantity }} шт</td><td>{{ item.subtotal|floatformat:0 }} ₸</td></tr>
-    {% endfor %}
-    </tbody>
-</table>
-<p><strong>Итого: {{ cart.total|floatformat:0 }} ₸</strong></p>
+            <div class="panel">
+                <h3>Получатель</h3>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="{{ form.contact_name.id_for_label }}">{{ form.contact_name.label }}</label>
+                        {{ form.contact_name }}
+                        {{ form.contact_name.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.contact_phone.id_for_label }}">{{ form.contact_phone.label }}</label>
+                        {{ form.contact_phone }}
+                        {{ form.contact_phone.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
+                        {{ form.city }}
+                        {{ form.city.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.street_and_details.id_for_label }}">{{ form.street_and_details.label }}</label>
+                        {{ form.street_and_details }}
+                        {{ form.street_and_details.errors }}
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+                    {{ form.comment }}
+                </div>
+            </div>
+        </div>
+
+        <div class="panel sticky-side">
+            <h3>Ваш заказ</h3>
+            {% for item in cart %}
+                <div class="summary-row">
+                    <span>{{ item.variant.product.name }}<br>
+                        <span class="muted" style="font-size:.82rem;">{{ item.variant.pack_label }} · {{ item.quantity }} шт.</span>
+                    </span>
+                    <span style="white-space:nowrap;">{{ item.subtotal|floatformat:0 }} ₸</span>
+                </div>
+            {% endfor %}
+            <div class="summary-row total"><span>К оплате</span><span>{{ cart.total|floatformat:0 }} ₸</span></div>
+            <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
+                Оплата наличными или картой при получении. После оформления с вами свяжется менеджер.
+            </p>
+            <button class="btn btn-block" type="submit">Подтвердить заказ</button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extrascript %}
+<script>
+// Подстановка сохранённого адреса в поля формы.
+(function () {
+    var select = document.getElementById('{{ form.saved_address.id_for_label }}');
+    if (!select) return;
+    var data = {
+        {% for a in addresses %}
+        "{{ a.pk }}": {
+            name: "{{ a.full_name|escapejs }}",
+            phone: "{{ a.phone|escapejs }}",
+            city: "{{ a.city|escapejs }}",
+            street: "{{ a.street_line|escapejs }}{% if a.details_line %}, {{ a.details_line|escapejs }}{% endif %}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+    select.addEventListener('change', function () {
+        var picked = data[select.value];
+        if (!picked) return;
+        document.getElementById('{{ form.contact_name.id_for_label }}').value = picked.name;
+        document.getElementById('{{ form.contact_phone.id_for_label }}').value = picked.phone;
+        document.getElementById('{{ form.city.id_for_label }}').value = picked.city;
+        document.getElementById('{{ form.street_and_details.id_for_label }}').value = picked.street;
+    });
+})();
+</script>
 {% endblock %}

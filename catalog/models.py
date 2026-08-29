@@ -115,9 +115,33 @@ class Product(models.Model):
         return self.images.filter(is_primary=True).first() or self.images.first()
 
     @property
+    def active_variants(self):
+        # Uses the prefetched list when the view prefetched `variants`, so
+        # listing pages don't fire one query per card.
+        return [v for v in self.variants.all() if v.is_active]
+
+    @property
     def min_price(self):
-        prices = [v.price for v in self.variants.filter(is_active=True) if v.price is not None]
+        prices = [v.price for v in self.active_variants if v.price is not None]
         return min(prices) if prices else None
+
+    @property
+    def has_several_packs(self):
+        return len(self.active_variants) > 1
+
+    @property
+    def default_variant(self):
+        """What the "В корзину" button on a listing card should add: the
+        cheapest pack that's actually in stock, else the cheapest one."""
+        variants = [v for v in self.active_variants if v.price is not None]
+        if not variants:
+            return None
+        in_stock = [v for v in variants if v.stock_qty > 0]
+        return min(in_stock or variants, key=lambda v: v.price)
+
+    @property
+    def in_stock(self):
+        return any(v.stock_qty > 0 for v in self.active_variants)
 
 
 class ProductVariant(models.Model):

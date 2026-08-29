@@ -1,0 +1,10 @@
+{% comment %}Общие вкладки личного кабинета. Активную задаёт переменная active_tab.{% endcomment %}
+<nav class="tabs">
+    <a href="{% url 'accounts:profile' %}" {% if active_tab == 'profile' %}class="active"{% endif %}>Личные данные</a>
+    <a href="{% url 'accounts:address_list' %}" {% if active_tab == 'addresses' %}class="active"{% endif %}>Адреса доставки</a>
+    <a href="{% url 'orders:order_list' %}" {% if active_tab == 'orders' %}class="active"{% endif %}>История заказов</a>
+    <form action="{% url 'accounts:logout' %}" method="post" style="margin-left:auto;">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-ghost btn-sm">Выйти</button>
+    </form>
+</nav>

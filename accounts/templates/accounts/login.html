@@ -1,13 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}Вход{% endblock %}
+{% block title %}Вход — GRASS Актау{% endblock %}
 
 {% block content %}
-<h1 class="section-title">Вход</h1>
-<form class="stacked" method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn" type="submit">Войти</button>
-</form>
-<p>Нет аккаунта? <a href="{% url 'accounts:register' %}">Зарегистрироваться</a></p>
+<div class="panel form-narrow" style="margin:34px auto;">
+    <h1>Вход</h1>
+    <form method="post" style="margin-top:18px;">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="messages">
+                {% for error in form.non_field_errors %}<li class="message error">{{ error }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        {% for field in form %}
+            <div class="form-row">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+        <button class="btn btn-block" type="submit">Войти</button>
+    </form>
+    <p class="muted" style="margin-top:16px; font-size:.9rem;">
+        Нет аккаунта? <a href="{% url 'accounts:register' %}" style="color:var(--green-dark); font-weight:600;">Зарегистрироваться</a>
+    </p>
+</div>
 {% endblock %}

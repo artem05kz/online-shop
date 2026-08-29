@@ -4,56 +4,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}GRASS Актау — интернет-магазин{% endblock %}</title>
+    <title>{% block title %}GRASS Актау — автохимия и бытовая химия{% endblock %}</title>
+    <meta name="description" content="{% block description %}Официальный дилер GRASS в Актау. Автохимия, бытовая химия, профессиональный клининг. Доставка по городу, оплата при получении.{% endblock %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extrahead %}{% endblock %}
 </head>
 <body>
-    <header class="site-header">
-        <div class="container header-row">
-            <a class="logo" href="{% url 'catalog:home' %}">GRASS <span>Актау</span></a>
 
-            <form class="search" action="{% url 'catalog:home' %}" method="get">
-                <input type="text" name="q" placeholder="Поиск по товарам..." value="{{ request.GET.q|default:'' }}">
-                <button type="submit">Найти</button>
-            </form>
+<div class="topbar">
+    <div class="container">
+        <span>Актау</span>
+        <a href="tel:+77000000000">+7 700 000-00-00</a>
+        <span class="muted">Пн–Сб, 9:00–18:00</span>
+        <span class="spacer"></span>
+        <span><strong>Оплата при получении</strong> — наличными или картой</span>
+    </div>
+</div>
 
-            <div class="header-actions">
-                <a href="{% url 'orders:cart' %}" class="icon-link">🛒 Корзина</a>
-                {% if user.is_staff %}
-                    <a href="{% url 'admin:index' %}" class="icon-link">⚙ Админка</a>
-                {% endif %}
-                {% if user.is_authenticated %}
-                    <a href="{% url 'accounts:profile' %}" class="icon-link">👤 {{ user.username }}</a>
-                    <form action="{% url 'accounts:logout' %}" method="post" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="icon-link" style="background:none; border:none; padding:0; font:inherit; cursor:pointer;">Выйти</button>
-                    </form>
-                {% else %}
-                    <a href="{% url 'accounts:login' %}" class="icon-link">Войти</a>
-                {% endif %}
+<header class="header">
+    <div class="container">
+        <a class="logo" href="{% url 'catalog:home' %}">
+            <span class="logo-mark">G</span>
+            <span>GRASS <span class="logo-city">Актау</span></span>
+        </a>
+
+        <button type="button" class="catalog-btn" id="catalog-toggle" aria-expanded="false" aria-controls="catalog-menu">
+            <span class="burger-lines"><span></span><span></span><span></span></span>
+            <span class="btn-text">Каталог</span>
+        </button>
+
+        <form class="search" action="{% url 'catalog:search' %}" method="get" role="search">
+            <input type="text" name="q" placeholder="Поиск по каталогу" value="{{ request.GET.q|default:'' }}" aria-label="Поиск по каталогу">
+            <button type="submit">Найти</button>
+        </form>
+
+        <nav class="header-actions">
+            <a class="header-link" href="{% url 'orders:cart' %}">
+                <span class="ico" aria-hidden="true">🛒</span>
+                <span class="lbl">Корзина</span>
+                {% if cart_count %}<span class="cart-count">{{ cart_count }}</span>{% endif %}
+            </a>
+            {% if user.is_authenticated %}
+                <a class="header-link" href="{% url 'accounts:profile' %}">
+                    <span class="ico" aria-hidden="true">👤</span>
+                    <span class="lbl">Профиль</span>
+                </a>
+            {% else %}
+                <a class="header-link" href="{% url 'accounts:login' %}">
+                    <span class="ico" aria-hidden="true">👤</span>
+                    <span class="lbl">Войти</span>
+                </a>
+            {% endif %}
+            {% if user.is_staff %}
+                <a class="header-link" href="{% url 'admin:index' %}">
+                    <span class="ico" aria-hidden="true">⚙</span>
+                    <span class="lbl">Админка</span>
+                </a>
+            {% endif %}
+        </nav>
+    </div>
+</header>
+
+<div class="catalog-menu" id="catalog-menu">
+    <div class="container catalog-menu-grid">
+        {% for brand in nav_brands %}
+            <div>
+                <h4>{{ brand.name }}</h4>
+                <ul>
+                    {% for category in brand.categories.all %}
+                        <li><a href="{% url 'catalog:category' brand.slug category.slug %}">{{ category.name }}</a></li>
+                    {% empty %}
+                        <li class="muted">Категорий пока нет</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% empty %}
+            <p class="muted">Каталог пока пуст.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<main class="container">
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}<li class="message {{ message.tags }}">{{ message }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <h4>GRASS Актау</h4>
+                <p>Официальный дилер продукции GRASS и Ifoam в Актау.<br>Автохимия, бытовая химия, профессиональный клининг.</p>
+            </div>
+            <div>
+                <h4>Каталог</h4>
+                <ul>
+                    {% for brand in nav_brands %}
+                        <li><a href="{% url 'catalog:home' %}">{{ brand.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div>
+                <h4>Покупателю</h4>
+                <ul>
+                    <li><a href="{% url 'orders:cart' %}">Корзина</a></li>
+                    {% if user.is_authenticated %}
+                        <li><a href="{% url 'orders:order_list' %}">Мои заказы</a></li>
+                        <li><a href="{% url 'accounts:address_list' %}">Адреса доставки</a></li>
+                    {% else %}
+                        <li><a href="{% url 'accounts:register' %}">Регистрация</a></li>
+                        <li><a href="{% url 'accounts:login' %}">Вход</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div>
+                <h4>Контакты</h4>
+                <ul>
+                    <li><a href="tel:+77000000000">+7 700 000-00-00</a></li>
+                    <li>Актау</li>
+                    <li>Пн–Сб, 9:00–18:00</li>
+                </ul>
             </div>
         </div>
-        <nav class="brand-nav container">
-            {% for brand in nav_brands %}
-                <span class="brand-nav-item">{{ brand.name }}</span>
-            {% endfor %}
-        </nav>
-    </header>
-
-    <main class="container">
-        {% if messages %}
-            <ul class="messages">
-                {% for message in messages %}<li class="message {{ message.tags }}">{{ message }}</li>{% endfor %}
-            </ul>
-        {% endif %}
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer class="site-footer">
-        <div class="container">
-            <p>GRASS Актау — бытовая химия и автохимия. Оплата наличными или картой при получении.</p>
-            <p>📍 Актау &nbsp;·&nbsp; ☎ уточняется &nbsp;·&nbsp; ✆ WhatsApp уточняется</p>
+        <div class="footer-bottom">
+            Оплата наличными или картой при получении. Заказ подтверждает менеджер.
         </div>
-    </footer>
+    </div>
+</footer>
+
+<script src="{% static 'js/site.js' %}"></script>
+{% block extrascript %}{% endblock %}
 </body>
 </html>

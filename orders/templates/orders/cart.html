@@ -1,34 +1,68 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Корзина{% endblock %}
+{% block title %}Корзина — GRASS Актау{% endblock %}
 
 {% block content %}
-<h1 class="section-title">Корзина</h1>
+<h1>Корзина</h1>
 
 {% if cart|length == 0 %}
-    <p>Корзина пуста. <a href="{% url 'catalog:home' %}">Перейти в каталог</a></p>
+    <div class="empty">
+        <div class="empty-ico" aria-hidden="true">🛒</div>
+        <h2>Корзина пуста</h2>
+        <p>Загляните в каталог — там есть что выбрать.</p>
+        <p style="margin-top:18px;"><a class="btn" href="{% url 'catalog:home' %}">Перейти в каталог</a></p>
+    </div>
 {% else %}
-    <table class="simple">
-        <thead><tr><th>Товар</th><th>Фасовка</th><th>Цена</th><th>Кол-во</th><th>Сумма</th><th></th></tr></thead>
-        <tbody>
+<div class="two-col">
+    <div class="panel">
         {% for item in cart %}
-            <tr>
-                <td>{{ item.variant.product.name }}</td>
-                <td>{{ item.variant.pack_label }}</td>
-                <td>{{ item.price|floatformat:0 }} ₸</td>
-                <td>{{ item.quantity }}</td>
-                <td>{{ item.subtotal|floatformat:0 }} ₸</td>
-                <td>
-                    <form action="{% url 'orders:cart_remove' item.variant.pk %}" method="post">
-                        {% csrf_token %}
-                        <button class="btn btn-outline" type="submit">Убрать</button>
-                    </form>
-                </td>
-            </tr>
+        <div class="line-item">
+            <a class="thumb" href="{{ item.variant.product.get_absolute_url }}">
+                {% with image=item.variant.product.primary_image %}
+                    <img src="{% if image %}{{ image.image.url }}{% else %}{% static 'img/no-photo.svg' %}{% endif %}"
+                         alt="{{ item.variant.product.name }}">
+                {% endwith %}
+            </a>
+            <div>
+                <a class="li-name" href="{{ item.variant.product.get_absolute_url }}">{{ item.variant.product.name }}</a>
+                <div class="li-meta">
+                    Фасовка: {{ item.variant.pack_label|default:"—" }} · Артикул: {{ item.variant.article }}
+                </div>
+                <div class="li-meta">{{ item.price|floatformat:0 }} ₸ за штуку</div>
+            </div>
+            <div class="li-right">
+                <form action="{% url 'orders:cart_update' item.variant.pk %}" method="post"
+                      style="display:flex; align-items:center; gap:8px;">
+                    {% csrf_token %}
+                    <span class="qty">
+                        <button type="button" data-qty="minus" aria-label="Меньше">−</button>
+                        <input type="number" name="quantity" value="{{ item.quantity }}" min="1" aria-label="Количество">
+                        <button type="button" data-qty="plus" aria-label="Больше">+</button>
+                    </span>
+                    <button class="btn btn-ghost btn-sm" type="submit">ОК</button>
+                </form>
+                <strong>{{ item.subtotal|floatformat:0 }} ₸</strong>
+                <form action="{% url 'orders:cart_remove' item.variant.pk %}" method="post">
+                    {% csrf_token %}
+                    <button class="btn btn-danger btn-sm" type="submit">Убрать</button>
+                </form>
+            </div>
+        </div>
         {% endfor %}
-        </tbody>
-    </table>
-    <p><strong>Итого: {{ cart.total|floatformat:0 }} ₸</strong></p>
-    <a class="btn" href="{% url 'orders:checkout' %}">Оформить заказ</a>
+    </div>
+
+    <div class="panel sticky-side">
+        <h3>Итого</h3>
+        <div class="summary-row"><span>Товаров</span><span>{{ cart|length }} шт.</span></div>
+        <div class="summary-row"><span>Доставка</span><span class="muted">уточнит менеджер</span></div>
+        <div class="summary-row total"><span>К оплате</span><span>{{ cart.total|floatformat:0 }} ₸</span></div>
+        <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
+            Оплата наличными или картой при получении.
+        </p>
+        <a class="btn btn-block" href="{% url 'orders:checkout' %}">Оформить заказ</a>
+        <a class="btn btn-ghost btn-block" href="{% url 'catalog:home' %}" style="margin-top:10px;">Продолжить покупки</a>
+    </div>
+</div>
 {% endif %}
 {% endblock %}

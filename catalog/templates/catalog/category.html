@@ -1,14 +1,48 @@
 {% extends "base.html" %}
 
-{% block title %}{{ category.name }} — {{ category.brand.name }}{% endblock %}
+{% block title %}{{ category.name }} — GRASS Актау{% endblock %}
 
 {% block content %}
-<h1 class="section-title">{{ category.brand.name }} / {{ category.name }}</h1>
-<div class="product-grid">
-    {% for product in products %}
-        {% include "catalog/_product_card.html" %}
-    {% empty %}
-        <p>В этой категории пока нет товаров.</p>
-    {% endfor %}
+<nav class="breadcrumbs">
+    <a href="{% url 'catalog:home' %}">Главная</a>
+    <span class="sep">/</span>
+    <span>{{ brand.name }}</span>
+    <span class="sep">/</span>
+    <span>{{ category.name }}</span>
+</nav>
+
+<h1>{{ category.name }}</h1>
+
+<div class="catalog-layout">
+    {% include "catalog/_filters.html" %}
+
+    <div>
+        <div class="toolbar">
+            <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
+                    aria-expanded="false" aria-controls="filters">Фильтры</button>
+            <span class="count">Найдено: {{ total_count }}</span>
+            <form class="sort" method="get">
+                {% for k, values in request.GET.lists %}{% if k != 'sort' and k != 'page' %}{% for v in values %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}{% endif %}{% endfor %}
+                <label for="sort-select">Сортировка</label>
+                <select class="select" name="sort" id="sort-select">
+                    {% for value, label in sort_options %}
+                        <option value="{{ value }}" {% if value == sort %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        {% if page_obj.object_list %}
+            <div class="product-grid">
+                {% for product in page_obj.object_list %}{% include "catalog/_product_card.html" %}{% endfor %}
+            </div>
+            {% include "catalog/_pagination.html" %}
+        {% else %}
+            <div class="empty">
+                <h2>Ничего не нашлось</h2>
+                <p>Попробуйте изменить фильтры или сбросить их.</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

@@ -1,12 +1,30 @@
 {% extends "base.html" %}
 
-{% block title %}Регистрация{% endblock %}
+{% block title %}Регистрация — GRASS Актау{% endblock %}
 
 {% block content %}
-<h1 class="section-title">Регистрация</h1>
-<form class="stacked" method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn" type="submit">Создать аккаунт</button>
-</form>
+<div class="panel form-narrow" style="margin:34px auto;">
+    <h1>Регистрация</h1>
+    <p class="muted" style="font-size:.9rem;">Имя и адрес доставки можно будет заполнить позже, в личном кабинете.</p>
+    <form method="post" style="margin-top:18px;">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <ul class="messages">
+                {% for error in form.non_field_errors %}<li class="message error">{{ error }}</li>{% endfor %}
+            </ul>
+        {% endif %}
+        {% for field in form %}
+            <div class="form-row">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<span class="help">{{ field.help_text|safe }}</span>{% endif %}
+                {{ field.errors }}
+            </div>
+        {% endfor %}
+        <button class="btn btn-block" type="submit">Создать аккаунт</button>
+    </form>
+    <p class="muted" style="margin-top:16px; font-size:.9rem;">
+        Уже есть аккаунт? <a href="{% url 'accounts:login' %}" style="color:var(--green-dark); font-weight:600;">Войти</a>
+    </p>
+</div>
 {% endblock %}

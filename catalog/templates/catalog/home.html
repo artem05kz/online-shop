@@ -24,45 +24,56 @@
         </div>
     {% endif %}
 </div>
-<script src="{% static 'js/banner_carousel.js' %}"></script>
 {% endif %}
 
-{% if query %}
-    <h1 class="section-title">Результаты поиска: «{{ query }}»</h1>
-    {% if search_results %}
-        <div class="product-grid">
-            {% for product in search_results %}
-                {% include "catalog/_product_card.html" %}
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>Ничего не найдено.</p>
-    {% endif %}
-{% else %}
-    {% for brand in brands %}
-        <h1 class="section-title">Каталог {{ brand.name }}</h1>
-        <div class="category-row">
-            {% for category in brand.categories.all %}
-                <a class="category-chip" href="{% url 'catalog:category' brand.slug category.slug %}">{{ category.name }}</a>
-            {% empty %}
-                <span class="category-chip">Пока нет категорий — добавьте товары через админку</span>
-            {% endfor %}
-        </div>
-        {% for category in brand.categories.all %}
-            {% if category.products.all %}
-                <h2 class="section-title" style="font-size:1.05rem;">
-                    <a href="{% url 'catalog:category' brand.slug category.slug %}">{{ category.name }} →</a>
-                </h2>
+{% if categories %}
+<section class="section">
+    <div class="section-head"><h2>Каталог по направлениям</h2></div>
+    <div class="tiles">
+        {% for category in categories %}
+            <a class="tile" href="{% url 'catalog:category' category.brand.slug category.slug %}">
+                <span>{{ category.name }}</span>
+                <span class="tile-count">{{ category.product_count }} товаров</span>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if featured %}
+<section class="section">
+    <div class="section-head"><h2>Есть в наличии</h2></div>
+    <div class="product-grid">
+        {% for product in featured %}{% include "catalog/_product_card.html" %}{% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% for brand in brands %}
+    {% for category in brand.categories.all %}
+        {% if category.products.all %}
+            <section class="section">
+                <div class="section-head">
+                    <h2>{{ category.name }}</h2>
+                    <a class="more" href="{% url 'catalog:category' brand.slug category.slug %}">Все товары →</a>
+                </div>
                 <div class="product-grid">
-                    {% for product in category.products.all|slice:":8" %}
+                    {% for product in category.products.all|slice:":4" %}
                         {% include "catalog/_product_card.html" %}
                     {% endfor %}
                 </div>
-            {% endif %}
-        {% endfor %}
-    {% empty %}
-        <p>Каталог пока пуст. Импортируйте товары из 1С через <code>python manage.py import_1c</code> или добавьте в админке.</p>
+            </section>
+        {% endif %}
     {% endfor %}
-{% endif %}
+{% empty %}
+    <div class="empty">
+        <h2>Каталог пока пуст</h2>
+        <p>Загрузите товары из 1С в панели управления.</p>
+    </div>
+{% endfor %}
 
+{% endblock %}
+
+{% block extrascript %}
+{% if banners %}<script src="{% static 'js/banner_carousel.js' %}"></script>{% endif %}
 {% endblock %}

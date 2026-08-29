@@ -1,0 +1,11 @@
+{% if page_obj.has_other_pages %}
+<nav class="form-actions" style="justify-content:center; margin-top:28px;" aria-label="Постраничная навигация">
+    {% if page_obj.has_previous %}
+        <a class="btn btn-ghost" href="?{% for k, values in request.GET.lists %}{% if k != 'page' %}{% for v in values %}{{ k }}={{ v|urlencode }}&amp;{% endfor %}{% endif %}{% endfor %}page={{ page_obj.previous_page_number }}">Назад</a>
+    {% endif %}
+    <span class="muted" style="align-self:center;">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+        <a class="btn btn-ghost" href="?{% for k, values in request.GET.lists %}{% if k != 'page' %}{% for v in values %}{{ k }}={{ v|urlencode }}&amp;{% endfor %}{% endif %}{% endfor %}page={{ page_obj.next_page_number }}">Вперёд</a>
+    {% endif %}
+</nav>
+{% endif %}

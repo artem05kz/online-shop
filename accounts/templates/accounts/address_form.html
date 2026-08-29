@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if address %}Изменить адрес{% else %}Новый адрес{% endif %} — GRASS Актау{% endblock %}
+
+{% block extrahead %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endblock %}
+
+{% block content %}
+<h1>Личный кабинет</h1>
+{% include "_account_tabs.html" %}
+
+<h3>{% if address %}Изменить адрес{% else %}Новый адрес доставки{% endif %}</h3>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="two-col">
+        <div>
+            <div class="panel">
+                <h3>Где вы находитесь</h3>
+                <p class="muted" style="font-size:.88rem; margin-top:0;">
+                    Нажмите на карту или перетащите метку — улица подставится сама.
+                    Номер дома, квартиру и остальное укажите ниже.
+                </p>
+                <div id="map"></div>
+                <p class="map-hint" id="map-hint">Метка не поставлена.</p>
+                {{ form.latitude }}
+                {{ form.longitude }}
+            </div>
+
+            <div class="panel">
+                <h3>Адрес</h3>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="{{ form.city.id_for_label }}">{{ form.city.label }}</label>
+                        {{ form.city }}{{ form.city.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.street.id_for_label }}">{{ form.street.label }}</label>
+                        {{ form.street }}{{ form.street.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.house.id_for_label }}">{{ form.house.label }}</label>
+                        {{ form.house }}{{ form.house.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.apartment.id_for_label }}">{{ form.apartment.label }}</label>
+                        {{ form.apartment }}{{ form.apartment.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.entrance.id_for_label }}">{{ form.entrance.label }}</label>
+                        {{ form.entrance }}{{ form.entrance.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.floor.id_for_label }}">{{ form.floor.label }}</label>
+                        {{ form.floor }}{{ form.floor.errors }}
+                    </div>
+                    <div class="form-row">
+                        <label for="{{ form.intercom.id_for_label }}">{{ form.intercom.label }}</label>
+                        {{ form.intercom }}{{ form.intercom.errors }}
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="{{ form.comment.id_for_label }}">{{ form.comment.label }}</label>
+                    {{ form.comment }}{{ form.comment.errors }}
+                </div>
+            </div>
+        </div>
+
+        <div class="panel sticky-side">
+            <h3>Получатель</h3>
+            <div class="form-row">
+                <label for="{{ form.label.id_for_label }}">{{ form.label.label }}</label>
+                {{ form.label }}
+                <span class="help">Чтобы отличать адреса друг от друга.</span>
+            </div>
+            <div class="form-row">
+                <label for="{{ form.full_name.id_for_label }}">{{ form.full_name.label }}</label>
+                {{ form.full_name }}{{ form.full_name.errors }}
+            </div>
+            <div class="form-row">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                {{ form.phone }}{{ form.phone.errors }}
+            </div>
+            <label class="check" style="margin:6px 0 16px;">
+                {{ form.is_default }}
+                <span>{{ form.is_default.label }}</span>
+            </label>
+            <button class="btn btn-block" type="submit">Сохранить адрес</button>
+            <a class="btn btn-ghost btn-block" href="{% url 'accounts:address_list' %}" style="margin-top:10px;">Отмена</a>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extrascript %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{% static 'js/address_map.js' %}"></script>
+{% endblock %}
