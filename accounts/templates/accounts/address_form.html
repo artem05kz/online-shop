@@ -4,7 +4,9 @@
 {% block title %}{% if address %}Изменить адрес{% else %}Новый адрес{% endif %} — GRASS Актау{% endblock %}
 
 {% block extrahead %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% if not google_maps_key %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -95,6 +97,12 @@
 {% endblock %}
 
 {% block extrascript %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% if google_maps_key %}
+    <script>window.MAP_PROVIDER = 'google';</script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_key }}&language=ru&region=KZ"></script>
+{% else %}
+    <script>window.MAP_PROVIDER = 'osm';</script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endif %}
 <script src="{% static 'js/address_map.js' %}"></script>
 {% endblock %}

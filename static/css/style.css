@@ -436,6 +436,12 @@ h3 { font-size: 1.1rem; }
     padding: 18px;
     position: sticky;
     top: calc(var(--header-h) + 14px);
+    /* Если фильтров больше, чем помещается на экран, прокручивается сама
+       панель — не приходится крутить всю страницу вниз, чтобы добраться
+       до кнопки «Показать». */
+    max-height: calc(100vh - var(--header-h) - 28px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 .filters h3 { font-size: 1rem; margin-bottom: 14px; }
 .filter-group { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
@@ -633,7 +639,36 @@ textarea.field { resize: vertical; }
 .panel-head h2, .panel-head h3 { margin: 0; }
 
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 24px; align-items: start; }
-.sticky-side { position: sticky; top: calc(var(--header-h) + 14px); }
+.sticky-side {
+    position: sticky;
+    top: calc(var(--header-h) + 14px);
+    max-height: calc(100vh - var(--header-h) - 28px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Карточка заказа в истории — фон чуть темнее страницы, чтобы граница
+   между заказами читалась без вглядывания. */
+.order-card {
+    background: var(--bg-soft);
+    border-color: transparent;
+}
+.order-card + .order-card { margin-top: 16px; }
+
+/* Карточка адреса магазина */
+.store-card .store-kind {
+    display: inline-block;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+    border-radius: 20px;
+    background: var(--green-soft);
+    color: var(--green-dark);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.store-card .store-address { font-size: 1.02rem; font-weight: 600; line-height: 1.4; }
 
 .summary-row {
     display: flex;

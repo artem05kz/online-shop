@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -78,6 +79,8 @@ def address_edit(request, pk=None):
         'form': form,
         'address': instance,
         'active_tab': 'addresses',
+        # Ключ Google задаётся в настройках; без него берём открытые карты.
+        'google_maps_key': settings.GOOGLE_MAPS_API_KEY,
     })
 
 

@@ -32,15 +32,15 @@
                 <div class="li-meta">{{ item.price|floatformat:0 }} ₸ за штуку</div>
             </div>
             <div class="li-right">
-                <form action="{% url 'orders:cart_update' item.variant.pk %}" method="post"
-                      style="display:flex; align-items:center; gap:8px;">
+                <form action="{% url 'orders:cart_update' item.variant.pk %}" method="post" data-autosubmit>
                     {% csrf_token %}
                     <span class="qty">
                         <button type="button" data-qty="minus" aria-label="Меньше">−</button>
                         <input type="number" name="quantity" value="{{ item.quantity }}" min="1" aria-label="Количество">
                         <button type="button" data-qty="plus" aria-label="Больше">+</button>
                     </span>
-                    <button class="btn btn-ghost btn-sm" type="submit">ОК</button>
+                    {# Запасной вариант, если в браузере отключены скрипты. #}
+                    <noscript><button class="btn btn-ghost btn-sm" type="submit">Применить</button></noscript>
                 </form>
                 <strong>{{ item.subtotal|floatformat:0 }} ₸</strong>
                 <form action="{% url 'orders:cart_remove' item.variant.pk %}" method="post">

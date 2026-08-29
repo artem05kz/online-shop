@@ -13,10 +13,13 @@
 
 <div class="topbar">
     <div class="container">
-        <span>Актау</span>
-        <a href="tel:+77000000000">+7 700 000-00-00</a>
-        <span class="muted">Пн–Сб, 9:00–18:00</span>
+        <span>{{ site_contact.city|default:"Актау" }}</span>
+        {% if site_contact.phone %}<a href="tel:{{ site_contact.phone_link }}">{{ site_contact.phone }}</a>{% endif %}
+        {% if site_contact.working_hours %}<span class="muted">{{ site_contact.working_hours }}</span>{% endif %}
+        <a href="{% url 'company:store_list' %}">Адреса магазинов</a>
         <span class="spacer"></span>
+        {% if site_contact.whatsapp_link %}<a href="{{ site_contact.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+        {% if site_contact.instagram_link %}<a href="{{ site_contact.instagram_link }}" target="_blank" rel="noopener">Instagram</a>{% endif %}
         <span><strong>Оплата при получении</strong> — наличными или картой</span>
     </div>
 </div>
@@ -39,6 +42,10 @@
         </form>
 
         <nav class="header-actions">
+            <a class="header-link" href="{% url 'company:store_list' %}">
+                <span class="ico" aria-hidden="true">📍</span>
+                <span class="lbl">Адреса</span>
+            </a>
             <a class="header-link" href="{% url 'orders:cart' %}">
                 <span class="ico" aria-hidden="true">🛒</span>
                 <span class="lbl">Корзина</span>
@@ -111,6 +118,7 @@
             <div>
                 <h4>Покупателю</h4>
                 <ul>
+                    <li><a href="{% url 'company:store_list' %}">Адреса магазинов</a></li>
                     <li><a href="{% url 'orders:cart' %}">Корзина</a></li>
                     {% if user.is_authenticated %}
                         <li><a href="{% url 'orders:order_list' %}">Мои заказы</a></li>
@@ -124,9 +132,14 @@
             <div>
                 <h4>Контакты</h4>
                 <ul>
-                    <li><a href="tel:+77000000000">+7 700 000-00-00</a></li>
-                    <li>Актау</li>
-                    <li>Пн–Сб, 9:00–18:00</li>
+                    {% if site_contact.phone %}<li><a href="tel:{{ site_contact.phone_link }}">{{ site_contact.phone }}</a></li>{% endif %}
+                    {% if site_contact.phone_extra %}<li>{{ site_contact.phone_extra }}</li>{% endif %}
+                    {% if site_contact.email %}<li><a href="mailto:{{ site_contact.email }}">{{ site_contact.email }}</a></li>{% endif %}
+                    {% if site_contact.whatsapp_link %}<li><a href="{{ site_contact.whatsapp_link }}" target="_blank" rel="noopener">WhatsApp</a></li>{% endif %}
+                    {% if site_contact.telegram_link %}<li><a href="{{ site_contact.telegram_link }}" target="_blank" rel="noopener">Telegram</a></li>{% endif %}
+                    {% if site_contact.instagram_link %}<li><a href="{{ site_contact.instagram_link }}" target="_blank" rel="noopener">Instagram</a></li>{% endif %}
+                    <li>{{ site_contact.city|default:"Актау" }}</li>
+                    {% if site_contact.working_hours %}<li>{{ site_contact.working_hours }}</li>{% endif %}
                 </ul>
             </div>
         </div>

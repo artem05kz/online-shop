@@ -45,6 +45,18 @@
         });
     }
 
+    // Формы с пометкой data-autosubmit отправляются сами при изменении
+    // количества — отдельная кнопка «применить» не нужна. Небольшая пауза
+    // нужна, чтобы при нажатии «плюс» несколько раз подряд страница
+    // перезагружалась один раз, а не после каждого нажатия.
+    var autoSubmitTimer = null;
+    document.addEventListener('change', function (e) {
+        var form = e.target.closest ? e.target.closest('form[data-autosubmit]') : null;
+        if (!form) return;
+        clearTimeout(autoSubmitTimer);
+        autoSubmitTimer = setTimeout(function () { form.submit(); }, 500);
+    });
+
     // Количество: минус / плюс
     document.addEventListener('click', function (e) {
         var button = e.target.closest('[data-qty]');

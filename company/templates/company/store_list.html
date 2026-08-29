@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Адреса магазинов — GRASS Актау{% endblock %}
+{% block description %}Пункты самовывоза и магазины GRASS в Актау: адреса, часы работы, телефоны.{% endblock %}
+
+{% block content %}
+<nav class="breadcrumbs">
+    <a href="{% url 'catalog:home' %}">Главная</a>
+    <span class="sep">/</span>
+    <span>Адреса</span>
+</nav>
+
+<h1>Адреса</h1>
+
+{% if cities|length > 1 %}
+<form class="toolbar" method="get">
+    <label class="muted" for="city-select">Выберите город</label>
+    <select class="select" name="city" id="city-select" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+        <option value="">Все города</option>
+        {% for city in cities %}
+            <option value="{{ city }}" {% if city == selected_city %}selected{% endif %}>{{ city }}</option>
+        {% endfor %}
+    </select>
+</form>
+{% endif %}
+
+{% if stores %}
+    <div class="address-grid">
+        {% for store in stores %}
+        <div class="panel store-card">
+            <div class="store-kind">{{ store.get_kind_display }}</div>
+            <div class="store-address">{{ store.address }}</div>
+            <ul class="spec-list" style="margin-top:12px;">
+                {% if store.hours_line %}
+                    <li><span>Режим работы</span><span>{{ store.hours_line }}</span></li>
+                {% endif %}
+                {% if store.phone %}
+                    <li><span>Телефон</span><span><a href="tel:{{ store.phone }}">{{ store.phone }}</a></span></li>
+                {% endif %}
+                <li><span>Город</span><span>{{ store.city }}</span></li>
+            </ul>
+            {% if store.map_url %}
+                <div class="form-actions">
+                    <a class="btn btn-outline btn-sm" href="{{ store.map_url }}" target="_blank" rel="noopener">Как добраться</a>
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty">
+        <div class="empty-ico" aria-hidden="true">📍</div>
+        <h2>Адреса пока не добавлены</h2>
+        <p>Их можно добавить в панели управления, раздел «Адреса магазинов».</p>
+    </div>
+{% endif %}
+{% endblock %}

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -42,6 +43,7 @@ INSTALLED_APPS = [
     'banners',
     'orders',
     'accounts',
+    'company',
 ]
 
 MIDDLEWARE = [
@@ -128,6 +130,12 @@ MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Карта для выбора адреса доставки.
+# Если задать ключ Google Maps (переменная окружения GOOGLE_MAPS_API_KEY) —
+# используется карта Google. Без ключа сайт работает на открытых картах
+# OpenStreetMap: они бесплатны и ключа не требуют.
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'catalog:home'
