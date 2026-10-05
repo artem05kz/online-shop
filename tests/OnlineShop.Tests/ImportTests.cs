@@ -85,6 +85,37 @@ public class ImportTests : IDisposable
     }
 
     [Fact]
+    public void Name_in_second_row_of_product_block_still_starts_the_product()
+    {
+        var result = OneCParser.ParsePriceList(OneCFiles.PriceListWithShiftedName(_dir));
+
+        Assert.Empty(result.Warnings);
+        Assert.Equal(["GLASS GLOSS", "MOTOR SHINE"], result.Products.Select(p => p.Name));
+        Assert.Equal(["202105", "202101"], result.Products[0].Variants.Select(v => v.Article));
+        var motor = result.Products[1];
+        Assert.Equal(["206122", "206105", "206101"], motor.Variants.Select(v => v.Article));
+        Assert.Equal(("Для двигателя", "pH = 12"), (motor.Description, motor.Ph));
+        Assert.NotNull(motor.ImageBytes);
+    }
+
+    [Fact]
+    public void Same_product_name_twice_is_warned_about()
+    {
+        var path = OneCFiles.PriceListWithShiftedName(_dir);
+        using (var wb = new ClosedXML.Excel.XLWorkbook(path))
+        {
+            var ws = wb.Worksheets.First();
+            ws.Cell(9, 1).Value = "MOTOR SHINE";
+            ws.Cell(9, 3).Value = "Готовый к применению";
+            ws.Cell(9, 5).Value = 206250;
+            ws.Cell(9, 6).Value = "500 мл";
+            wb.Save();
+        }
+        var warning = Assert.Single(OneCParser.ParsePriceList(path).Warnings);
+        Assert.Contains("«MOTOR SHINE» встречается в файле 2 раза (артикулы 206122, 206105, 206101; 206250)", warning);
+    }
+
+    [Fact]
     public void Stock_sums_duplicates_and_warns_about_non_numbers()
     {
         var result = OneCParser.ParseStock(OneCFiles.Stock(_dir));

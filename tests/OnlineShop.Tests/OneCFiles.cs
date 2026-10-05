@@ -78,6 +78,47 @@ public static class OneCFiles
         return path;
     }
 
+    /// <summary>
+    /// Товар блоком, как в настоящем прайсе: «Фото», «Описание» и «pH» объединены на все строки фасовок,
+    /// а название стоит во второй строке блока. Выше идёт обычный товар, к которому первую фасовку
+    /// легко приписать по ошибке.
+    /// </summary>
+    public static string PriceListWithShiftedName(string dir)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.AddWorksheet("Прайс");
+        string[] header = ["Название", "Фото", "Описание товара", "PH", "Артикул", "Объем", "Фасовка, шт", "", "Цена"];
+        for (var c = 0; c < header.Length; c++)
+        {
+            ws.Cell(1, c + 1).Value = header[c];
+        }
+        ws.Cell(2, 7).Value = "В коробке";
+        ws.Cell(2, 8).Value = "На паллете";
+        ws.Cell(3, 1).Value = "Очистители и полироли ifoam";
+        ws.Range(3, 1, 3, 8).Merge();
+
+        // Обычный товар: название в первой строке своего блока.
+        ws.Cell(4, 1).Value = "GLASS GLOSS"; ws.Cell(4, 3).Value = "Для стёкол"; ws.Cell(4, 4).Value = "pH = 7";
+        ws.Cell(4, 5).Value = 202105; ws.Cell(4, 6).Value = "5 кг"; ws.Cell(4, 9).Value = 495.9;
+        ws.Cell(5, 5).Value = 202101; ws.Cell(5, 6).Value = "1 кг"; ws.Cell(5, 9).Value = 127.8;
+        foreach (var c in new[] { 2, 3, 4 }) ws.Range(4, c, 5, c).Merge();
+
+        // Товар со сдвигом: блок строк 6-8, название в строке 7.
+        ws.Cell(6, 3).Value = "Для двигателя"; ws.Cell(6, 4).Value = "pH = 12";
+        ws.Cell(6, 5).Value = 206122; ws.Cell(6, 6).Value = "22 кг"; ws.Cell(6, 9).Value = 2234.4;
+        ws.Cell(7, 1).Value = "MOTOR SHINE"; ws.Cell(7, 5).Value = 206105; ws.Cell(7, 6).Value = "5 кг"; ws.Cell(7, 9).Value = 576.2;
+        ws.Cell(8, 5).Value = 206101; ws.Cell(8, 6).Value = "1 кг"; ws.Cell(8, 9).Value = 153.3;
+        foreach (var c in new[] { 2, 3, 4 }) ws.Range(6, c, 8, c).Merge();
+        using (var png = new MemoryStream(Png))
+        {
+            ws.AddPicture(png).MoveTo(ws.Cell(6, 2));
+        }
+
+        var path = Path.Combine(dir, $"shifted-{Guid.NewGuid():N}.xlsx");
+        wb.SaveAs(path);
+        return path;
+    }
+
     /// <summary>Остатки: строка организации, заголовки, группа без артикула, повтор и остаток не числом.</summary>
     public static string Stock(string dir, params (object Article, object Qty)[] extra)
     {

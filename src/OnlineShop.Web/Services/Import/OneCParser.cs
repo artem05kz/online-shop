@@ -139,9 +139,12 @@ public static partial class OneCParser
             }
         }
 
+        LiftNamesToBlockStart(sheet, rows, col["name"]!.Value,
+            new[] { PhotoColumn(header), col["description"], col["ph"] }.OfType<int>().ToArray(), headerIdx + 2);
+
         // Фото привязываются к строке по ячейке, к которой прикреплены. Берём только колонку «Фото»:
         // картинка в углу листа обычно логотип компании, а не фото товара.
-        var photoCol = OrPython(FindCol(header, "фото"), () => 1) ?? 1;
+        var photoCol = PhotoColumn(header) ?? 1;
         var photos = new Dictionary<int, (byte[] Bytes, string Ext)>();
         foreach (var picture in sheet.Pictures)
         {
@@ -222,6 +225,16 @@ public static partial class OneCParser
             }
         }
 
+        // Импорт ищет товар по категории и названию. Два разных товара с одним названием (в прайсе
+        // с образцом так у концентрата и готового «MOTOR SHINE») сольются в одну карточку с описанием
+        // второго. Предупреждаем, чтобы на предпросмотре одно из названий можно было поправить.
+        foreach (var same in products.GroupBy(p => (p.Brand, p.CategoryPath, p.Name)).Where(g => g.Count() > 1))
+        {
+            warnings.Add($"Товар «{same.Key.Name}» встречается в файле {same.Count()} раза (артикулы "
+                + string.Join("; ", same.Select(p => string.Join(", ", p.Variants.Select(v => v.Article))))
+                + "): при загрузке это будет одна карточка. Если это разные товары, поправьте название ниже.");
+        }
+
         return new PriceListResult(products, warnings, col);
     }
 
@@ -257,7 +270,10 @@ public static partial class OneCParser
             }
             else
             {
-                warnings.Add($"Артикул {article}: остаток не число ({Text(At(row, qtyCol))}), поставил 0.");
+                var raw = At(row, qtyCol);
+                warnings.Add(raw is null
+                    ? $"Артикул {article}: остаток не указан, поставил 0."
+                    : $"Артикул {article}: остаток не число ({Text(raw)}), поставил 0.");
                 qty = 0;
             }
             if (quantities.TryGetValue(article, out var existing))
@@ -337,6 +353,41 @@ public static partial class OneCParser
             }
         }
         return null;
+    }
+
+    private static int? PhotoColumn(object?[] header) => OrPython(FindCol(header, "фото"), () => 1);
+
+    /// <summary>
+    /// 1С выгружает товар блоком: «Фото», «Описание» и «pH» объединены на все строки его фасовок,
+    /// а название обычно стоит в первой строке блока. Иногда оно оказывается во второй строке, и тогда
+    /// первая фасовка выглядит как продолжение предыдущего товара: в прайсе с образцом так было
+    /// у «GLASS GLOSS» и «MOTOR SHINE». В Django-версии такая фасовка молча доставалась чужому товару
+    /// или терялась вместе с описанием и фото. Поднимаем название в первую строку блока до разбора.
+    /// </summary>
+    private static void LiftNamesToBlockStart(IXLWorksheet sheet, List<object?[]> rows, int nameCol, int[] blockCols, int firstDataRow)
+    {
+        foreach (var range in sheet.MergedRanges)
+        {
+            var first = range.RangeAddress.FirstAddress;
+            var last = range.RangeAddress.LastAddress;
+            int r1 = first.RowNumber - 1, r2 = last.RowNumber - 1, c1 = first.ColumnNumber - 1, c2 = last.ColumnNumber - 1;
+            var isProductBlock = r2 > r1 && r1 >= firstDataRow && r2 < rows.Count
+                && blockCols.Any(c => c >= c1 && c <= c2)
+                && !(c1 <= nameCol && nameCol <= c2);
+            if (!isProductBlock || TextAt(rows[r1], nameCol).Length > 0)
+            {
+                continue;
+            }
+            for (var r = r1 + 1; r <= r2; r++)
+            {
+                if (TextAt(rows[r], nameCol).Length > 0)
+                {
+                    rows[r1][nameCol] = rows[r][nameCol];
+                    rows[r][nameCol] = null;
+                    break;
+                }
+            }
+        }
     }
 
     // В Python «find_col(...) or другое» срабатывает и на номер колонки 0, а не только на None.
