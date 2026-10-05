@@ -1,0 +1,23 @@
+@model ProductListViewModel
+@{
+    var query = Model.Query ?? "";
+    ViewData["Title"] = query.Length > 0 ? $"Поиск: {query}" : "Поиск";
+}
+<nav class="breadcrumbs">
+    <a asp-action="Home">Главная</a>
+    <span class="sep">/</span>
+    <span>Поиск</span>
+</nav>
+
+<h1>@(query.Length > 0 ? $"Поиск: «{query}»" : "Поиск по каталогу")</h1>
+
+@if (query.Length == 0)
+{
+    <div class="empty">
+        <p>Введите название товара или артикул в строке поиска наверху.</p>
+    </div>
+}
+else
+{
+    <partial name="_ProductList" model="Model" />
+}

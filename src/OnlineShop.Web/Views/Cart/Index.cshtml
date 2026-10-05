@@ -1,0 +1,65 @@
+@model CartContents
+@{
+    ViewData["Title"] = "Корзина";
+}
+<h1>Корзина</h1>
+
+@if (Model.IsEmpty)
+{
+    <div class="empty">
+        <div class="empty-ico" aria-hidden="true">🛒</div>
+        <h2>Корзина пуста</h2>
+        <p>Загляните в каталог, там есть что выбрать.</p>
+        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+    </div>
+}
+else
+{
+    <div class="two-col">
+        <div class="panel">
+            @foreach (var line in Model.Lines)
+            {
+                var product = line.Variant.Product;
+                var url = Url.Product(product);
+                <div class="line-item">
+                    <a class="thumb" href="@url">
+                        <img src="@Media.PhotoUrl(product)" alt="@product.Name">
+                    </a>
+                    <div>
+                        <a class="li-name" href="@url">@product.Name</a>
+                        <div class="li-meta">
+                            Фасовка: @(string.IsNullOrEmpty(line.Variant.PackLabel) ? "не указана" : line.Variant.PackLabel) · Артикул: @line.Variant.Article
+                        </div>
+                        <div class="li-meta">@Format.Money(line.Price) за штуку</div>
+                    </div>
+                    <div class="li-right">
+                        <form asp-action="Update" asp-route-variantId="@line.Variant.Id" method="post" data-autosubmit>
+                            <span class="qty">
+                                <button type="button" data-qty="minus" aria-label="Меньше">−</button>
+                                <input type="number" name="quantity" value="@line.Quantity" min="1" aria-label="Количество">
+                                <button type="button" data-qty="plus" aria-label="Больше">+</button>
+                            </span>
+                            @* Запасной вариант, если в браузере отключены скрипты. *@
+                            <noscript><button class="btn btn-ghost btn-sm" type="submit">Применить</button></noscript>
+                        </form>
+                        <strong>@Format.Money(line.Subtotal)</strong>
+                        <form asp-action="Remove" asp-route-variantId="@line.Variant.Id" method="post">
+                            <button class="btn btn-danger btn-sm" type="submit">Убрать</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="panel sticky-side">
+            <h3>Итого</h3>
+            <div class="summary-row"><span>Товаров</span><span>@Model.Count шт.</span></div>
+            <div class="summary-row"><span>Доставка</span><span class="muted">уточнит менеджер</span></div>
+            <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Total)</span></div>
+            <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
+                Оплата наличными или картой при получении.
+            </p>
+            <a class="btn btn-block" asp-controller="Checkout" asp-action="Index">Оформить заказ</a>
+            <a class="btn btn-ghost btn-block" asp-controller="Catalog" asp-action="Home" style="margin-top:10px;">Продолжить покупки</a>
+        </div>
+    </div>
+}

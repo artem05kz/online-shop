@@ -1,0 +1,64 @@
+@model ProductListViewModel
+@* Общая часть страницы категории и поиска: фильтры, сортировка, товары, страницы. *@
+@{
+    var pager = Model.Page;
+    var emptyHint = Model.Query is null
+        ? "Попробуйте изменить фильтры или сбросить их."
+        : "Попробуйте другое название или артикул.";
+}
+<div class="catalog-layout">
+    <partial name="_Filters" model="Model" />
+
+    <div>
+        <div class="toolbar">
+            <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
+                    aria-expanded="false" aria-controls="filters">Фильтры</button>
+            <span class="count">Найдено: @pager.TotalCount</span>
+            <form class="sort" method="get">
+                @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "sort", "page"))
+                {
+                    <input type="hidden" name="@name" value="@value">
+                }
+                <label for="sort-select">Сортировка</label>
+                <select class="select" name="sort" id="sort-select">
+                    @foreach (var option in CatalogFilter.SortOptions)
+                    {
+                        <option value="@option.Value" selected="@(option.Value == Model.Filter.Sort)">@option.Label</option>
+                    }
+                </select>
+            </form>
+        </div>
+
+        @if (pager.Items.Count > 0)
+        {
+            <div class="product-grid">
+                @foreach (var product in pager.Items)
+                {
+                    <partial name="_ProductCard" model="product" />
+                }
+            </div>
+
+            @if (pager.PageCount > 1)
+            {
+                <nav class="form-actions" style="justify-content:center; margin-top:28px;" aria-label="Постраничная навигация">
+                    @if (pager.HasPrevious)
+                    {
+                        <a class="btn btn-ghost" href="@QueryStrings.With(Context.Request.Query, "page", (pager.Page - 1).ToString())">Назад</a>
+                    }
+                    <span class="muted" style="align-self:center;">Страница @pager.Page из @pager.PageCount</span>
+                    @if (pager.HasNext)
+                    {
+                        <a class="btn btn-ghost" href="@QueryStrings.With(Context.Request.Query, "page", (pager.Page + 1).ToString())">Вперёд</a>
+                    }
+                </nav>
+            }
+        }
+        else
+        {
+            <div class="empty">
+                <h2>Ничего не нашлось</h2>
+                <p>@emptyHint</p>
+            </div>
+        }
+    </div>
+</div>

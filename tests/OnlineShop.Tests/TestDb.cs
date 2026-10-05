@@ -1,6 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 
 namespace OnlineShop.Tests;
@@ -17,6 +18,7 @@ public sealed class TestDb : IDisposable
     public TestDb()
     {
         _connection.Open();
+        SqliteFunctions.Register(_connection);
         using var db = Create();
         db.Database.Migrate();
     }

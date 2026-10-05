@@ -1,0 +1,84 @@
+@model Order
+@{
+    ViewData["Title"] = $"Заказ №{Model.Id}";
+}
+<nav class="breadcrumbs">
+    <a asp-controller="Catalog" asp-action="Home">Главная</a>
+    <span class="sep">/</span>
+    <a href="@ShopUrls.OrderHistory">История заказов</a>
+    <span class="sep">/</span>
+    <span>Заказ №@Model.Id</span>
+</nav>
+
+<div class="panel">
+    <div class="order-head">
+        <div>
+            <div class="o-num">Заказ №@Model.Id</div>
+            <div class="o-date">оформлен @Format.DateTimeText(Model.CreatedAt)</div>
+        </div>
+        <span class="status status-@Model.Status.ToCode()">@Model.Status.Label()</span>
+    </div>
+    @if (Model.ProgressSteps.Count > 0)
+    {
+        <div class="tracker">
+            @foreach (var step in Model.ProgressSteps)
+            {
+                <div class="tracker-step@(step.IsDone ? " done" : "")@(step.IsCurrent ? " current" : "")">
+                    <div class="tracker-bar"></div>
+                    <div class="tracker-label">@step.Label</div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="muted">Заказ отменён.</p>
+    }
+</div>
+
+<div class="two-col">
+    <div class="panel">
+        <h3>Состав заказа</h3>
+        @foreach (var item in Model.Items)
+        {
+            var product = item.Variant.Product;
+            <div class="line-item">
+                <a class="thumb" href="@Url.Product(product)">
+                    <img src="@Media.PhotoUrl(product)" alt="@item.ProductName">
+                </a>
+                <div>
+                    <a class="li-name" href="@Url.Product(product)">@item.ProductName</a>
+                    <div class="li-meta">
+                        Фасовка: @(string.IsNullOrEmpty(item.PackLabel) ? "не указана" : item.PackLabel)@(string.IsNullOrEmpty(item.Article) ? "" : $" · Артикул: {item.Article}")
+                    </div>
+                    <div class="li-meta">@Format.Money(item.Price) × @item.Quantity шт.</div>
+                </div>
+                <div class="li-right"><strong>@Format.Money(item.Subtotal)</strong></div>
+            </div>
+        }
+        <div class="summary-row total">
+            <span>Итого (@Model.TotalQuantity шт.)</span>
+            <span>@Format.Money(Model.Total)</span>
+        </div>
+    </div>
+    <div>
+        <div class="panel">
+            <h3>Доставка</h3>
+            <ul class="spec-list">
+                <li><span>Получатель</span><span>@Model.ContactName</span></li>
+                <li><span>Телефон</span><span>@Model.ContactPhone</span></li>
+                <li><span>Город</span><span>@Model.City</span></li>
+                <li><span>Адрес</span><span>@Model.StreetAndDetails</span></li>
+                @if (!string.IsNullOrEmpty(Model.Comment))
+                {
+                    <li><span>Комментарий</span><span>@Model.Comment</span></li>
+                }
+            </ul>
+        </div>
+        <div class="panel">
+            <h3>Оплата</h3>
+            <p class="muted">Наличными или картой при получении. Заказ подтверждает менеджер по телефону.</p>
+            <a class="btn btn-ghost btn-block" href="@ShopUrls.OrderHistory">Ко всем заказам</a>
+        </div>
+    </div>
+</div>

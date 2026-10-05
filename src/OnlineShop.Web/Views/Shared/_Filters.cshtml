@@ -1,0 +1,79 @@
+@model ProductListViewModel
+@*
+    Боковая панель фильтров. Форма отправляется методом GET, поэтому выбранные условия остаются
+    в адресе страницы. Строка поиска и сортировка передаются скрытыми полями, чтобы не сбрасываться.
+*@
+@{
+    var filter = Model.Filter;
+}
+<aside class="filters" id="filters">
+    <form method="get">
+        @if (!string.IsNullOrEmpty(Model.Query))
+        {
+            <input type="hidden" name="q" value="@Model.Query">
+        }
+        <input type="hidden" name="sort" value="@filter.Sort">
+
+        <h3>Фильтры</h3>
+
+        @if (Model.ShowTaxonomyFilters)
+        {
+            @if (Model.AllBrands.Count > 0)
+            {
+                <fieldset class="filter-group">
+                    <legend>Бренд</legend>
+                    @foreach (var brand in Model.AllBrands)
+                    {
+                        <label class="check">
+                            <input type="checkbox" name="brand" value="@brand.Slug" checked="@filter.Brands.Contains(brand.Slug)">
+                            <span>@brand.Name</span>
+                        </label>
+                    }
+                </fieldset>
+            }
+
+            @if (Model.AllCategories.Count > 0)
+            {
+                <fieldset class="filter-group">
+                    <legend>Категория</legend>
+                    @foreach (var category in Model.AllCategories)
+                    {
+                        <label class="check">
+                            <input type="checkbox" name="category" value="@category.Slug" checked="@filter.Categories.Contains(category.Slug)">
+                            <span>@category.Name</span>
+                            @if (Model.AllBrands.Count > 1)
+                            {
+                                <span class="cnt">@category.Brand.Name</span>
+                            }
+                        </label>
+                    }
+                </fieldset>
+            }
+        }
+
+        <fieldset class="filter-group">
+            <legend>Цена, ₸</legend>
+            <div class="price-inputs">
+                <input class="field" type="text" inputmode="decimal" name="price_min" placeholder="от" value="@filter.PriceMinRaw" aria-label="Цена от">
+                <input class="field" type="text" inputmode="decimal" name="price_max" placeholder="до" value="@filter.PriceMaxRaw" aria-label="Цена до">
+            </div>
+        </fieldset>
+
+        <fieldset class="filter-group">
+            <legend>Наличие</legend>
+            <label class="check">
+                <input type="checkbox" name="in_stock" value="1" checked="@filter.InStockOnly">
+                <span>Только то, что есть на складе</span>
+            </label>
+        </fieldset>
+
+        <div class="form-actions">
+            <button class="btn btn-block" type="submit">Показать</button>
+            @if (filter.HasActiveFilters)
+            {
+                var reset = string.IsNullOrEmpty(Model.Query) ? Context.Request.Path.ToString() : $"{Context.Request.Path}?q={Uri.EscapeDataString(Model.Query)}";
+                <a class="btn btn-ghost btn-block" href="@reset">Сбросить</a>
+            }
+        </div>
+    </form>
+</aside>

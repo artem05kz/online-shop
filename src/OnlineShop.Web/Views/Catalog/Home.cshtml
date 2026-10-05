@@ -1,0 +1,92 @@
+@model HomeViewModel
+
+@if (Model.Banners.Count > 0)
+{
+    <div class="banner-carousel" id="banner-carousel">
+        @for (var i = 0; i < Model.Banners.Count; i++)
+        {
+            var banner = Model.Banners[i];
+            <div class="banner-slide@(i == 0 ? " active" : "")">
+                @if (!string.IsNullOrEmpty(banner.LinkUrl))
+                {
+                    <a href="@banner.LinkUrl"><img src="@Media.Url(banner.ImagePath)" alt="@banner.Title"></a>
+                }
+                else
+                {
+                    <img src="@Media.Url(banner.ImagePath)" alt="@banner.Title">
+                }
+            </div>
+        }
+        @if (Model.Banners.Count > 1)
+        {
+            <button type="button" class="banner-nav banner-prev" aria-label="Предыдущий баннер">‹</button>
+            <button type="button" class="banner-nav banner-next" aria-label="Следующий баннер">›</button>
+            <div class="banner-dots">
+                @for (var i = 0; i < Model.Banners.Count; i++)
+                {
+                    <button type="button" class="banner-dot@(i == 0 ? " active" : "")" aria-label="Баннер @(i + 1)"></button>
+                }
+            </div>
+        }
+    </div>
+}
+
+@if (Model.Tiles.Count > 0)
+{
+    <section class="section">
+        <div class="section-head"><h2>Каталог по направлениям</h2></div>
+        <div class="tiles">
+            @foreach (var tile in Model.Tiles)
+            {
+                <a class="tile" href="@Url.Category(tile.Category)">
+                    <span>@tile.Category.Name</span>
+                    <span class="tile-count">@tile.ProductCount @Plural.Products(tile.ProductCount)</span>
+                </a>
+            }
+        </div>
+    </section>
+}
+
+@if (Model.Featured.Count > 0)
+{
+    <section class="section">
+        <div class="section-head"><h2>Есть в наличии</h2></div>
+        <div class="product-grid">
+            @foreach (var product in Model.Featured)
+            {
+                <partial name="_ProductCard" model="product" />
+            }
+        </div>
+    </section>
+}
+
+@foreach (var block in Model.Sections)
+{
+    <section class="section">
+        <div class="section-head">
+            <h2>@block.Category.Name</h2>
+            <a class="more" href="@Url.Category(block.Category)">Все товары →</a>
+        </div>
+        <div class="product-grid">
+            @foreach (var product in block.Products)
+            {
+                <partial name="_ProductCard" model="product" />
+            }
+        </div>
+    </section>
+}
+
+@if (Model.Sections.Count == 0)
+{
+    <div class="empty">
+        <h2>Каталог пока пуст</h2>
+        <p>Товары появятся после загрузки из 1С в панели управления.</p>
+    </div>
+}
+
+@section Scripts {
+    @if (Model.Banners.Count > 0)
+    {
+        <script src="~/js/banner_carousel.js" asp-append-version="true"></script>
+    }
+}

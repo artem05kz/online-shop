@@ -1,0 +1,225 @@
+@inject StorefrontLayout StorefrontLayout
+@{
+    var nav = await StorefrontLayout.GetAsync();
+    var contact = nav.Contact;
+    var city = string.IsNullOrEmpty(contact?.City) ? "Актау" : contact.City;
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var title = ViewData["Title"] as string;
+    var description = ViewData["Description"] as string
+        ?? "Официальный дилер GRASS в Актау. Автохимия, бытовая химия, профессиональный клининг. Доставка по городу, оплата при получении.";
+    var flash = TempData.TakeFlash();
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@(title is null ? "GRASS Актау: автохимия и бытовая химия" : $"{title} | GRASS Актау")</title>
+    <meta name="description" content="@description">
+    <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+
+<div class="topbar">
+    <div class="container">
+        <span>@city</span>
+        @if (!string.IsNullOrEmpty(contact?.Phone))
+        {
+            <a href="tel:@contact.PhoneLink">@contact.Phone</a>
+        }
+        @if (!string.IsNullOrEmpty(contact?.WorkingHours))
+        {
+            <span class="muted">@contact.WorkingHours</span>
+        }
+        <a asp-controller="Stores" asp-action="Index">Адреса магазинов</a>
+        <span class="spacer"></span>
+        @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
+        {
+            <a href="@contact.WhatsappLink" target="_blank" rel="noopener">WhatsApp</a>
+        }
+        @if (!string.IsNullOrEmpty(contact?.InstagramLink))
+        {
+            <a href="@contact.InstagramLink" target="_blank" rel="noopener">Instagram</a>
+        }
+        <span><strong>Оплата при получении</strong> наличными или картой</span>
+    </div>
+</div>
+
+<header class="header">
+    <div class="container">
+        <a class="logo" asp-controller="Catalog" asp-action="Home">
+            <span class="logo-mark">G</span>
+            <span>GRASS <span class="logo-city">Актау</span></span>
+        </a>
+
+        <button type="button" class="catalog-btn" id="catalog-toggle" aria-expanded="false" aria-controls="catalog-menu">
+            <span class="burger-lines"><span></span><span></span><span></span></span>
+            <span class="btn-text">Каталог</span>
+        </button>
+
+        <form class="search" asp-controller="Catalog" asp-action="Search" method="get" role="search">
+            <input type="text" name="q" placeholder="Поиск по каталогу" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу">
+            <button type="submit">Найти</button>
+        </form>
+
+        <nav class="header-actions">
+            <a class="header-link" asp-controller="Stores" asp-action="Index">
+                <span class="ico" aria-hidden="true">📍</span>
+                <span class="lbl">Адреса</span>
+            </a>
+            <a class="header-link" asp-controller="Cart" asp-action="Index">
+                <span class="ico" aria-hidden="true">🛒</span>
+                <span class="lbl">Корзина</span>
+                @if (nav.CartCount > 0)
+                {
+                    <span class="cart-count">@nav.CartCount</span>
+                }
+            </a>
+            <a class="header-link" href="@(signedIn ? ShopUrls.Profile : ShopUrls.Login)">
+                <span class="ico" aria-hidden="true">👤</span>
+                <span class="lbl">@(signedIn ? "Профиль" : "Войти")</span>
+            </a>
+            @if (User.IsInRole(RoleNames.Manager))
+            {
+                <a class="header-link" href="@ShopUrls.Admin">
+                    <span class="ico" aria-hidden="true">⚙</span>
+                    <span class="lbl">Админка</span>
+                </a>
+            }
+        </nav>
+    </div>
+</header>
+
+<div class="catalog-backdrop" id="catalog-backdrop" hidden></div>
+<nav class="catalog-menu" id="catalog-menu" aria-label="Каталог товаров" aria-hidden="true">
+    <div class="catalog-menu-head">
+        <strong>Каталог товаров</strong>
+        <button type="button" class="catalog-close" id="catalog-close" aria-label="Закрыть каталог">×</button>
+    </div>
+    <div class="catalog-menu-body">
+        @foreach (var brand in nav.NavBrands)
+        {
+            <div class="catalog-menu-group">
+                <h4>@brand.Name</h4>
+                <ul>
+                    @foreach (var category in brand.Categories)
+                    {
+                        <li><a href="@Url.Category(category)">@category.Name</a></li>
+                    }
+                    @if (brand.Categories.Count == 0)
+                    {
+                        <li class="muted">Категорий пока нет</li>
+                    }
+                </ul>
+            </div>
+        }
+        @if (nav.NavBrands.Count == 0)
+        {
+            <p class="muted">Каталог пока пуст.</p>
+        }
+        <div class="catalog-menu-group">
+            <h4>Ещё</h4>
+            <ul>
+                <li><a asp-controller="Stores" asp-action="Index">Адреса магазинов</a></li>
+                <li><a asp-controller="Cart" asp-action="Index">Корзина</a></li>
+                @if (signedIn)
+                {
+                    <li><a href="@ShopUrls.OrderHistory">Мои заказы</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<main class="container">
+    @if (flash.Count > 0)
+    {
+        <ul class="messages">
+            @foreach (var message in flash)
+            {
+                <li class="message @message.CssClass">@message.Text</li>
+            }
+        </ul>
+    }
+    @RenderBody()
+</main>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div>
+                <h4>GRASS Актау</h4>
+                <p>Официальный дилер продукции GRASS и Ifoam в Актау.<br>Автохимия, бытовая химия, профессиональный клининг.</p>
+            </div>
+            <div>
+                <h4>Каталог</h4>
+                <ul>
+                    @foreach (var brand in nav.NavBrands)
+                    {
+                        <li><a asp-controller="Catalog" asp-action="Home">@brand.Name</a></li>
+                    }
+                </ul>
+            </div>
+            <div>
+                <h4>Покупателю</h4>
+                <ul>
+                    <li><a asp-controller="Stores" asp-action="Index">Адреса магазинов</a></li>
+                    <li><a asp-controller="Cart" asp-action="Index">Корзина</a></li>
+                    @if (signedIn)
+                    {
+                        <li><a href="@ShopUrls.OrderHistory">Мои заказы</a></li>
+                        <li><a href="@ShopUrls.AddressBook">Адреса доставки</a></li>
+                    }
+                    else
+                    {
+                        <li><a href="@ShopUrls.Register">Регистрация</a></li>
+                        <li><a href="@ShopUrls.Login">Вход</a></li>
+                    }
+                </ul>
+            </div>
+            <div>
+                <h4>Контакты</h4>
+                <ul>
+                    @if (!string.IsNullOrEmpty(contact?.Phone))
+                    {
+                        <li><a href="tel:@contact.PhoneLink">@contact.Phone</a></li>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.PhoneExtra))
+                    {
+                        <li>@contact.PhoneExtra</li>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.Email))
+                    {
+                        <li><a href="mailto:@contact.Email">@contact.Email</a></li>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
+                    {
+                        <li><a href="@contact.WhatsappLink" target="_blank" rel="noopener">WhatsApp</a></li>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.TelegramLink))
+                    {
+                        <li><a href="@contact.TelegramLink" target="_blank" rel="noopener">Telegram</a></li>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.InstagramLink))
+                    {
+                        <li><a href="@contact.InstagramLink" target="_blank" rel="noopener">Instagram</a></li>
+                    }
+                    <li>@city</li>
+                    @if (!string.IsNullOrEmpty(contact?.WorkingHours))
+                    {
+                        <li>@contact.WorkingHours</li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            Оплата наличными или картой при получении. Заказ подтверждает менеджер.
+        </div>
+    </div>
+</footer>
+
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

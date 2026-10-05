@@ -104,6 +104,16 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
             ConcurrencyStamp = "5f0c7a52-3c1e-4d55-9a7b-1f6b2d1e8c01",
         });
 
+        var lower = builder.HasDbFunction(typeof(SqliteFunctions).GetMethod(nameof(SqliteFunctions.Lower))!);
+        if (Database.IsSqlite())
+        {
+            lower.HasName(SqliteFunctions.LowerName);
+        }
+        else
+        {
+            lower.HasName("lower").IsBuiltIn();
+        }
+
         ConfigureDecimals(builder);
     }
 

@@ -1,0 +1,101 @@
+@model CheckoutViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Оформление заказа";
+    // Данные сохранённых адресов для подстановки в поля, ключ это номер адреса в списке.
+    var addressData = Model.Addresses.ToDictionary(
+        a => a.Id.ToString(),
+        a => new { name = a.FullName, phone = a.Phone, city = a.City, street = CheckoutForm.AddressLine(a) });
+}
+<h1>Оформление заказа</h1>
+
+<form asp-action="Index" method="post">
+    <div class="two-col">
+        <div>
+            @if (Model.Addresses.Count > 0)
+            {
+                <div class="panel">
+                    <h3>Адрес доставки</h3>
+                    <div class="form-row">
+                        <label asp-for="Form.SavedAddressId"></label>
+                        <select class="select" asp-for="Form.SavedAddressId">
+                            <option value="">Ввести новый адрес</option>
+                            @foreach (var address in Model.Addresses)
+                            {
+                                <option value="@address.Id">@(string.IsNullOrEmpty(address.Label) ? address.ShortText : $"{address.Label}: {address.ShortText}")</option>
+                            }
+                        </select>
+                        <span class="errorlist" asp-validation-for="Form.SavedAddressId"></span>
+                        <span class="help">Выберите сохранённый адрес или заполните поля ниже вручную.</span>
+                    </div>
+                </div>
+            }
+            <div class="panel">
+                <h3>Получатель</h3>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label asp-for="Form.ContactName"></label>
+                        <input class="field" asp-for="Form.ContactName">
+                        <span class="errorlist" asp-validation-for="Form.ContactName"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.ContactPhone"></label>
+                        <input class="field" asp-for="Form.ContactPhone" type="tel">
+                        <span class="errorlist" asp-validation-for="Form.ContactPhone"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.City"></label>
+                        <input class="field" asp-for="Form.City">
+                        <span class="errorlist" asp-validation-for="Form.City"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.StreetAndDetails"></label>
+                        <input class="field" asp-for="Form.StreetAndDetails" placeholder="Улица, дом, квартира">
+                        <span class="errorlist" asp-validation-for="Form.StreetAndDetails"></span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Form.Comment"></label>
+                    <textarea class="field" asp-for="Form.Comment" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="panel sticky-side">
+            <h3>Ваш заказ</h3>
+            @foreach (var line in Model.Cart.Lines)
+            {
+                <div class="summary-row">
+                    <span>@line.Variant.Product.Name<br>
+                        <span class="muted" style="font-size:.82rem;">@line.Variant.PackLabel · @line.Quantity шт.</span>
+                    </span>
+                    <span style="white-space:nowrap;">@Format.Money(line.Subtotal)</span>
+                </div>
+            }
+            <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Cart.Total)</span></div>
+            <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
+                Оплата наличными или картой при получении. После оформления с вами свяжется менеджер.
+            </p>
+            <button class="btn btn-block" type="submit">Подтвердить заказ</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <script type="application/json" id="saved-addresses">@Html.Raw(JsonSerializer.Serialize(addressData))</script>
+    <script>
+    // Выбор сохранённого адреса заполняет поля формы, дальше их можно поправить вручную.
+    (function () {
+        var select = document.getElementById('Form_SavedAddressId');
+        if (!select) return;
+        var data = JSON.parse(document.getElementById('saved-addresses').textContent);
+        select.addEventListener('change', function () {
+            var picked = data[select.value];
+            if (!picked) return;
+            document.getElementById('Form_ContactName').value = picked.name;
+            document.getElementById('Form_ContactPhone').value = picked.phone;
+            document.getElementById('Form_City').value = picked.city;
+            document.getElementById('Form_StreetAndDetails').value = picked.street;
+        });
+    })();
+    </script>
+}

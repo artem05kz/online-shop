@@ -1,0 +1,127 @@
+@model ProductPageViewModel
+@{
+    var product = Model.Product;
+    var brand = product.Category.Brand;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    ViewData["Title"] = product.Name;
+    ViewData["Description"] = product.Description.Length > 150
+        ? $"{product.Name}. {product.Description[..147]}..."
+        : $"{product.Name}. {product.Description}";
+}
+<nav class="breadcrumbs">
+    <a asp-action="Home">Главная</a>
+    <span class="sep">/</span>
+    <span>@brand.Name</span>
+    <span class="sep">/</span>
+    <a href="@Url.Category(product.Category)">@product.Category.Name</a>
+</nav>
+
+<div class="product-page">
+    <div class="gallery">
+        <img src="@Media.PhotoUrl(product)" alt="@product.Name">
+    </div>
+
+    <div>
+        <p class="brand" style="font-size:.72rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin:0 0 6px;">
+            @brand.Name
+        </p>
+        <h1>@product.Name</h1>
+
+        @if (product.MinPrice is { } minPrice)
+        {
+            <p class="price" style="font-size:1.6rem; margin:6px 0 0;">
+                @if (product.HasSeveralPacks)
+                {
+                    <span class="price-from">от</span>
+                }
+                @Format.Money(minPrice)
+            </p>
+        }
+
+        <h3 style="margin-top:26px;">Фасовки</h3>
+        <table class="variant-table">
+            <thead>
+                <tr>
+                    <th>Фасовка</th>
+                    <th>Артикул</th>
+                    <th>Цена</th>
+                    <th>Наличие</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var variant in product.ActiveVariants)
+                {
+                    <tr>
+                        <td><strong>@(string.IsNullOrEmpty(variant.PackLabel) ? "не указана" : variant.PackLabel)</strong></td>
+                        <td class="muted">@variant.Article</td>
+                        <td>
+                            @if (variant.Price is { } price)
+                            {
+                                <strong>@Format.Money(price)</strong>
+                            }
+                            else
+                            {
+                                <span class="muted">уточняется</span>
+                            }
+                        </td>
+                        <td>
+                            @if (variant.InStock)
+                            {
+                                <span class="in-stock">В наличии</span>
+                            }
+                            else
+                            {
+                                <span class="out-stock">Нет в наличии</span>
+                            }
+                        </td>
+                        <td>
+                            @if (variant.InStock && variant.Price is not null)
+                            {
+                                <form asp-controller="Cart" asp-action="Add" asp-route-variantId="@variant.Id" method="post"
+                                      style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                                    <input type="hidden" name="next" value="@returnUrl">
+                                    <span class="qty">
+                                        <button type="button" data-qty="minus" aria-label="Меньше">−</button>
+                                        <input type="number" name="quantity" value="1" min="1" aria-label="Количество">
+                                        <button type="button" data-qty="plus" aria-label="Больше">+</button>
+                                    </span>
+                                    <button class="btn" type="submit">В корзину</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <h3 style="margin-top:26px;">Характеристики</h3>
+        <ul class="spec-list">
+            <li><span>Категория</span><span>@product.Category.Name</span></li>
+            <li><span>Бренд</span><span>@brand.Name</span></li>
+            @if (!string.IsNullOrEmpty(product.Ph))
+            {
+                <li><span>Кислотность</span><span>@product.Ph</span></li>
+            }
+        </ul>
+
+        @if (!string.IsNullOrEmpty(product.Description))
+        {
+            <h3 style="margin-top:26px;">Описание</h3>
+            <div class="prose">@product.Description</div>
+        }
+    </div>
+</div>
+
+@if (Model.Related.Count > 0)
+{
+    <section class="section">
+        <div class="section-head"><h2>Похожие товары</h2></div>
+        <div class="product-grid">
+            @foreach (var related in Model.Related)
+            {
+                <partial name="_ProductCard" model="related" />
+            }
+        </div>
+    </section>
+}

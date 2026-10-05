@@ -1,0 +1,16 @@
+@model ProductListViewModel
+@{
+    var category = Model.Category!;
+    ViewData["Title"] = category.Name;
+}
+<nav class="breadcrumbs">
+    <a asp-action="Home">Главная</a>
+    <span class="sep">/</span>
+    <span>@category.Brand.Name</span>
+    <span class="sep">/</span>
+    <span>@category.Name</span>
+</nav>
+
+<h1>@category.Name</h1>
+
+<partial name="_ProductList" model="Model" />

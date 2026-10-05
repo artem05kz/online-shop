@@ -1,0 +1,48 @@
+@model Product
+@{
+    var url = Url.Product(Model);
+    var variant = Model.DefaultVariant;
+}
+<article class="product-card">
+    <a class="thumb" href="@url">
+        <img src="@Media.PhotoUrl(Model)" alt="@Model.Name" loading="lazy">
+        @if (!Model.InStock)
+        {
+            <span class="badge badge-out">Нет в наличии</span>
+        }
+    </a>
+
+    <p class="brand">@Model.Category.Brand.Name</p>
+    <a class="name" href="@url">@Model.Name</a>
+
+    <div class="price-row">
+        @if (Model.MinPrice is { } price)
+        {
+            @if (Model.HasSeveralPacks)
+            {
+                <span class="price-from">от</span>
+            }
+            <span class="price">@Format.Money(price)</span>
+        }
+        else
+        {
+            <span class="price-from">Цена уточняется</span>
+        }
+    </div>
+
+    @if (Model.HasSeveralPacks)
+    {
+        <a class="btn btn-outline btn-block" href="@url">Выбрать фасовку</a>
+    }
+    else if (variant is { InStock: true })
+    {
+        <form asp-controller="Cart" asp-action="Add" asp-route-variantId="@variant.Id" method="post">
+            <input type="hidden" name="next" value="@(Context.Request.Path + Context.Request.QueryString)">
+            <button class="btn btn-outline btn-block" type="submit">В корзину</button>
+        </form>
+    }
+    else
+    {
+        <a class="btn btn-outline btn-block" href="@url">Подробнее</a>
+    }
+</article>
