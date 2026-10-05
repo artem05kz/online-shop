@@ -1,35 +1,26 @@
-# Окружение и сборка
-venv/
-__pycache__/
-*.pyc
-staticfiles/
+# Сборка .NET и служебные файлы IDE
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+*.user
 
-# База данных и загруженные файлы (фото товаров, баннеры, временные загрузки)
-db.sqlite3
-media/
+# База SQLite и временные файлы импорта (App_Data), загруженные фото товаров и баннеров (media)
+src/OnlineShop.Web/App_Data/
+src/OnlineShop.Web/media/
+*.db
+*.db-shm
+*.db-wal
 
-# Секреты: ключ Django и переменные окружения
-.secret_key
+# Переменные окружения с секретами (ключ Google Maps и т. п.)
 .env
 .env.local
 
-# Выгрузки из 1С и любые таблицы с ценами/остатками — в репозиторий не кладём
+# Выгрузки из 1С и любые таблицы с ценами и остатками в репозиторий не кладём
 *.xlsx
 *.xlsm
 *.xls
 *.csv
 
-# Служебное
 *.log
-.idea/
-.vscode/
-
-# .NET: сборка, база SQLite и служебные файлы IDE
-bin/
-obj/
-.vs/
-*.user
-src/OnlineShop.Web/App_Data/
-*.db
-*.db-shm
-*.db-wal
