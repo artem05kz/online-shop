@@ -4,8 +4,25 @@
     {
       "name": "grass-django",
       "runtimeExecutable": "venv/Scripts/python.exe",
-      "runtimeArgs": ["manage.py", "runserver", "8000"],
+      "runtimeArgs": [
+        "manage.py",
+        "runserver",
+        "8000"
+      ],
       "port": 8000
+    },
+    {
+      "name": "online-shop-dotnet",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "src/OnlineShop.Web",
+        "--no-launch-profile",
+        "--urls",
+        "http://localhost:5080"
+      ],
+      "port": 5080
     }
   ]
 }

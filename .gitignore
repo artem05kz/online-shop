@@ -23,3 +23,13 @@ media/
 *.log
 .idea/
 .vscode/
+
+# .NET: сборка, база SQLite и служебные файлы IDE
+bin/
+obj/
+.vs/
+*.user
+src/OnlineShop.Web/App_Data/
+*.db
+*.db-shm
+*.db-wal
