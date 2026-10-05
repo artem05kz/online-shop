@@ -1,10 +1,9 @@
+using static OnlineShop.Tests.TestSite;
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,8 +15,8 @@ using OnlineShop.Web.Models;
 namespace OnlineShop.Tests;
 
 /// <summary>
-/// Приложение целиком: настоящие запросы, куки, сессия и защита форм. Входа на сайте пока нет
-/// (этап 3), поэтому покупатель в тестах «входит» заголовком X-Test-User.
+/// Витрина, корзина и оформление заказа. Чтобы не проходить вход в каждом тесте,
+/// покупатель здесь «входит» заголовком X-Test-User. Сам вход проверяют AccountTests.
 /// </summary>
 public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
 {
@@ -29,10 +28,8 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         _factory.Seed();
     }
 
-    public sealed class ShopFactory : WebApplicationFactory<Program>
+    public sealed class ShopFactory : TempShopFactory
     {
-        private readonly string _dir = Path.Combine(Path.GetTempPath(), "online-shop-tests", Guid.NewGuid().ToString("N"));
-
         public int BuyerId { get; private set; }
         public int OtherBuyerId { get; private set; }
         public int AddressId { get; private set; }
@@ -41,15 +38,13 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            Directory.CreateDirectory(_dir);
-            builder.UseSetting("ConnectionStrings:Shop", $"Data Source={Path.Combine(_dir, "shop.db")}");
-            builder.UseSetting("Media:Root", Path.Combine(_dir, "media"));
+            base.ConfigureWebHost(builder);
             // Подменяем только проверку входа: гостя сайт по-прежнему отправляет на страницу входа.
             builder.ConfigureTestServices(services =>
             {
                 services.AddAuthentication()
-                    .AddScheme<AuthenticationSchemeOptions, TestAuth>(TestAuth.Scheme, _ => { });
-                services.PostConfigure<AuthenticationOptions>(o => o.DefaultAuthenticateScheme = TestAuth.Scheme);
+                    .AddScheme<AuthenticationSchemeOptions, TestAuth>(TestAuth.SchemeName, _ => { });
+                services.PostConfigure<AuthenticationOptions>(o => o.DefaultAuthenticateScheme = TestAuth.SchemeName);
             });
         }
 
@@ -84,25 +79,12 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             InStockVariantId = visible.Id;
             HiddenVariantId = hidden.Id;
         }
-
-        protected override void Dispose(bool disposing)
-        {
-            base.Dispose(disposing);
-            try
-            {
-                Directory.Delete(_dir, recursive: true);
-            }
-            catch (IOException)
-            {
-                // SQLite может ещё держать файл: временная папка не стоит падения тестов.
-            }
-        }
     }
 
     private sealed class TestAuth(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
-        public const string Scheme = "Test";
+        public const string SchemeName = "Test";
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
@@ -110,36 +92,20 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             {
                 return Task.FromResult(AuthenticateResult.NoResult());
             }
-            var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], Scheme);
-            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme)));
+            var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], SchemeName);
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName)));
         }
     }
 
     private HttpClient Client(int? userId = null)
     {
-        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var client = _factory.Browser();
         if (userId is not null)
         {
             client.DefaultRequestHeaders.Add("X-Test-User", userId.ToString());
         }
         return client;
     }
-
-    // Текст страницы так, как его видит покупатель: коды вроде &#xA0; уже раскодированы.
-    private static async Task<string> Page(HttpClient client, string url) =>
-        WebUtility.HtmlDecode(await client.GetStringAsync(url));
-
-    // Защита от подделки запросов: форму можно отправить только с токеном со страницы сайта.
-    private static async Task<string> TokenFrom(HttpClient client, string url)
-    {
-        var html = await client.GetStringAsync(url);
-        return Regex.Match(html, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value;
-    }
-
-    private static Task<HttpResponseMessage> Post(HttpClient client, string url, string token, params (string, string)[] fields) =>
-        client.PostAsync(url, new FormUrlEncodedContent(
-            fields.Select(f => new KeyValuePair<string, string>(f.Item1, f.Item2))
-                .Append(new KeyValuePair<string, string>("__RequestVerificationToken", token))));
 
     [Theory]
     [InlineData("/")]
@@ -162,7 +128,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     {
         var response = await Client().GetAsync(url);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Contains("Такой страницы нет", WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync()));
+        Assert.Contains("Такой страницы нет", await TestSite.Text(response));
     }
 
     [Fact]
@@ -235,7 +201,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         var invalid = await Post(client, "/orders/checkout", token, ("Form.ContactName", ""), ("Form.ContactPhone", "+7"),
             ("Form.City", "Актау"), ("Form.StreetAndDetails", "1"));
         Assert.Equal(HttpStatusCode.OK, invalid.StatusCode);
-        Assert.Contains("Обязательное поле.", WebUtility.HtmlDecode(await invalid.Content.ReadAsStringAsync()));
+        Assert.Contains("Обязательное поле.", await TestSite.Text(invalid));
 
         var placed = await Post(client, "/orders/checkout", token,
             ("Form.SavedAddressId", _factory.AddressId.ToString()),

@@ -36,21 +36,27 @@ builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
     {
         // Требования к паролю как в Django-версии: не короче 8 символов, без обязательных
-        // заглавных, цифр и спецсимволов.
+        // заглавных, цифр и спецсимволов. Остальные проверки в PasswordRules.
         options.Password.RequiredLength = 8;
         options.Password.RequireDigit = false;
         options.Password.RequireUppercase = false;
         options.Password.RequireLowercase = false;
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = false;
+        // Логин может быть и кириллицей. Допустимые символы проверяет форма регистрации.
+        options.User.AllowedUserNameCharacters = "";
     })
     .AddEntityFrameworkStores<ShopDbContext>()
+    .AddErrorDescriber<RussianIdentityErrors>()
+    .AddPasswordValidator<PasswordRules>()
     .AddDefaultTokenProviders();
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.LoginPath = "/accounts/login";
-    options.AccessDeniedPath = "/accounts/login";
+    options.LoginPath = ShopUrls.Login;
+    options.AccessDeniedPath = ShopUrls.Login;
+    // Вход живёт две недели, как сессии в Django-версии.
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
 });
 
 builder.Services.AddDistributedMemoryCache();
@@ -74,7 +80,9 @@ builder.Services.AddScoped<StorefrontLayout>();
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+    // У формы адреса два адреса: новый адрес и правка существующего по номеру.
+    options.Conventions.AddPageRoute("/Accounts/AddressEdit", "/accounts/profile/addresses/add"));
 
 var app = builder.Build();
 

@@ -4,12 +4,13 @@ using OnlineShop.Web.Models;
 namespace OnlineShop.Web.Infrastructure;
 
 /// <summary>
-/// Адреса страниц магазина. Страницы личного кабинета и панели управления переносятся на этапах 3 и 4,
-/// до этого их адреса заданы строками, такими же, как в Django-версии.
+/// Адреса страниц магазина, на которые ссылаются шапка, подвал и вкладки кабинета.
+/// Панель управления переносится на этапе 4, до этого её адрес никуда не ведёт.
 /// </summary>
 public static class ShopUrls
 {
     public const string Login = "/accounts/login";
+    public const string Logout = "/accounts/logout";
     public const string Register = "/accounts/register";
     public const string Profile = "/accounts/profile";
     public const string AddressBook = "/accounts/profile/addresses";

@@ -1,0 +1,59 @@
+@page "/accounts/profile/addresses"
+@model AddressesModel
+@{
+    ViewData["Title"] = "Адреса доставки";
+    ViewData["AccountTab"] = "addresses";
+}
+<h1>Личный кабинет</h1>
+<partial name="_AccountTabs" />
+
+<div class="panel-head">
+    <h3>Адреса доставки</h3>
+    <a class="btn" asp-page="AddressEdit">Добавить адрес</a>
+</div>
+
+@if (Model.Addresses.Count > 0)
+{
+    <div class="address-grid">
+        @foreach (var address in Model.Addresses)
+        {
+            <div class="address-card@(address.IsDefault ? " is-default" : "")">
+                <div class="addr-label">
+                    @(string.IsNullOrEmpty(address.Label) ? "Адрес" : address.Label)
+                    @if (address.IsDefault)
+                    {
+                        <span class="chip">Основной</span>
+                    }
+                </div>
+                <div class="addr-text">
+                    @address.City, @address.StreetLine<br>
+                    @if (address.DetailsLine.Length > 0)
+                    {
+                        @address.DetailsLine<br>
+                    }
+                    <span class="muted">@address.FullName, @address.Phone</span>
+                    @if (!string.IsNullOrEmpty(address.Comment))
+                    {
+                        <br><span class="muted">@address.Comment</span>
+                    }
+                </div>
+                <div class="addr-actions">
+                    <a class="btn btn-ghost btn-sm" asp-page="AddressEdit" asp-route-id="@address.Id">Изменить</a>
+                    <form asp-page-handler="Delete" asp-route-id="@address.Id" method="post"
+                          onsubmit="return confirm('Удалить этот адрес?');">
+                        <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty">
+        <div class="empty-ico" aria-hidden="true">📍</div>
+        <h2>Адресов пока нет</h2>
+        <p>Сохраните адрес, и он будет подставляться при оформлении заказа.</p>
+        <p style="margin-top:18px;"><a class="btn" asp-page="AddressEdit">Добавить адрес</a></p>
+    </div>
+}

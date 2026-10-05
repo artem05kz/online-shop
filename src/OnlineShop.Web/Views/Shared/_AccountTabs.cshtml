@@ -1,0 +1,13 @@
+@* Вкладки личного кабинета. Активную задаёт ViewData["AccountTab"]: profile, addresses или orders. *@
+@{
+    var active = ViewData["AccountTab"] as string;
+}
+<nav class="tabs">
+    <a href="@ShopUrls.Profile" class="@(active == "profile" ? "active" : null)">Личные данные</a>
+    <a href="@ShopUrls.AddressBook" class="@(active == "addresses" ? "active" : null)">Адреса доставки</a>
+    <a href="@ShopUrls.OrderHistory" class="@(active == "orders" ? "active" : null)">История заказов</a>
+    <form action="@ShopUrls.Logout" method="post" style="margin-left:auto;">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-ghost btn-sm">Выйти</button>
+    </form>
+</nav>

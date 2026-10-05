@@ -1,0 +1,63 @@
+@model IReadOnlyList<Order>
+@{
+    ViewData["Title"] = "История заказов";
+    ViewData["AccountTab"] = "orders";
+    const int PreviewItems = 3;
+}
+<h1>Личный кабинет</h1>
+<partial name="_AccountTabs" />
+
+@if (Model.Count == 0)
+{
+    <div class="empty">
+        <div class="empty-ico" aria-hidden="true">📦</div>
+        <h2>Заказов пока нет</h2>
+        <p>Здесь появятся ваши заказы и их статусы.</p>
+        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+    </div>
+}
+
+@foreach (var order in Model)
+{
+    <div class="panel order-card">
+        <div class="order-head">
+            <div>
+                <div class="o-num">Заказ №@order.Id</div>
+                <div class="o-date">от @Format.DateTimeText(order.CreatedAt)</div>
+            </div>
+            <span class="status status-@order.Status.ToCode()">@order.Status.Label()</span>
+        </div>
+        @if (order.ProgressSteps.Count > 0)
+        {
+            <div class="tracker">
+                @foreach (var step in order.ProgressSteps)
+                {
+                    <div class="tracker-step@(step.IsDone ? " done" : "")@(step.IsCurrent ? " current" : "")">
+                        <div class="tracker-bar"></div>
+                        <div class="tracker-label">@step.Label</div>
+                    </div>
+                }
+            </div>
+        }
+        @foreach (var item in order.Items.OrderBy(i => i.Id).Take(PreviewItems))
+        {
+            <div class="summary-row">
+                <span>@item.ProductName
+                    <span class="muted" style="font-size:.82rem;">@item.PackLabel · @item.Quantity шт.</span>
+                </span>
+                <span style="white-space:nowrap;">@Format.Money(item.Subtotal)</span>
+            </div>
+        }
+        @if (order.Items.Count > PreviewItems)
+        {
+            <div class="summary-row muted"><span>и ещё @(order.Items.Count - PreviewItems) поз.</span><span></span></div>
+        }
+        <div class="summary-row total">
+            <span>Итого (@order.TotalQuantity шт.)</span>
+            <span>@Format.Money(order.Total)</span>
+        </div>
+        <div class="form-actions">
+            <a class="btn btn-outline btn-sm" asp-action="Detail" asp-route-id="@order.Id">Подробнее о заказе</a>
+        </div>
+    </div>
+}

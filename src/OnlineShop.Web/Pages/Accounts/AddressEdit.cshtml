@@ -1,0 +1,120 @@
+@page "/accounts/profile/addresses/{id:int}"
+@model AddressEditModel
+@{
+    var heading = Model.IsNew ? "Новый адрес доставки" : "Изменить адрес";
+    ViewData["Title"] = Model.IsNew ? "Новый адрес" : "Изменить адрес";
+    ViewData["AccountTab"] = "addresses";
+    var useGoogle = Model.GoogleMapsKey.Length > 0;
+}
+@section Head {
+    @if (!useGoogle)
+    {
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    }
+}
+<h1>Личный кабинет</h1>
+<partial name="_AccountTabs" />
+
+<h3>@heading</h3>
+@* Скрипт карты находит поля по id вида id_city, как в Django-версии, поэтому они заданы явно. *@
+<form method="post">
+    <div class="two-col">
+        <div>
+            <div class="panel">
+                <h3>Где вы находитесь</h3>
+                <p class="muted" style="font-size:.88rem; margin-top:0;">
+                    Нажмите на карту или перетащите метку, и улица подставится сама.
+                    Номер дома, квартиру и остальное укажите ниже.
+                </p>
+                <div id="map"></div>
+                <p class="map-hint" id="map-hint">Метка не поставлена.</p>
+                <span class="errorlist" asp-validation-for="Input.Latitude"></span>
+                <input type="hidden" asp-for="Input.Latitude" id="id_latitude">
+                <input type="hidden" asp-for="Input.Longitude" id="id_longitude">
+            </div>
+            <div class="panel">
+                <h3>Адрес</h3>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label for="id_city">Город</label>
+                        <input class="field" asp-for="Input.City" id="id_city">
+                        <span class="errorlist" asp-validation-for="Input.City"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="id_street">Улица / микрорайон</label>
+                        <input class="field" asp-for="Input.Street" id="id_street" placeholder="Улица или микрорайон">
+                        <span class="errorlist" asp-validation-for="Input.Street"></span>
+                    </div>
+                    <div class="form-row">
+                        <label for="id_house">Дом</label>
+                        <input class="field" asp-for="Input.House" id="id_house">
+                        <span class="errorlist" asp-validation-for="Input.House"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Input.Apartment"></label>
+                        <input class="field" asp-for="Input.Apartment">
+                        <span class="errorlist" asp-validation-for="Input.Apartment"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Input.Entrance"></label>
+                        <input class="field" asp-for="Input.Entrance">
+                        <span class="errorlist" asp-validation-for="Input.Entrance"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Input.Floor"></label>
+                        <input class="field" asp-for="Input.Floor">
+                        <span class="errorlist" asp-validation-for="Input.Floor"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Input.Intercom"></label>
+                        <input class="field" asp-for="Input.Intercom">
+                        <span class="errorlist" asp-validation-for="Input.Intercom"></span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.Comment"></label>
+                    <textarea class="field" asp-for="Input.Comment" rows="3" placeholder="Например: позвонить за 10 минут"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="panel sticky-side">
+            <h3>Получатель</h3>
+            <div class="form-row">
+                <label asp-for="Input.Label"></label>
+                <input class="field" asp-for="Input.Label" placeholder="Дом, Работа">
+                <span class="help">Чтобы отличать адреса друг от друга.</span>
+                <span class="errorlist" asp-validation-for="Input.Label"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.FullName"></label>
+                <input class="field" asp-for="Input.FullName" autocomplete="name">
+                <span class="errorlist" asp-validation-for="Input.FullName"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Phone"></label>
+                <input class="field" asp-for="Input.Phone" type="tel" placeholder="+7 (___) ___-__-__" autocomplete="tel">
+                <span class="errorlist" asp-validation-for="Input.Phone"></span>
+            </div>
+            <label class="check" style="margin:6px 0 16px;">
+                <input asp-for="Input.IsDefault">
+                <span>Использовать по умолчанию</span>
+            </label>
+            <button class="btn btn-block" type="submit">Сохранить адрес</button>
+            <a class="btn btn-ghost btn-block" asp-page="Addresses" style="margin-top:10px;">Отмена</a>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @if (useGoogle)
+    {
+        <script>window.MAP_PROVIDER = 'google';</script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=@Uri.EscapeDataString(Model.GoogleMapsKey)&language=ru&region=KZ"></script>
+    }
+    else
+    {
+        <script>window.MAP_PROVIDER = 'osm';</script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    }
+    <script src="~/js/address_map.js" asp-append-version="true"></script>
+}

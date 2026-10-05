@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
@@ -12,7 +11,7 @@ namespace OnlineShop.Web.Controllers;
 
 [Authorize]
 [Route("/orders/checkout")]
-public class CheckoutController(ShopDbContext db, Cart cart, UserManager<ApplicationUser> userManager) : Controller
+public class CheckoutController(ShopDbContext db, Cart cart) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -38,7 +37,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, UserManager<Applica
         }
         else
         {
-            var user = await userManager.FindByIdAsync(userId.ToString());
+            var user = await db.Users.FindAsync(userId);
             form.ContactName = user?.FullName ?? "";
         }
 
@@ -98,7 +97,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, UserManager<Applica
         return RedirectToAction(nameof(CatalogController.Home), "Catalog");
     }
 
-    private int UserId() => int.Parse(userManager.GetUserId(User)!);
+    private int UserId() => User.ShopUserId();
 
     private Task<List<Address>> UserAddresses(int userId) =>
         db.Addresses.Where(a => a.UserId == userId).Ordered().AsNoTracking().ToListAsync();
