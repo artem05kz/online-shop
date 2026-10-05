@@ -1,7 +1,7 @@
 // Simple banner carousel: shows one slide at a time (via the "active"
 // class), advances automatically, and can be paged manually with the
 // arrows or the dots. Only ever one slide has "active" at once, so only
-// that slide's own link is visible or clickable — no mix-ups between
+// that slide's own link is visible or clickable, so there are no mix-ups between
 // banners.
 (function () {
     var root = document.getElementById('banner-carousel');
