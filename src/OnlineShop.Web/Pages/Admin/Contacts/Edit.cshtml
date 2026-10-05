@@ -1,0 +1,97 @@
+@page "/admin/contacts/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Contacts.EditModel
+@{
+    ViewData["Title"] = "Контакты сайта";
+    ViewData["AdminSection"] = "contacts";
+}
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новый набор контактов" : Model.Input.Title)</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post" style="max-width:760px;">
+    <div class="admin-box">
+        <h3>Что это</h3>
+        <p class="hint">Эти контакты показываются в шапке и внизу каждой страницы сайта. Оставьте галочку «Использовать на сайте» только у одного набора.</p>
+        <div class="form-row form-narrow">
+            <label asp-for="Input.Title"></label>
+            <input class="field" asp-for="Input.Title">
+            <span class="help">Только для вас, на сайте не показывается.</span>
+            <span class="errorlist" asp-validation-for="Input.Title"></span>
+        </div>
+        <label class="check">
+            <input asp-for="Input.IsActive">
+            <span>Использовать на сайте</span>
+        </label>
+    </div>
+
+    <div class="admin-box">
+        <h3>Телефоны и почта</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.Phone"></label>
+                <input class="field" asp-for="Input.Phone">
+                <span class="errorlist" asp-validation-for="Input.Phone"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.PhoneExtra"></label>
+                <input class="field" asp-for="Input.PhoneExtra">
+                <span class="errorlist" asp-validation-for="Input.PhoneExtra"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Email"></label>
+                <input class="field" asp-for="Input.Email" type="email">
+                <span class="errorlist" asp-validation-for="Input.Email"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Мессенджеры и соцсети</h3>
+        <p class="hint">Можно указать номер или имя пользователя, ссылка соберётся сама.</p>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.Whatsapp"></label>
+                <input class="field" asp-for="Input.Whatsapp" placeholder="+7 701 245-48-48">
+                <span class="errorlist" asp-validation-for="Input.Whatsapp"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Telegram"></label>
+                <input class="field" asp-for="Input.Telegram" placeholder="@@grass_aktau">
+                <span class="errorlist" asp-validation-for="Input.Telegram"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Instagram"></label>
+                <input class="field" asp-for="Input.Instagram" placeholder="grass_aktau">
+                <span class="errorlist" asp-validation-for="Input.Instagram"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Город и часы работы</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.City"></label>
+                <input class="field" asp-for="Input.City">
+                <span class="errorlist" asp-validation-for="Input.City"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.WorkingHours"></label>
+                <input class="field" asp-for="Input.WorkingHours">
+                <span class="errorlist" asp-validation-for="Input.WorkingHours"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить этот набор контактов?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить набор</button>
+    </form>
+}

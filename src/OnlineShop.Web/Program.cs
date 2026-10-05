@@ -4,6 +4,8 @@ using System.Text.Unicode;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
@@ -11,7 +13,9 @@ using Microsoft.Extensions.WebEncoders;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
+using OnlineShop.Web;
 using OnlineShop.Web.Services;
+using OnlineShop.Web.Services.Import;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,7 +58,8 @@ builder.Services
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.LoginPath = ShopUrls.Login;
-    options.AccessDeniedPath = ShopUrls.Login;
+    // Вошёл, но не менеджер: объясняем, что доступа нет, а не просим войти ещё раз.
+    options.AccessDeniedPath = "/accounts/denied";
     // Вход живёт две недели, как сессии в Django-версии.
     options.ExpireTimeSpan = TimeSpan.FromDays(14);
 });
@@ -74,30 +79,53 @@ builder.Services.AddSession(options =>
 builder.Services.Configure<WebEncoderOptions>(options =>
     options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(RoleNames.Manager, policy => policy.RequireRole(RoleNames.Manager)));
+
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton(new MediaStorage(mediaRoot));
+builder.Services.AddSingleton(new ImportUploads(Path.Combine(Path.GetDirectoryName(connection.DataSource)!, "imports")));
+builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<StorefrontLayout>();
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+// Скрытое поле «false» у галочки ставим рядом с ней, а не в конец формы: строки таблиц в панели
+// копируются скриптом, и без этого у новой строки снятая галочка читалась бы как включённая.
+builder.Services.Configure<MvcViewOptions>(options =>
+    options.HtmlHelperOptions.CheckBoxHiddenInputRenderMode = CheckBoxHiddenInputRenderMode.Inline);
 builder.Services.AddRazorPages(options =>
-    // У формы адреса два адреса: новый адрес и правка существующего по номеру.
-    options.Conventions.AddPageRoute("/Accounts/AddressEdit", "/accounts/profile/addresses/add"));
+{
+    // Вся панель управления только для менеджеров.
+    options.Conventions.AuthorizeFolder("/Admin", RoleNames.Manager);
+
+    // У форм два адреса: новая запись (/add) и правка существующей по номеру. Адрес /add не участвует
+    // в построении ссылок, иначе ссылка «Изменить» превращалась бы в /add?id=5.
+    void AddCreateRoute(string page, string template) =>
+        options.Conventions.AddPageRouteModelConvention(page, model => model.Selectors.Add(new SelectorModel
+        {
+            AttributeRouteModel = new AttributeRouteModel { Template = template, SuppressLinkGeneration = true },
+        }));
+    AddCreateRoute("/Accounts/AddressEdit", "/accounts/profile/addresses/add");
+    foreach (var section in new[] { "Brands", "Categories", "Products", "Variants", "Banners", "Stores", "Contacts" })
+    {
+        AddCreateRoute($"/Admin/{section}/Edit", $"/admin/{section.ToLowerInvariant()}/add");
+    }
+});
 
 var app = builder.Build();
 
 // Схему базы обновляем при старте, чтобы после git pull не нужно было вручную запускать миграции.
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
-    db.Database.Migrate();
+    scope.ServiceProvider.GetRequiredService<ShopDbContext>().Database.Migrate();
+}
 
-    // dotnet run --project src/OnlineShop.Web -- --seed-demo
-    if (args.Contains("--seed-demo"))
-    {
-        Console.WriteLine(await DemoData.SeedAsync(db, mediaRoot));
-        return;
-    }
+// Консольные команды (демо-данные, выдача доступа, импорт из 1С) вместо запуска сайта, см. Cli.cs.
+if (await Cli.RunAsync(args, app.Services))
+{
+    return;
 }
 
 var russian = new CultureInfo("ru-RU");

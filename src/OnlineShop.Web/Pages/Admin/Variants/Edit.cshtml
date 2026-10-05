@@ -1,0 +1,111 @@
+@page "/admin/variants/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Variants.EditModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Новый артикул" : $"Артикул {Model.Input.Article}";
+    ViewData["AdminSection"] = "variants";
+}
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новый артикул" : $"Артикул {Model.Input.Article}")</h1>
+    @if (Model.Input.ProductId is { } productId)
+    {
+        <a class="btn btn-ghost" href="/admin/products/@productId">К товару</a>
+    }
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post">
+    <div class="admin-box">
+        <h3>Артикул</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.ProductId"></label>
+                <select class="select" asp-for="Input.ProductId">
+                    <option value="">Выберите товар</option>
+                    @foreach (var product in Model.Products)
+                    {
+                        <option value="@product.Id">@product.Name</option>
+                    }
+                </select>
+                <span class="errorlist" asp-validation-for="Input.ProductId"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Article"></label>
+                <input class="field" asp-for="Input.Article">
+                <span class="errorlist" asp-validation-for="Input.Article"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.PackLabel"></label>
+                <input class="field" asp-for="Input.PackLabel" placeholder="Например: 22 кг">
+                <span class="errorlist" asp-validation-for="Input.PackLabel"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.VolumeValue"></label>
+                <input class="field" asp-for="Input.VolumeValue" inputmode="decimal">
+                <span class="help">По нему фасовки сортируются на странице товара.</span>
+                <span class="errorlist" asp-validation-for="Input.VolumeValue"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.VolumeUnit"></label>
+                <input class="field" asp-for="Input.VolumeUnit" placeholder="кг, л, мл, шт">
+                <span class="errorlist" asp-validation-for="Input.VolumeUnit"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.BoxQty"></label>
+                <input class="field" asp-for="Input.BoxQty" inputmode="numeric">
+                <span class="errorlist" asp-validation-for="Input.BoxQty"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.PalletQty"></label>
+                <input class="field" asp-for="Input.PalletQty" inputmode="numeric">
+                <span class="errorlist" asp-validation-for="Input.PalletQty"></span>
+            </div>
+        </div>
+    </div>
+    <div class="admin-box">
+        <h3>Цены и остаток</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.WholesalePrice"></label>
+                <input class="field" asp-for="Input.WholesalePrice" inputmode="decimal">
+                <span class="errorlist" asp-validation-for="Input.WholesalePrice"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Price"></label>
+                <input class="field" asp-for="Input.Price" inputmode="decimal">
+                <span class="help">Пустая цена: на сайте «цена уточняется», купить нельзя.</span>
+                <span class="errorlist" asp-validation-for="Input.Price"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.OldPrice"></label>
+                <input class="field" asp-for="Input.OldPrice" inputmode="decimal">
+                <span class="errorlist" asp-validation-for="Input.OldPrice"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.StockQty"></label>
+                <input class="field" asp-for="Input.StockQty" inputmode="numeric">
+                <span class="errorlist" asp-validation-for="Input.StockQty"></span>
+            </div>
+        </div>
+        <label class="check">
+            <input asp-for="Input.IsActive">
+            <span>Показывать на сайте</span>
+        </label>
+        @if (Model.Existing is { } v)
+        {
+            <ul class="spec-list" style="margin-top:14px;">
+                <li><span>Последняя загрузка цены из 1С</span><span>@(v.LastPriceImportAt is { } p ? Format.DateTimeText(p) : "не было")</span></li>
+                <li><span>Последнее обновление остатка из 1С</span><span>@(v.LastStockImportAt is { } s ? Format.DateTimeText(s) : "не было")</span></li>
+            </ul>
+        }
+    </div>
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить артикул?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить артикул</button>
+    </form>
+}

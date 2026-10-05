@@ -1,0 +1,141 @@
+@page "/admin/import"
+@model OnlineShop.Web.Pages.Admin.Import.IndexModel
+@{
+    ViewData["Title"] = Model.IsPreview ? "Проверьте перед записью" : "Загрузка товаров из 1С";
+    ViewData["AdminSection"] = "import";
+    var price = Model.PriceResult;
+    var stock = Model.StockResult;
+}
+
+@if (!Model.IsPreview)
+{
+    <h1>Загрузка товаров из 1С</h1>
+    <p>Выберите один или оба файла, которые вы выгрузили из 1С. На следующем шаге можно будет посмотреть,
+       что получилось, и снять галочки с ненужных строк. До подтверждения в базу ничего не запишется.</p>
+    <form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
+        <div class="form-row">
+            <label for="PriceList">Прайс-лист (название, фото, описание, цена)</label>
+            <input type="file" id="PriceList" name="PriceList" accept=".xlsx">
+        </div>
+        <div class="form-row">
+            <label for="Stock">Остатки (артикул, количество на складе)</label>
+            <input type="file" id="Stock" name="Stock" accept=".xlsx">
+        </div>
+        <div class="admin-actions">
+            <button class="btn" type="submit">Посмотреть, что получится</button>
+        </div>
+    </form>
+    return;
+}
+
+<h1>Проверьте перед записью в базу</h1>
+<p>Пока ничего не сохранено. Название, категорию, бренд и остаток можно поправить прямо здесь, правки уйдут в базу
+   вместе с загрузкой. Снимите галочки с тех строк, которые грузить не нужно, затем нажмите «Загрузить в каталог» внизу.
+   Поиск и клик по заголовку столбца работают на этой странице.</p>
+
+<form method="post" asp-page="Confirm">
+    @if (Model.PriceTempName is not null)
+    {
+        <input type="hidden" name="PriceTempName" value="@Model.PriceTempName">
+    }
+    @if (Model.StockTempName is not null)
+    {
+        <input type="hidden" name="StockTempName" value="@Model.StockTempName">
+    }
+
+    @if (price is not null)
+    {
+        <h2>Прайс-лист: @price.Products.Count @Plural.Products(price.Products.Count), @price.Products.Sum(p => p.Variants.Count) артикулов.
+            Бренды: @string.Join(", ", price.Products.Select(p => p.Brand).Distinct().Order())</h2>
+        @if (price.Warnings.Count > 0)
+        {
+            <ul class="warnings">
+                @foreach (var warning in price.Warnings.Take(15))
+                {
+                    <li>@warning</li>
+                }
+                @if (price.Warnings.Count > 15)
+                {
+                    <li>и ещё @(price.Warnings.Count - 15) предупреждений</li>
+                }
+            </ul>
+        }
+        <div class="admin-filters">
+            <input class="field" type="search" id="price-search" placeholder="Поиск по названию, категории, артикулу">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('price', true)">Выбрать все</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('price', false)">Снять все</button>
+            <span class="admin-count" id="price-count"></span>
+        </div>
+        <div class="import-table-wrap">
+            <table class="import-table" id="price-table">
+                <colgroup><col style="width:34px"><col style="width:12%"><col style="width:20%"><col style="width:30%"><col style="width:24%"><col style="width:8%"></colgroup>
+                <thead>
+                    <tr><th></th><th data-sort="text">Бренд</th><th data-sort="text">Категория</th><th data-sort="text">Товар</th><th data-sort="text">Артикулы</th><th data-sort="text">Фото</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var product in price.Products)
+                    {
+                        var key = product.Key;
+                        <tr>
+                            <td><input type="checkbox" name="SelectedProducts" value="@key" checked></td>
+                            <td><input class="field" type="text" name="brand_@key" value="@product.Brand"></td>
+                            <td><input class="field" type="text" name="category_@key" value="@product.CategoryPath"></td>
+                            <td><input class="field" type="text" name="name_@key" value="@product.Name"></td>
+                            <td>@string.Join(", ", product.Variants.Select(v => $"{v.Article} ({v.PackLabel})"))</td>
+                            <td>@(product.ImageBytes is not null ? "есть" : "нет")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (stock is not null)
+    {
+        <h2>Остатки: @stock.Quantities.Count артикулов</h2>
+        @if (stock.Warnings.Count > 0)
+        {
+            <ul class="warnings">
+                @foreach (var warning in stock.Warnings.Take(15))
+                {
+                    <li>@warning</li>
+                }
+                @if (stock.Warnings.Count > 15)
+                {
+                    <li>и ещё @(stock.Warnings.Count - 15) предупреждений</li>
+                }
+            </ul>
+        }
+        <div class="admin-filters">
+            <input class="field" type="search" id="stock-search" placeholder="Поиск по артикулу">
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('stock', true)">Выбрать все</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('stock', false)">Снять все</button>
+            <span class="admin-count" id="stock-count"></span>
+        </div>
+        <div class="import-table-wrap" style="max-width:520px;">
+            <table class="import-table" id="stock-table">
+                <colgroup><col style="width:34px"><col style="width:55%"><col style="width:35%"></colgroup>
+                <thead><tr><th></th><th data-sort="text">Артикул</th><th data-sort="number">Остаток</th></tr></thead>
+                <tbody>
+                    @foreach (var (article, qty) in stock.Quantities.OrderBy(q => q.Key, StringComparer.Ordinal))
+                    {
+                        <tr>
+                            <td><input type="checkbox" name="SelectedStock" value="@article" checked></td>
+                            <td>@article</td>
+                            <td><input class="field" type="number" name="qty_@article" value="@qty" min="0"></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <div class="admin-actions">
+        <button class="btn" type="submit">Загрузить в каталог</button>
+        <a class="btn btn-ghost" asp-page="Index">Отмена</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/import_preview.js" asp-append-version="true"></script>
+}

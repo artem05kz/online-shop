@@ -17,6 +17,10 @@ public static class Format
     public static DateTime ToLocal(DateTime utc) => TimeZoneInfo.ConvertTimeFromUtc(
         DateTime.SpecifyKind(utc, DateTimeKind.Utc), Aqtau);
 
+    /// <summary>Время, введённое менеджером по Актау, в UTC для базы.</summary>
+    public static DateTime FromLocal(DateTime aqtau) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(aqtau, DateTimeKind.Unspecified), Aqtau);
+
     /// <summary>Дата и время по Актау: «05.10.2026, 19:02».</summary>
     public static string DateTimeText(DateTime utc) => ToLocal(utc).ToString("dd.MM.yyyy, HH:mm", Russian);
 }

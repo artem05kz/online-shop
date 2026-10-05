@@ -1,0 +1,46 @@
+@page "/admin/categories"
+@model OnlineShop.Web.Pages.Admin.Categories.IndexModel
+@{
+    ViewData["Title"] = "Категории";
+    ViewData["AdminSection"] = "categories";
+}
+<div class="admin-head">
+    <h1>Категории</h1>
+    <a class="btn" href="/admin/categories/add">Добавить категорию</a>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Поиск по названию">
+    <select class="select" name="brand" onchange="this.form.submit()">
+        <option value="">Все бренды</option>
+        @foreach (var brand in Model.Brands)
+        {
+            <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
+        }
+    </select>
+    <select class="select" name="active" onchange="this.form.submit()">
+        <option value="">Показ: все</option>
+        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
+        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
+    </select>
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<div class="admin-table-wrap">
+    <table class="admin-table">
+        <thead><tr><th>Название</th><th>Бренд</th><th>Родительская категория</th><th class="num">Очерёдность</th><th>На сайте</th></tr></thead>
+        <tbody>
+            @foreach (var category in Model.List.Items)
+            {
+                <tr>
+                    <td><a asp-page="Edit" asp-route-id="@category.Id">@category.Name</a></td>
+                    <td>@category.Brand.Name</td>
+                    <td>@(category.Parent?.Name ?? "Нет")</td>
+                    <td class="num">@category.SortOrder</td>
+                    <td>@(category.IsActive ? "да" : "нет")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

@@ -1,0 +1,43 @@
+@page "/admin/banners"
+@model OnlineShop.Web.Pages.Admin.Banners.IndexModel
+@{
+    ViewData["Title"] = "Баннеры";
+    ViewData["AdminSection"] = "banners";
+}
+<div class="admin-head">
+    <h1>Баннеры на главной</h1>
+    <a class="btn" href="/admin/banners/add">Добавить баннер</a>
+</div>
+<p class="admin-count">Баннеры сменяют друг друга по очерёдности: от меньшего числа к большему.</p>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead><tr><th>Картинка</th><th>Заголовок</th><th>Показывать с</th><th>Показывать до</th><th>Очерёдность</th><th>На сайте</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var row = Model.Rows[i];
+                    <tr>
+                        <td>
+                            <input type="hidden" asp-for="Rows[i].Id">
+                            <img class="thumb" src="@Media.Url(row.ImagePath)" alt="">
+                        </td>
+                        <td><a asp-page="Edit" asp-route-id="@row.Id">@(string.IsNullOrEmpty(row.Title) ? $"Баннер №{row.Id}" : row.Title)</a></td>
+                        <td class="muted">@(row.StartsAt is { } s ? Format.DateTimeText(s) : "всегда")</td>
+                        <td class="muted">@(row.EndsAt is { } e ? Format.DateTimeText(e) : "всегда")</td>
+                        <td><input class="field tiny" asp-for="Rows[i].SortOrder" type="number" min="0"></td>
+                        <td><input asp-for="Rows[i].IsActive"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        <span class="admin-count">Всего: @Model.Rows.Count</span>
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn push" type="submit">Сохранить</button>
+        }
+    </div>
+</form>

@@ -1,0 +1,44 @@
+@page "/admin/brands/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Brands.EditModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Новый бренд" : "Бренд";
+    ViewData["AdminSection"] = "brands";
+}
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новый бренд" : Model.Input.Name)</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post" class="admin-box form-narrow">
+    <div class="form-row">
+        <label asp-for="Input.Name"></label>
+        <input class="field" asp-for="Input.Name">
+        <span class="errorlist" asp-validation-for="Input.Name"></span>
+    </div>
+    <div class="form-row">
+        <label asp-for="Input.Slug"></label>
+        <input class="field" asp-for="Input.Slug">
+        <span class="help">Часть адреса страницы. Оставьте пустым, и он заполнится из названия.</span>
+        <span class="errorlist" asp-validation-for="Input.Slug"></span>
+    </div>
+    <div class="form-row">
+        <label asp-for="Input.SortOrder"></label>
+        <input class="field" asp-for="Input.SortOrder" type="number" min="0">
+        <span class="help">Бренды выводятся по этому числу от меньшего к большему. Например, бренд с числом 1 будет выше бренда с числом 2.</span>
+        <span class="errorlist" asp-validation-for="Input.SortOrder"></span>
+    </div>
+    <label class="check" style="margin-bottom:16px;">
+        <input asp-for="Input.IsActive">
+        <span>Показывать на сайте</span>
+    </label>
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Удалить бренд вместе с его категориями?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить бренд</button>
+    </form>
+}

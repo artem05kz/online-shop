@@ -1,0 +1,120 @@
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using OnlineShop.Web.Data;
+using OnlineShop.Web.Infrastructure;
+using OnlineShop.Web.Models;
+
+namespace OnlineShop.Web.Pages.Admin.Orders;
+
+/// <summary>
+/// Заказ: статус, данные доставки, количество по позициям. Название, фасовка и цена позиции
+/// только для чтения: это снимок на момент заказа, и покупатель видит именно его.
+/// </summary>
+public class EditModel(ShopDbContext db) : PageModel
+{
+    private const string Required = "Обязательное поле.";
+    private const string TooLong = "Не длиннее {1} символов.";
+
+    public class InputModel
+    {
+        [Display(Name = "Статус")] public OrderStatus Status { get; set; }
+
+        [Display(Name = "Имя получателя")]
+        [Required(ErrorMessage = Required), StringLength(200, ErrorMessage = TooLong)]
+        public string ContactName { get; set; } = "";
+
+        [Display(Name = "Телефон")]
+        [Required(ErrorMessage = Required), StringLength(30, ErrorMessage = TooLong)]
+        public string ContactPhone { get; set; } = "";
+
+        [Display(Name = "Город")]
+        [Required(ErrorMessage = Required), StringLength(100, ErrorMessage = TooLong)]
+        public string City { get; set; } = "";
+
+        [Display(Name = "Адрес доставки")]
+        [Required(ErrorMessage = Required), StringLength(300, ErrorMessage = TooLong)]
+        public string StreetAndDetails { get; set; } = "";
+
+        [Display(Name = "Комментарий")] public string? Comment { get; set; }
+    }
+
+    public class ItemRow
+    {
+        public int Id { get; set; }
+        [Range(1, 100000, ErrorMessage = "От 1 до 100 000.")]
+        public int Quantity { get; set; }
+        public bool Delete { get; set; }
+    }
+
+    [BindProperty] public InputModel Input { get; set; } = new();
+    [BindProperty] public List<ItemRow> Items { get; set; } = [];
+
+    public Order Order { get; private set; } = null!;
+
+    public async Task<IActionResult> OnGetAsync(int id)
+    {
+        var order = await Load(id);
+        if (order is null)
+        {
+            return NotFound();
+        }
+        Order = order;
+        Input = new InputModel
+        {
+            Status = order.Status, ContactName = order.ContactName, ContactPhone = order.ContactPhone, City = order.City,
+            StreetAndDetails = order.StreetAndDetails, Comment = order.Comment,
+        };
+        Items = order.Items.OrderBy(i => i.Id).Select(i => new ItemRow { Id = i.Id, Quantity = i.Quantity }).ToList();
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync(int id)
+    {
+        var order = await Load(id);
+        if (order is null)
+        {
+            return NotFound();
+        }
+        Order = order;
+        if (Items.Count(i => !i.Delete) == 0 && order.Items.Count > 0)
+        {
+            ModelState.AddModelError("", "В заказе должна остаться хотя бы одна позиция. Чтобы отказаться от заказа, поставьте статус «Отменён».");
+        }
+        if (!ModelState.IsValid)
+        {
+            return Page();
+        }
+
+        order.Status = Input.Status;
+        order.ContactName = Input.ContactName.Trim();
+        order.ContactPhone = Input.ContactPhone.Trim();
+        order.City = Input.City.Trim();
+        order.StreetAndDetails = Input.StreetAndDetails.Trim();
+        order.Comment = Input.Comment?.Trim() ?? "";
+        foreach (var row in Items)
+        {
+            var item = order.Items.FirstOrDefault(i => i.Id == row.Id);
+            if (item is null)
+            {
+                continue;
+            }
+            if (row.Delete)
+            {
+                db.OrderItems.Remove(item);
+            }
+            else
+            {
+                item.Quantity = row.Quantity;
+            }
+        }
+        await db.SaveChangesAsync();
+        TempData.Flash($"Заказ №{order.Id} сохранён.");
+        return RedirectToPage(new { id });
+    }
+
+    private Task<Order?> Load(int id) =>
+        db.Orders.Include(o => o.User).Include(o => o.Items).ThenInclude(i => i.Variant)
+            .FirstOrDefaultAsync(o => o.Id == id);
+}

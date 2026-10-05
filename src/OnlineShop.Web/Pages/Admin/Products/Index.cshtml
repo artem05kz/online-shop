@@ -1,0 +1,69 @@
+@page "/admin/products"
+@model OnlineShop.Web.Pages.Admin.Products.IndexModel
+@{
+    ViewData["Title"] = "Товары";
+    ViewData["AdminSection"] = "products";
+}
+<div class="admin-head">
+    <h1>Товары</h1>
+    <a class="btn btn-ghost" href="/admin/import/stock">Обновить остаток</a>
+    <a class="btn btn-ghost" href="/admin/import">Загрузить из 1С</a>
+    <a class="btn" href="/admin/products/add">Добавить товар</a>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название, описание или артикул">
+    <select class="select" name="brand" onchange="this.form.submit()">
+        <option value="">Все бренды</option>
+        @foreach (var brand in Model.Brands)
+        {
+            <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
+        }
+    </select>
+    <select class="select" name="category" onchange="this.form.submit()">
+        <option value="">Все категории</option>
+        @foreach (var category in Model.Categories)
+        {
+            <option value="@category.Id" selected="@(Model.Category == category.Id)">@category.Brand.Name / @category.Name</option>
+        }
+    </select>
+    <select class="select" name="active" onchange="this.form.submit()">
+        <option value="">Показ: все</option>
+        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
+        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
+    </select>
+    @if (!string.IsNullOrEmpty(Model.O))
+    {
+        <input type="hidden" name="o" value="@Model.O">
+    }
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<div class="admin-table-wrap">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>@AdminList.SortHeader(Request, "name", "Название")</th>
+                <th>@AdminList.SortHeader(Request, "brand", "Бренд")</th>
+                <th>@AdminList.SortHeader(Request, "category", "Категория")</th>
+                <th class="num">Фасовок</th>
+                <th>@AdminList.SortHeader(Request, "active", "На сайте")</th>
+                <th>@AdminList.SortHeader(Request, "updated", "Изменён")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model.List.Items)
+            {
+                <tr>
+                    <td><a asp-page="Edit" asp-route-id="@row.Id">@row.Name</a></td>
+                    <td>@row.Brand</td>
+                    <td>@row.Category</td>
+                    <td class="num">@row.VariantCount</td>
+                    <td>@(row.IsActive ? "да" : "нет")</td>
+                    <td class="muted">@Format.DateTimeText(row.UpdatedAt)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

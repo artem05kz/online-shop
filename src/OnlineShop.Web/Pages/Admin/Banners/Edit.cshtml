@@ -1,0 +1,67 @@
+@page "/admin/banners/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Banners.EditModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Новый баннер" : "Баннер";
+    ViewData["AdminSection"] = "banners";
+}
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новый баннер" : "Баннер")</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
+    <div class="form-row">
+        <label for="Image">Изображение</label>
+        @if (Model.CurrentImage is not null)
+        {
+            <img src="@Media.Url(Model.CurrentImage)" alt="" style="max-width:100%; border-radius:8px; border:1px solid var(--line);">
+            <span class="help">Чтобы заменить, выберите новый файл. Старый удалится сам.</span>
+        }
+        <input type="file" id="Image" name="Image" accept="image/jpeg,image/png,image/gif,image/webp">
+        <span class="errorlist" asp-validation-for="Image"></span>
+    </div>
+    <div class="form-row">
+        <label asp-for="Input.Title"></label>
+        <input class="field" asp-for="Input.Title">
+        <span class="help">Подпись для незрячих и поисковиков, на картинке не выводится.</span>
+        <span class="errorlist" asp-validation-for="Input.Title"></span>
+    </div>
+    <div class="form-row">
+        <label asp-for="Input.LinkUrl"></label>
+        <input class="field" asp-for="Input.LinkUrl" placeholder="/catalog/grass/автошампуни">
+        <span class="help">Куда вести при клике на баннер. Необязательно.</span>
+        <span class="errorlist" asp-validation-for="Input.LinkUrl"></span>
+    </div>
+    <div class="form-grid">
+        <div class="form-row">
+            <label asp-for="Input.StartsAt"></label>
+            <input class="field" type="datetime-local" name="Input.StartsAt" id="Input_StartsAt" value="@(Model.Input.StartsAt?.ToString("yyyy-MM-ddTHH:mm"))">
+            <span class="help">Время по Актау. Пусто: сразу.</span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.EndsAt"></label>
+            <input class="field" type="datetime-local" name="Input.EndsAt" id="Input_EndsAt" value="@(Model.Input.EndsAt?.ToString("yyyy-MM-ddTHH:mm"))">
+            <span class="help">Пусто: без срока.</span>
+            <span class="errorlist" asp-validation-for="Input.EndsAt"></span>
+        </div>
+    </div>
+    <div class="form-row">
+        <label asp-for="Input.SortOrder"></label>
+        <input class="field" asp-for="Input.SortOrder" type="number" min="0">
+        <span class="help">Баннер с числом 1 покажется первым.</span>
+    </div>
+    <label class="check" style="margin-bottom:16px;">
+        <input asp-for="Input.IsActive">
+        <span>Показывать на сайте</span>
+    </label>
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Удалить баннер?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить баннер</button>
+    </form>
+}

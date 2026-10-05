@@ -1,0 +1,34 @@
+@page "/admin/addresses"
+@model OnlineShop.Web.Pages.Admin.Addresses.IndexModel
+@{
+    ViewData["Title"] = "Адреса покупателей";
+    ViewData["AdminSection"] = "addresses";
+}
+<div class="admin-head">
+    <h1>Адреса покупателей</h1>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Имя, телефон или логин">
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<div class="admin-table-wrap">
+    <table class="admin-table">
+        <thead><tr><th>Покупатель</th><th>Имя получателя</th><th>Телефон</th><th>Город</th><th>Улица</th><th>По умолчанию</th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.List.Items)
+            {
+                <tr>
+                    <td>@row.UserName</td>
+                    <td><a asp-page="Edit" asp-route-id="@row.Id">@row.FullName</a></td>
+                    <td>@row.Phone</td>
+                    <td>@row.City</td>
+                    <td>@row.Street</td>
+                    <td>@(row.IsDefault ? "да" : "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+<partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

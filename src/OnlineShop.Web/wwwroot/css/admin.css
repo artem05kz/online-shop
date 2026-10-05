@@ -1,0 +1,200 @@
+/* Панель управления. Подключается после style.css и берёт из него цвета, кнопки и поля форм.
+   Крупный спокойный текст и зелёный акцент, как было в настройке админки Django-версии. */
+
+body.admin { background: var(--bg-soft); font-size: 15px; }
+
+.admin-top {
+    background: #1f3d24;
+    color: #fff;
+}
+.admin-top .inner {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 20px;
+}
+.admin-top .title { font-weight: 700; font-size: 1.05rem; color: #fff; }
+.admin-top .spacer { flex: 1; }
+.admin-top a, .admin-top button { color: #d9ecd1; font-size: .9rem; }
+.admin-top form { display: inline; }
+.admin-top button { background: none; border: 0; cursor: pointer; padding: 0; font: inherit; }
+
+.admin-shell {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 24px;
+    padding: 22px 20px 60px;
+    max-width: 1500px;
+    margin: 0 auto;
+}
+.admin-nav h4 {
+    margin: 18px 0 6px;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+.admin-nav h4:first-child { margin-top: 0; }
+.admin-nav a {
+    display: block;
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: var(--ink-soft);
+    font-size: .93rem;
+}
+.admin-nav a:hover { background: #fff; }
+.admin-nav a.active { background: var(--green-soft); color: var(--green-dark); font-weight: 600; }
+
+.admin-main { min-width: 0; }
+.admin-main h1 { font-size: 1.4rem; margin: 0 0 16px; }
+.admin-main h2 { font-size: 1.1rem; margin: 26px 0 10px; }
+
+.admin-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.admin-head h1 { margin: 0; margin-right: auto; }
+
+.admin-box {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+}
+.admin-box > h3 { margin: 0 0 12px; font-size: 1rem; }
+.admin-box .hint { color: var(--muted); font-size: .86rem; margin: -6px 0 12px; }
+details.admin-box > summary { cursor: pointer; font-weight: 700; }
+details.admin-box[open] > summary { margin-bottom: 12px; }
+
+/* Поиск и фильтры над списком */
+.admin-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.admin-filters .field { width: auto; min-width: 260px; }
+.admin-filters .select { width: auto; min-width: 170px; }
+
+/* Таблицы. Широкая таблица прокручивается сама, а не вся страница. */
+.admin-table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+.admin-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.admin-table th, .admin-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+.admin-table thead th {
+    background: var(--bg-soft);
+    font-size: .8rem;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+.admin-table thead th a { color: inherit; }
+.admin-table thead th a.sorted { color: var(--green-dark); }
+.admin-table tbody tr:last-child td { border-bottom: 0; }
+.admin-table tbody tr:hover td { background: #fafcf9; }
+.admin-table .num { text-align: right; white-space: nowrap; }
+.admin-table .field, .admin-table .select { padding: 6px 8px; font-size: .88rem; }
+.admin-table input.small { width: 90px; }
+.admin-table input.tiny { width: 70px; }
+.admin-table .muted { color: var(--muted); }
+.admin-table img.thumb { width: 54px; height: 54px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+
+.admin-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 14px;
+}
+.admin-actions .push { margin-left: auto; }
+.admin-count { color: var(--muted); font-size: .88rem; }
+
+.yes { color: var(--green-dark); font-weight: 700; }
+.no { color: var(--muted); }
+
+/* Главная панели: частые действия карточками */
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.quick-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 16px 18px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: inherit;
+}
+.quick-card:hover { border-color: var(--green); }
+.quick-card .qc-title { font-weight: 700; color: var(--green-dark); }
+.quick-card .qc-note { color: var(--muted); font-size: .86rem; line-height: 1.45; }
+.quick-card .qc-badge { align-self: flex-start; background: var(--green); color: #fff; border-radius: 20px; padding: 1px 9px; font-size: .78rem; font-weight: 700; }
+
+.warnings { list-style: none; padding: 0; margin: 0 0 12px; }
+.warnings li {
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border-radius: 8px;
+    background: #fdf1e0;
+    color: #7a5208;
+    font-size: .88rem;
+}
+
+/* Подсветка изменённых, но ещё не сохранённых строк (скрипт admin_edit_highlight.js) */
+tr.row-edited > th,
+tr.row-edited > td { background: rgba(98, 178, 44, .13) !important; }
+tr.row-edited > th:first-child,
+tr.row-edited > td:first-child { box-shadow: inset 3px 0 0 var(--green-dark); }
+.unsaved-note {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--green-dark);
+    color: #fff;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.unsaved-banner {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 0 12px;
+    padding: 11px 15px;
+    border-radius: 8px;
+    border: 1px solid var(--green-dark);
+    border-left: 4px solid var(--green-dark);
+    /* Фон непрозрачный: полоса прилипает к верху, и сквозь неё иначе просвечивала бы таблица. */
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+/* Таблицы предпросмотра импорта: свой поиск и сортировка, прокрутка внутри блока,
+   чтобы страница не прыгала, когда поиск прячет строки. */
+.import-table-wrap { overflow: auto; max-height: 65vh; margin-bottom: 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+.import-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .86rem; }
+.import-table th, .import-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; word-break: break-word; }
+.import-table td:first-child, .import-table th:first-child { width: 34px; }
+.import-table thead th { background: var(--bg-soft); cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 1; }
+.import-table thead th.sorted-asc::after { content: " \25B2"; }
+.import-table thead th.sorted-desc::after { content: " \25BC"; }
+.import-table tbody tr.row-hidden { display: none; }
+.import-table .field { padding: 5px 7px; font-size: .86rem; }
+
+@media (max-width: 900px) {
+    .admin-shell { grid-template-columns: 1fr; }
+    .admin-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .admin-nav h4 { display: none; }
+    .admin-filters .field, .admin-filters .select { min-width: 0; width: 100%; }
+}

@@ -1,0 +1,40 @@
+@page "/admin/contacts"
+@model OnlineShop.Web.Pages.Admin.Contacts.IndexModel
+@{
+    ViewData["Title"] = "Контакты сайта";
+    ViewData["AdminSection"] = "contacts";
+}
+<div class="admin-head">
+    <h1>Контакты сайта</h1>
+    <a class="btn" href="/admin/contacts/add">Добавить набор</a>
+</div>
+<p class="admin-count">Контакты показываются в шапке и внизу каждой страницы. Оставьте галочку «На сайте» только у одного набора.</p>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead><tr><th>Название набора</th><th>Телефон</th><th>Почта</th><th>WhatsApp</th><th>Instagram</th><th>На сайте</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var row = Model.Rows[i];
+                    <tr>
+                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">@row.Title</a></td>
+                        <td>@row.Phone</td>
+                        <td>@row.Email</td>
+                        <td>@row.Whatsapp</td>
+                        <td>@row.Instagram</td>
+                        <td><input asp-for="Rows[i].IsActive"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        <span class="admin-count">Всего: @Model.Rows.Count</span>
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn push" type="submit">Сохранить</button>
+        }
+    </div>
+</form>

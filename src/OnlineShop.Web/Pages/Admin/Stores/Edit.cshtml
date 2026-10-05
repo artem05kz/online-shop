@@ -1,0 +1,108 @@
+@page "/admin/stores/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Stores.EditModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Новая точка" : "Адрес магазина";
+    ViewData["AdminSection"] = "stores";
+    var hasMap = !string.IsNullOrEmpty(Model.Input.MapUrl) || !string.IsNullOrEmpty(Model.Input.Latitude)
+        || !ViewData.ModelState.IsValid;
+}
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новая точка" : Model.Input.Address)</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post" style="max-width:760px;">
+    <div class="admin-box">
+        <h3>Адрес точки</h3>
+        <p class="hint">Адрес пишите так, как его должен увидеть покупатель, одной строкой.</p>
+        <div class="form-row">
+            <label asp-for="Input.Address"></label>
+            <input class="field" asp-for="Input.Address" placeholder="г. Актау, 21 микрорайон, рынок «Алем», бутик №74">
+            <span class="errorlist" asp-validation-for="Input.Address"></span>
+        </div>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.City"></label>
+                <input class="field" asp-for="Input.City">
+                <span class="errorlist" asp-validation-for="Input.City"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Kind"></label>
+                <select class="select" asp-for="Input.Kind">
+                    @foreach (var kind in Enum.GetValues<StoreKind>())
+                    {
+                        <option value="@kind">@kind.Label()</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Режим работы и связь</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.WorkingHours"></label>
+                <input class="field" asp-for="Input.WorkingHours" placeholder="Пн-Сб, 9:00-18:00">
+                <span class="errorlist" asp-validation-for="Input.WorkingHours"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.LunchHours"></label>
+                <input class="field" asp-for="Input.LunchHours" placeholder="с 13:00 до 14:00">
+                <span class="help">Оставьте пустым, если обеда нет.</span>
+                <span class="errorlist" asp-validation-for="Input.LunchHours"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Phone"></label>
+                <input class="field" asp-for="Input.Phone">
+                <span class="errorlist" asp-validation-for="Input.Phone"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Показ на сайте</h3>
+        <div class="form-row form-narrow">
+            <label asp-for="Input.SortOrder"></label>
+            <input class="field" asp-for="Input.SortOrder" type="number" min="0">
+            <span class="help">Точки выводятся по этому числу от меньшего к большему.</span>
+        </div>
+        <label class="check">
+            <input asp-for="Input.IsActive">
+            <span>Показывать на сайте</span>
+        </label>
+    </div>
+
+    <details class="admin-box" open="@hasMap">
+        <summary>Карта (необязательно)</summary>
+        <p class="hint">Нужно, только если хотите кнопку «Как добраться».</p>
+        <div class="form-row">
+            <label asp-for="Input.MapUrl"></label>
+            <input class="field" asp-for="Input.MapUrl" placeholder="https://">
+            <span class="errorlist" asp-validation-for="Input.MapUrl"></span>
+        </div>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.Latitude"></label>
+                <input class="field" asp-for="Input.Latitude" inputmode="decimal">
+                <span class="errorlist" asp-validation-for="Input.Latitude"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Longitude"></label>
+                <input class="field" asp-for="Input.Longitude" inputmode="decimal">
+                <span class="errorlist" asp-validation-for="Input.Longitude"></span>
+            </div>
+        </div>
+    </details>
+
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить эту точку?');">
+        <button class="btn btn-danger btn-sm" type="submit">Удалить точку</button>
+    </form>
+}

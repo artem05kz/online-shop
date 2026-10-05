@@ -1,0 +1,16 @@
+@model OnlineShop.Web.Pages.Admin.PagerInfo
+<div class="admin-actions">
+    <span class="admin-count">Всего: @Model.TotalCount</span>
+    @if (Model.PageCount > 1)
+    {
+        @if (Model.Page > 1)
+        {
+            <a class="btn btn-ghost btn-sm" href="@QueryStrings.With(Context.Request.Query, "p", (Model.Page - 1).ToString())">Назад</a>
+        }
+        <span class="admin-count">Страница @Model.Page из @Model.PageCount</span>
+        @if (Model.Page < Model.PageCount)
+        {
+            <a class="btn btn-ghost btn-sm" href="@QueryStrings.With(Context.Request.Query, "p", (Model.Page + 1).ToString())">Вперёд</a>
+        }
+    }
+</div>

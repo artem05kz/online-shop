@@ -1,0 +1,75 @@
+@page "/admin/variants"
+@model OnlineShop.Web.Pages.Admin.Variants.IndexModel
+@{
+    ViewData["Title"] = "Цены и остатки";
+    ViewData["AdminSection"] = "variants";
+}
+<div class="admin-head">
+    <h1>Цены и остатки по артикулам</h1>
+    <a class="btn btn-ghost" href="/admin/import/stock">Обновить остаток</a>
+    <a class="btn btn-ghost" href="/admin/import">Загрузить из 1С</a>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Артикул или название товара">
+    <select class="select" name="brand" onchange="this.form.submit()">
+        <option value="">Все бренды</option>
+        @foreach (var brand in Model.Brands)
+        {
+            <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
+        }
+    </select>
+    <select class="select" name="active" onchange="this.form.submit()">
+        <option value="">Показ: все</option>
+        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
+        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
+    </select>
+    @if (!string.IsNullOrEmpty(Model.O))
+    {
+        <input type="hidden" name="o" value="@Model.O">
+    }
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList"
+      asp-route-q="@Model.Q" asp-route-brand="@Model.Brand" asp-route-active="@Model.Active" asp-route-o="@Model.O" asp-route-p="@Request.Query["p"]">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead>
+                <tr>
+                    <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
+                    <th>@AdminList.SortHeader(Request, "product", "Товар")</th>
+                    <th>Фасовка</th>
+                    <th>@AdminList.SortHeader(Request, "price", "Розничная цена")</th>
+                    <th>@AdminList.SortHeader(Request, "stock", "Остаток")</th>
+                    <th>На сайте</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var row = Model.Rows[i];
+                    <tr>
+                        <td>
+                            <input type="hidden" asp-for="Rows[i].Id">
+                            <input type="hidden" asp-for="Rows[i].Article">
+                            <a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a>
+                        </td>
+                        <td><a href="/admin/products/@row.ProductId">@row.ProductName</a></td>
+                        <td>@row.PackLabel</td>
+                        <td><input class="field small" asp-for="Rows[i].Price" inputmode="decimal"></td>
+                        <td><input class="field tiny" asp-for="Rows[i].StockQty" inputmode="numeric"></td>
+                        <td><input asp-for="Rows[i].IsActive"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn" type="submit">Сохранить</button>
+        }
+    </div>
+</form>
+<partial name="_AdminPager" model="Model.Pager" />

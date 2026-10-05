@@ -1,0 +1,82 @@
+@page "/admin/addresses/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Addresses.EditModel
+@{
+    ViewData["Title"] = "Адрес покупателя";
+    ViewData["AdminSection"] = "addresses";
+}
+<div class="admin-head">
+    <h1>Адрес покупателя @Model.Address.User.UserName</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+<form method="post" style="max-width:760px;">
+    <div class="admin-box">
+        <h3>Получатель</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.Label"></label>
+                <input class="field" asp-for="Input.Label">
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.FullName"></label>
+                <input class="field" asp-for="Input.FullName">
+                <span class="errorlist" asp-validation-for="Input.FullName"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Phone"></label>
+                <input class="field" asp-for="Input.Phone">
+                <span class="errorlist" asp-validation-for="Input.Phone"></span>
+            </div>
+        </div>
+    </div>
+    <div class="admin-box">
+        <h3>Адрес</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.City"></label>
+                <input class="field" asp-for="Input.City">
+                <span class="errorlist" asp-validation-for="Input.City"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Street"></label>
+                <input class="field" asp-for="Input.Street">
+                <span class="errorlist" asp-validation-for="Input.Street"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.House"></label>
+                <input class="field" asp-for="Input.House">
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Apartment"></label>
+                <input class="field" asp-for="Input.Apartment">
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Entrance"></label>
+                <input class="field" asp-for="Input.Entrance">
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Floor"></label>
+                <input class="field" asp-for="Input.Floor">
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Intercom"></label>
+                <input class="field" asp-for="Input.Intercom">
+            </div>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.Comment"></label>
+            <textarea class="field" asp-for="Input.Comment" rows="3"></textarea>
+        </div>
+        <label class="check">
+            <input asp-for="Input.IsDefault">
+            <span>Использовать по умолчанию</span>
+        </label>
+    </div>
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>
+
+<form method="post" asp-page-handler="Delete" asp-route-id="@Model.Address.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить адрес покупателя?');">
+    <button class="btn btn-danger btn-sm" type="submit">Удалить адрес</button>
+</form>

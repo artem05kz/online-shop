@@ -1,0 +1,39 @@
+@page "/admin/brands"
+@model OnlineShop.Web.Pages.Admin.Brands.IndexModel
+@{
+    ViewData["Title"] = "Бренды";
+    ViewData["AdminSection"] = "brands";
+}
+<div class="admin-head">
+    <h1>Бренды</h1>
+    <a class="btn" href="/admin/brands/add">Добавить бренд</a>
+</div>
+<p class="admin-count">Бренды на главной и в каталоге идут по очерёдности от меньшего числа к большему, при равных числах по названию.</p>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead><tr><th>Название</th><th>Очерёдность</th><th>Показывать на сайте</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <input type="hidden" asp-for="Rows[i].Id">
+                            <a asp-page="Edit" asp-route-id="@Model.Rows[i].Id">@Model.Rows[i].Name</a>
+                        </td>
+                        <td><input class="field tiny" asp-for="Rows[i].SortOrder" type="number" min="0"></td>
+                        <td><input asp-for="Rows[i].IsActive"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        <span class="admin-count">Всего: @Model.Rows.Count</span>
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn push" type="submit">Сохранить</button>
+        }
+    </div>
+</form>

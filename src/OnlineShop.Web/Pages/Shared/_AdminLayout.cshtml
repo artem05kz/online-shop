@@ -1,0 +1,71 @@
+@{
+    var title = ViewData["Title"] as string;
+    var section = ViewData["AdminSection"] as string;
+    var flash = TempData.TakeFlash();
+    string Active(string name) => section == name ? "active" : "";
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@(title is null ? "Управление магазином GRASS" : $"{title} | Управление магазином GRASS")</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="admin">
+<header class="admin-top">
+    <div class="inner">
+        <a class="title" href="/admin">Управление магазином GRASS</a>
+        <span class="spacer"></span>
+        <a href="/" target="_blank" rel="noopener">Открыть сайт</a>
+        <span>@User.Identity?.Name</span>
+        <form action="@ShopUrls.Logout" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit">Выйти</button>
+        </form>
+    </div>
+</header>
+
+<div class="admin-shell">
+    <nav class="admin-nav" aria-label="Разделы панели">
+        <h4>Магазин</h4>
+        <a class="@Active("home")" href="/admin">Главная панели</a>
+        <a class="@Active("orders")" href="/admin/orders">Заказы</a>
+        <h4>Каталог</h4>
+        <a class="@Active("products")" href="/admin/products">Товары</a>
+        <a class="@Active("variants")" href="/admin/variants">Цены и остатки</a>
+        <a class="@Active("categories")" href="/admin/categories">Категории</a>
+        <a class="@Active("brands")" href="/admin/brands">Бренды</a>
+        <a class="@Active("banners")" href="/admin/banners">Баннеры</a>
+        <h4>Загрузка из 1С</h4>
+        <a class="@Active("import")" href="/admin/import">Загрузить товары</a>
+        <a class="@Active("import-stock")" href="/admin/import/stock">Обновить остаток</a>
+        <h4>Сайт</h4>
+        <a class="@Active("stores")" href="/admin/stores">Адреса магазинов</a>
+        <a class="@Active("contacts")" href="/admin/contacts">Контакты сайта</a>
+        <h4>Покупатели</h4>
+        <a class="@Active("users")" href="/admin/users">Покупатели и доступ</a>
+        <a class="@Active("addresses")" href="/admin/addresses">Адреса покупателей</a>
+    </nav>
+
+    <main class="admin-main">
+        @if (flash.Count > 0)
+        {
+            <ul class="messages" style="margin-top:0;">
+                @foreach (var message in flash)
+                {
+                    <li class="message @message.CssClass">@message.Text</li>
+                }
+            </ul>
+        }
+        @RenderBody()
+    </main>
+</div>
+
+<script src="~/js/admin_edit_highlight.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

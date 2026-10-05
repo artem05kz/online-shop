@@ -1,0 +1,73 @@
+@page "/admin/orders"
+@model OnlineShop.Web.Pages.Admin.Orders.IndexModel
+@{
+    ViewData["Title"] = "Заказы";
+    ViewData["AdminSection"] = "orders";
+}
+<div class="admin-head">
+    <h1>Заказы покупателей</h1>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Телефон, имя или логин">
+    <select class="select" name="status" onchange="this.form.submit()">
+        <option value="">Все статусы</option>
+        @foreach (var status in Enum.GetValues<OrderStatus>())
+        {
+            <option value="@status.ToCode()" selected="@(Model.Status == status.ToCode())">@status.Label()</option>
+        }
+    </select>
+    @if (!string.IsNullOrEmpty(Model.O))
+    {
+        <input type="hidden" name="o" value="@Model.O">
+    }
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList"
+      asp-route-q="@Model.Q" asp-route-status="@Model.Status" asp-route-o="@Model.O" asp-route-p="@Request.Query["p"]">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead>
+                <tr>
+                    <th>@AdminList.SortHeader(Request, "id", "Номер")</th>
+                    <th>Покупатель</th>
+                    <th>Получатель</th>
+                    <th>Телефон</th>
+                    <th>Город</th>
+                    <th>@AdminList.SortHeader(Request, "created", "Дата")</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var row = Model.Rows[i];
+                    <tr>
+                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">№@row.Id</a></td>
+                        <td>@row.UserName</td>
+                        <td>@row.ContactName</td>
+                        <td><a href="tel:@row.ContactPhone">@row.ContactPhone</a></td>
+                        <td>@row.City</td>
+                        <td class="muted">@Format.DateTimeText(row.CreatedAt)</td>
+                        <td>
+                            <select class="select" asp-for="Rows[i].Status">
+                                @foreach (var status in Enum.GetValues<OrderStatus>())
+                                {
+                                    <option value="@status">@status.Label()</option>
+                                }
+                            </select>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn" type="submit">Сохранить статусы</button>
+        }
+    </div>
+</form>
+<partial name="_AdminPager" model="Model.Pager" />

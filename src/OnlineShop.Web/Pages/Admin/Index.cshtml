@@ -1,0 +1,43 @@
+@page "/admin"
+@model IndexModel
+@{
+    ViewData["Title"] = "Главная панели";
+    ViewData["AdminSection"] = "home";
+}
+<h1>Частые действия</h1>
+<div class="quick-grid">
+    <a class="quick-card" href="/admin/import/stock">
+        <span class="qc-title">Обновить остаток на складе</span>
+        <span class="qc-note">Загрузить только файл «Остатки» из 1С. Цены и фото не меняются.</span>
+    </a>
+    <a class="quick-card" href="/admin/import">
+        <span class="qc-title">Загрузить товары из 1С</span>
+        <span class="qc-note">Прайс-лист с названиями, фото и ценами. Можно выбрать, что грузить.</span>
+    </a>
+    <a class="quick-card" href="/admin/orders?status=new">
+        <span class="qc-title">Заказы покупателей</span>
+        <span class="qc-note">Посмотреть новые заказы и поменять статус.</span>
+        @if (Model.NewOrders > 0)
+        {
+            <span class="qc-badge">новых: @Model.NewOrders</span>
+        }
+    </a>
+    <a class="quick-card" href="/admin/variants">
+        <span class="qc-title">Цены и остатки по артикулам</span>
+        <span class="qc-note">Быстро поправить цену или количество прямо в списке.</span>
+    </a>
+    <a class="quick-card" href="/admin/banners">
+        <span class="qc-title">Баннеры на главной</span>
+        <span class="qc-note">Картинки в верхней части главной страницы.</span>
+    </a>
+    <a class="quick-card" href="/" target="_blank" rel="noopener">
+        <span class="qc-title">Открыть сайт</span>
+        <span class="qc-note">Посмотреть, как всё выглядит для покупателя.</span>
+    </a>
+</div>
+
+<h2>Коротко о каталоге</h2>
+<div class="admin-box">
+    Товаров в каталоге: <strong>@Model.Products</strong>.
+    Видимых фасовок без остатка: <strong>@Model.OutOfStock</strong>.
+</div>

@@ -1,0 +1,41 @@
+@page "/admin/import/confirm"
+@model OnlineShop.Web.Pages.Admin.Import.ConfirmModel
+@{
+    ViewData["Title"] = "Загрузка завершена";
+    ViewData["AdminSection"] = "import";
+    var s = Model.Stats;
+}
+<h1>Готово</h1>
+<div class="admin-box form-narrow" style="max-width:520px;">
+    <ul class="spec-list">
+        <li><span>Новых брендов</span><span>@s.Brands</span></li>
+        <li><span>Новых категорий</span><span>@s.Categories</span></li>
+        <li><span>Новых товаров</span><span>@s.ProductsCreated</span></li>
+        <li><span>Обновлено товаров</span><span>@s.ProductsUpdated</span></li>
+        <li><span>Новых артикулов</span><span>@s.VariantsCreated</span></li>
+        <li><span>Обновлено артикулов</span><span>@s.VariantsUpdated</span></li>
+        <li><span>Добавлено фотографий</span><span>@s.ImagesAdded</span></li>
+        <li><span>Остатков сопоставлено</span><span>@s.StockMatched</span></li>
+    </ul>
+</div>
+
+@if (s.StockUnmatched.Count > 0)
+{
+    <ul class="warnings">
+        <li>Артикулов из остатков без пары в каталоге: @s.StockUnmatched.Count. Это нормально, если товар из этой
+            выгрузки ещё не загружался через прайс-лист.
+            <details style="margin-top:6px;"><summary>Показать артикулы</summary>@string.Join(", ", s.StockUnmatched)</details>
+        </li>
+    </ul>
+}
+
+@if (s.VariantsCreated > 0)
+{
+    <p class="admin-count">Новые артикулы пришли без розничной цены: из 1С приходит только оптовая. Пока цены нет, на сайте
+        у них «цена уточняется» и купить их нельзя. Цены можно проставить в разделе <a href="/admin/variants">«Цены и остатки»</a>.</p>
+}
+
+<div class="admin-actions">
+    <a class="btn btn-ghost" href="/admin/import">Загрузить ещё файл</a>
+    <a class="btn" href="/admin/products">К товарам</a>
+</div>

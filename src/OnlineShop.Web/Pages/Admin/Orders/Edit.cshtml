@@ -1,0 +1,107 @@
+@page "/admin/orders/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Orders.EditModel
+@{
+    var order = Model.Order;
+    ViewData["Title"] = $"Заказ №{order.Id}";
+    ViewData["AdminSection"] = "orders";
+    var generalErrors = ViewData.ModelState[""]?.Errors ?? [];
+    var items = order.Items.OrderBy(i => i.Id).ToDictionary(i => i.Id);
+}
+<div class="admin-head">
+    <h1>Заказ №@order.Id</h1>
+    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+</div>
+
+@if (generalErrors.Count > 0)
+{
+    <ul class="messages" style="margin-top:0;">
+        @foreach (var error in generalErrors)
+        {
+            <li class="message error">@error.ErrorMessage</li>
+        }
+    </ul>
+}
+
+<form method="post" id="changelist-form">
+    <div class="admin-box">
+        <ul class="spec-list">
+            <li><span>Покупатель (логин)</span><span>@order.User.UserName</span></li>
+            <li><span>Оформлен</span><span>@Format.DateTimeText(order.CreatedAt)</span></li>
+            <li><span>Изменён</span><span>@Format.DateTimeText(order.UpdatedAt)</span></li>
+        </ul>
+        <div class="form-row form-narrow" style="margin-top:14px;">
+            <label asp-for="Input.Status"></label>
+            <select class="select" asp-for="Input.Status">
+                @foreach (var status in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@status">@status.Label()</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Доставка</h3>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.ContactName"></label>
+                <input class="field" asp-for="Input.ContactName">
+                <span class="errorlist" asp-validation-for="Input.ContactName"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.ContactPhone"></label>
+                <input class="field" asp-for="Input.ContactPhone">
+                <span class="errorlist" asp-validation-for="Input.ContactPhone"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.City"></label>
+                <input class="field" asp-for="Input.City">
+                <span class="errorlist" asp-validation-for="Input.City"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.StreetAndDetails"></label>
+                <input class="field" asp-for="Input.StreetAndDetails">
+                <span class="errorlist" asp-validation-for="Input.StreetAndDetails"></span>
+            </div>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.Comment"></label>
+            <textarea class="field" asp-for="Input.Comment" rows="3"></textarea>
+        </div>
+    </div>
+
+    <div class="admin-box">
+        <h3>Позиции</h3>
+        <p class="hint">Название, фасовка и цена сохранены на момент заказа и не меняются вслед за каталогом.</p>
+        <div class="admin-table-wrap">
+            <table class="admin-table" id="result_list">
+                <thead><tr><th>Товар</th><th>Фасовка</th><th>Артикул</th><th class="num">Цена</th><th>Количество</th><th class="num">Сумма</th><th>Удалить</th></tr></thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Items.Count; i++)
+                    {
+                        if (!items.TryGetValue(Model.Items[i].Id, out var item))
+                        {
+                            continue;
+                        }
+                        <tr>
+                            <td><input type="hidden" asp-for="Items[i].Id"><a href="/admin/products/@item.Variant.ProductId">@item.ProductName</a></td>
+                            <td>@item.PackLabel</td>
+                            <td>@item.Article</td>
+                            <td class="num">@Format.Money(item.Price)</td>
+                            <td><input class="field tiny" asp-for="Items[i].Quantity" type="number" min="1"><span class="errorlist" asp-validation-for="Items[i].Quantity"></span></td>
+                            <td class="num">@Format.Money(item.Subtotal)</td>
+                            <td><input asp-for="Items[i].Delete"></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="admin-actions">
+            <strong class="push">Итого: @order.TotalQuantity шт., @Format.Money(order.Total)</strong>
+        </div>
+    </div>
+
+    <div class="admin-actions">
+        <button class="btn" type="submit">Сохранить</button>
+    </div>
+</form>

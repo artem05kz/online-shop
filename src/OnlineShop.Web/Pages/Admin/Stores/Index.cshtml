@@ -1,0 +1,65 @@
+@page "/admin/stores"
+@model OnlineShop.Web.Pages.Admin.Stores.IndexModel
+@{
+    ViewData["Title"] = "Адреса магазинов";
+    ViewData["AdminSection"] = "stores";
+}
+<div class="admin-head">
+    <h1>Адреса магазинов</h1>
+    <a class="btn" href="/admin/stores/add">Добавить точку</a>
+</div>
+
+<form class="admin-filters" method="get">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Адрес, город или телефон">
+    <select class="select" name="city" onchange="this.form.submit()">
+        <option value="">Все города</option>
+        @foreach (var city in Model.Cities)
+        {
+            <option value="@city" selected="@(Model.City == city)">@city</option>
+        }
+    </select>
+    <select class="select" name="kind" onchange="this.form.submit()">
+        <option value="">Все типы</option>
+        @foreach (var kind in Enum.GetValues<StoreKind>())
+        {
+            <option value="@kind.ToCode()" selected="@(Model.Kind == kind.ToCode())">@kind.Label()</option>
+        }
+    </select>
+    <select class="select" name="active" onchange="this.form.submit()">
+        <option value="">Показ: все</option>
+        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
+        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
+    </select>
+    <button class="btn btn-ghost" type="submit">Найти</button>
+</form>
+
+<form id="changelist-form" method="post" asp-page-handler="SaveList"
+      asp-route-q="@Model.Q" asp-route-city="@Model.City" asp-route-kind="@Model.Kind" asp-route-active="@Model.Active">
+    <div class="admin-table-wrap">
+        <table class="admin-table" id="result_list">
+            <thead><tr><th>Адрес</th><th>Город</th><th>Тип точки</th><th>Часы работы</th><th>Телефон</th><th>Очерёдность</th><th>На сайте</th></tr></thead>
+            <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    var row = Model.Rows[i];
+                    <tr>
+                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">@row.Address</a></td>
+                        <td>@row.City</td>
+                        <td>@row.Kind.Label()</td>
+                        <td class="muted">@row.WorkingHours</td>
+                        <td>@row.Phone</td>
+                        <td><input class="field tiny" asp-for="Rows[i].SortOrder" type="number" min="0"></td>
+                        <td><input asp-for="Rows[i].IsActive"></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <div class="admin-actions">
+        <span class="admin-count">Всего: @Model.Rows.Count</span>
+        @if (Model.Rows.Count > 0)
+        {
+            <button class="btn push" type="submit">Сохранить</button>
+        }
+    </div>
+</form>

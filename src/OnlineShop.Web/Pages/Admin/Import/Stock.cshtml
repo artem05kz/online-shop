@@ -1,0 +1,22 @@
+@page "/admin/import/stock"
+@{
+    ViewData["Title"] = "Обновить остаток на складе";
+    ViewData["AdminSection"] = "import-stock";
+}
+@* Короткий путь к самому частому и безопасному действию. Обрабатывает его та же страница загрузки,
+   здесь только форма с одним полем, чтобы не перепутать с полной загрузкой каталога. *@
+<h1>Обновить остаток на складе</h1>
+<p>Загрузите только файл «Остатки» из 1С. Цены, фото и описания не тронутся, обновится только количество
+   на складе у уже загруженных товаров. Нужно добавить новый товар или поменять цену и фото: используйте
+   <a href="/admin/import">полную загрузку из 1С</a>.</p>
+
+<form method="post" action="/admin/import" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
+    @Html.AntiForgeryToken()
+    <div class="form-row">
+        <label for="Stock">Остатки (артикул, количество на складе)</label>
+        <input type="file" id="Stock" name="Stock" accept=".xlsx" required>
+    </div>
+    <div class="admin-actions">
+        <button class="btn" type="submit">Посмотреть, что получится</button>
+    </div>
+</form>
