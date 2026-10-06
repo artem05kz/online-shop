@@ -7,7 +7,7 @@
 @if (Model.IsEmpty)
 {
     <div class="empty">
-        <div class="empty-ico" aria-hidden="true">🛒</div>
+        <div class="empty-ico">@Icons.Get("cart", 44)</div>
         <h2>Корзина пуста</h2>
         <p>Загляните в каталог, там есть что выбрать.</p>
         <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>

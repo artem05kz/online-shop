@@ -62,6 +62,22 @@ public class ProductVariant
     [NotMapped]
     public bool InStock => StockQty > 0;
 
+    /// <summary>
+    /// Объём для сортировки фасовок: миллилитры и граммы в литрах и килограммах, иначе
+    /// «500 мл» вставало бы после «21 л», потому что 500 больше 21.
+    /// </summary>
+    [NotMapped]
+    public decimal? SortVolume
+    {
+        get
+        {
+            // Единица бывает с хвостом: «500 мл триггер» разбирается как «мл триггер».
+            var unit = VolumeUnit.Trim().ToLowerInvariant();
+            var small = unit.StartsWith("мл") || unit == "г" || unit.StartsWith("гр");
+            return small ? VolumeValue / 1000m : VolumeValue;
+        }
+    }
+
     public override string ToString() =>
         $"{Product?.Name} ({(string.IsNullOrEmpty(PackLabel) ? Article : PackLabel)})";
 }

@@ -1,0 +1,36 @@
+@model OnlineShop.Web.Services.CategoryNode
+@* Одна категория в дереве и, под ней, её подкатегории. *@
+@{
+    var c = Model.Category;
+}
+<li id="category-@c.Id">
+    <div class="tree-row">
+        <span class="t-name">
+            @Icons.Get("folder")
+            <a href="/admin/categories/@c.Id">@c.Name</a>
+            @if (!c.IsActive)
+            {
+                <span class="pill off">@Icons.Get("eye-off", 16) скрыта</span>
+            }
+        </span>
+        <a class="t-count" href="/admin/products?category=@c.Id">@Model.TotalProducts @Plural.Products(Model.TotalProducts)</a>
+        <span class="t-actions">
+            <form method="post" asp-page-handler="Move" asp-route-kind="category" asp-route-id="@c.Id" asp-route-direction="-1">
+                <button class="btn btn-ghost btn-sm btn-icon" type="submit" title="Выше" aria-label="Переместить выше">@Icons.Get("arrow-up")</button>
+            </form>
+            <form method="post" asp-page-handler="Move" asp-route-kind="category" asp-route-id="@c.Id" asp-route-direction="1">
+                <button class="btn btn-ghost btn-sm btn-icon" type="submit" title="Ниже" aria-label="Переместить ниже">@Icons.Get("arrow-down")</button>
+            </form>
+            <a class="btn btn-ghost btn-sm" href="/admin/categories/@c.Id">@Icons.Get("pencil", 18) Изменить</a>
+        </span>
+    </div>
+    @if (Model.Children.Count > 0)
+    {
+        <ul>
+            @foreach (var child in Model.Children)
+            {
+                <partial name="_Node" model="child" />
+            }
+        </ul>
+    }
+</li>

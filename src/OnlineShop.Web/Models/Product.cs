@@ -67,7 +67,7 @@ public class Product
 
     [NotMapped]
     public IReadOnlyList<ProductVariant> ActiveVariants =>
-        Variants.Where(v => v.IsActive).OrderBy(v => v.VolumeValue).ThenBy(v => v.Id).ToList();
+        Variants.Where(v => v.IsActive).OrderBy(v => v.SortVolume).ThenBy(v => v.Id).ToList();
 
     [NotMapped]
     public decimal? MinPrice =>

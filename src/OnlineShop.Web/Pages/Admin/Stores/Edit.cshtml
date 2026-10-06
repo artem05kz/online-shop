@@ -3,8 +3,6 @@
 @{
     ViewData["Title"] = Model.Id is null ? "Новая точка" : "Адрес магазина";
     ViewData["AdminSection"] = "stores";
-    var hasMap = !string.IsNullOrEmpty(Model.Input.MapUrl) || !string.IsNullOrEmpty(Model.Input.Latitude)
-        || !ViewData.ModelState.IsValid;
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новая точка" : Model.Input.Address)</h1>
@@ -73,30 +71,29 @@
         </label>
     </div>
 
-    <details class="admin-box" open="@hasMap">
-        <summary>Карта (необязательно)</summary>
-        <p class="hint">Нужно, только если хотите кнопку «Как добраться».</p>
-        <div class="form-row">
-            <label asp-for="Input.MapUrl"></label>
-            <input class="field" asp-for="Input.MapUrl" placeholder="https://">
-            <span class="errorlist" asp-validation-for="Input.MapUrl"></span>
-        </div>
-        <div class="form-grid">
-            <div class="form-row">
-                <label asp-for="Input.Latitude"></label>
-                <input class="field" asp-for="Input.Latitude" inputmode="decimal">
-                <span class="errorlist" asp-validation-for="Input.Latitude"></span>
+    <div class="admin-box">
+        <h3>Точка на карте</h3>
+        <p class="hint">Нажмите на карту там, где находится магазин. По этой точке покупатель построит маршрут в 2ГИС.</p>
+        <div id="store-map" class="map-picker" data-map-picker data-provider="@(Model.MapKey.Length > 0 ? "twogis" : "osm")" data-key="@Model.MapKey"
+             data-lat="Input_Latitude" data-lng="Input_Longitude" data-hint="store-map-hint"></div>
+        <p class="admin-count" id="store-map-hint" style="margin:8px 0 0;">Метка не поставлена.</p>
+        <span class="errorlist" asp-validation-for="Input.Latitude"></span>
+        <span class="errorlist" asp-validation-for="Input.Longitude"></span>
+        <input type="hidden" asp-for="Input.Latitude">
+        <input type="hidden" asp-for="Input.Longitude">
+        <details style="margin-top:14px;">
+            <summary class="admin-count" style="cursor:pointer;">Своя ссылка «Как добраться» (необязательно)</summary>
+            <div class="form-row" style="margin-top:10px;">
+                <input class="field" asp-for="Input.MapUrl" placeholder="https://2gis.kz/...">
+                <span class="help">Если указать, кнопка поведёт по ней, а не по точке на карте. Например, на карточку магазина в 2ГИС.</span>
+                <span class="errorlist" asp-validation-for="Input.MapUrl"></span>
             </div>
-            <div class="form-row">
-                <label asp-for="Input.Longitude"></label>
-                <input class="field" asp-for="Input.Longitude" inputmode="decimal">
-                <span class="errorlist" asp-validation-for="Input.Longitude"></span>
-            </div>
-        </div>
-    </details>
+        </details>
+    </div>
 
-    <div class="admin-actions">
-        <button class="btn" type="submit">Сохранить</button>
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+        <a class="btn btn-ghost" href="/admin/stores">Отмена</a>
     </div>
 </form>
 
@@ -105,4 +102,8 @@
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить эту точку?');">
         <button class="btn btn-danger btn-sm" type="submit">Удалить точку</button>
     </form>
+}
+
+@section Scripts {
+    <partial name="_MapScripts" model="Model.MapKey" />
 }

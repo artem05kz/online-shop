@@ -19,8 +19,8 @@
         }
         @if (Model.Banners.Count > 1)
         {
-            <button type="button" class="banner-nav banner-prev" aria-label="Предыдущий баннер">‹</button>
-            <button type="button" class="banner-nav banner-next" aria-label="Следующий баннер">›</button>
+            <button type="button" class="banner-nav banner-prev" aria-label="Предыдущий баннер">@Icons.Get("arrow-left", 20)</button>
+            <button type="button" class="banner-nav banner-next" aria-label="Следующий баннер">@Icons.Get("arrow-right", 20)</button>
             <div class="banner-dots">
                 @for (var i = 0; i < Model.Banners.Count; i++)
                 {
@@ -34,12 +34,15 @@
 @if (Model.Tiles.Count > 0)
 {
     <section class="section">
-        <div class="section-head"><h2>Каталог по направлениям</h2></div>
+        <div class="section-head"><h2>Категории</h2></div>
         <div class="tiles">
             @foreach (var tile in Model.Tiles)
             {
                 <a class="tile" href="@Url.Category(tile.Category)">
-                    <span>@tile.Category.Name</span>
+                    <span class="tile-img">
+                        <img src="@(tile.ImagePath is null ? Media.NoPhoto : Media.Url(tile.ImagePath))" alt="" loading="lazy">
+                    </span>
+                    <span class="tile-name">@tile.Category.Name</span>
                     <span class="tile-count">@tile.ProductCount @Plural.Products(tile.ProductCount)</span>
                 </a>
             }
@@ -60,23 +63,7 @@
     </section>
 }
 
-@foreach (var block in Model.Sections)
-{
-    <section class="section">
-        <div class="section-head">
-            <h2>@block.Category.Name</h2>
-            <a class="more" href="@Url.Category(block.Category)">Все товары →</a>
-        </div>
-        <div class="product-grid">
-            @foreach (var product in block.Products)
-            {
-                <partial name="_ProductCard" model="product" />
-            }
-        </div>
-    </section>
-}
-
-@if (Model.Sections.Count == 0)
+@if (Model.Tiles.Count == 0)
 {
     <div class="empty">
         <h2>Каталог пока пуст</h2>

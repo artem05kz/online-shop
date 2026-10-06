@@ -23,26 +23,21 @@
 
 <div class="topbar">
     <div class="container">
-        <span>@city</span>
-        @if (!string.IsNullOrEmpty(contact?.Phone))
-        {
-            <a href="tel:@contact.PhoneLink">@contact.Phone</a>
-        }
+        <span>@Icons.Get("pin", 15) @city</span>
         @if (!string.IsNullOrEmpty(contact?.WorkingHours))
         {
-            <span class="muted">@contact.WorkingHours</span>
+            <span>@Icons.Get("clock", 15) @contact.WorkingHours</span>
         }
-        <a asp-controller="Stores" asp-action="Index">Адреса магазинов</a>
         <span class="spacer"></span>
+        <span>Оплата при получении</span>
         @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
         {
-            <a href="@contact.WhatsappLink" target="_blank" rel="noopener">WhatsApp</a>
+            <a href="@contact.WhatsappLink" target="_blank" rel="noopener">@Icons.Get("chat", 15) WhatsApp</a>
         }
-        @if (!string.IsNullOrEmpty(contact?.InstagramLink))
+        @if (!string.IsNullOrEmpty(contact?.Phone))
         {
-            <a href="@contact.InstagramLink" target="_blank" rel="noopener">Instagram</a>
+            <a href="tel:@contact.PhoneLink"><strong>@Icons.Get("phone", 15) @contact.Phone</strong></a>
         }
-        <span><strong>Оплата при получении</strong> наличными или картой</span>
     </div>
 </div>
 
@@ -59,17 +54,17 @@
         </button>
 
         <form class="search" asp-controller="Catalog" asp-action="Search" method="get" role="search">
-            <input type="text" name="q" placeholder="Поиск по каталогу" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу">
-            <button type="submit">Найти</button>
+            <input type="text" name="q" placeholder="Поиск: название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу">
+            <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
         </form>
 
         <nav class="header-actions">
             <a class="header-link" asp-controller="Stores" asp-action="Index">
-                <span class="ico" aria-hidden="true">📍</span>
+                <span class="ico">@Icons.Get("pin", 22)</span>
                 <span class="lbl">Адреса</span>
             </a>
             <a class="header-link" asp-controller="Cart" asp-action="Index">
-                <span class="ico" aria-hidden="true">🛒</span>
+                <span class="ico">@Icons.Get("cart", 22)</span>
                 <span class="lbl">Корзина</span>
                 @if (nav.CartCount > 0)
                 {
@@ -77,13 +72,13 @@
                 }
             </a>
             <a class="header-link" href="@(signedIn ? ShopUrls.Profile : ShopUrls.Login)">
-                <span class="ico" aria-hidden="true">👤</span>
+                <span class="ico">@Icons.Get("user", 22)</span>
                 <span class="lbl">@(signedIn ? "Профиль" : "Войти")</span>
             </a>
             @if (User.IsInRole(RoleNames.Manager))
             {
                 <a class="header-link" href="@ShopUrls.Admin">
-                    <span class="ico" aria-hidden="true">⚙</span>
+                    <span class="ico">@Icons.Get("dashboard", 22)</span>
                     <span class="lbl">Админка</span>
                 </a>
             }

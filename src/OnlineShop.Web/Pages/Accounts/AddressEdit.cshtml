@@ -4,13 +4,6 @@
     var heading = Model.IsNew ? "Новый адрес доставки" : "Изменить адрес";
     ViewData["Title"] = Model.IsNew ? "Новый адрес" : "Изменить адрес";
     ViewData["AccountTab"] = "addresses";
-    var useGoogle = Model.GoogleMapsKey.Length > 0;
-}
-@section Head {
-    @if (!useGoogle)
-    {
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    }
 }
 <h1>Личный кабинет</h1>
 <partial name="_AccountTabs" />
@@ -23,10 +16,11 @@
             <div class="panel">
                 <h3>Где вы находитесь</h3>
                 <p class="muted" style="font-size:.88rem; margin-top:0;">
-                    Нажмите на карту или перетащите метку, и улица подставится сама.
+                    Нажмите на карту, и улица подставится сама.
                     Номер дома, квартиру и остальное укажите ниже.
                 </p>
-                <div id="map"></div>
+                <div id="map" data-map-picker data-provider="@(Model.MapKey.Length > 0 ? "twogis" : "osm")" data-key="@Model.MapKey"
+                     data-lat="id_latitude" data-lng="id_longitude" data-city="id_city" data-street="id_street" data-house="id_house"></div>
                 <p class="map-hint" id="map-hint">Метка не поставлена.</p>
                 <span class="errorlist" asp-validation-for="Input.Latitude"></span>
                 <input type="hidden" asp-for="Input.Latitude" id="id_latitude">
@@ -106,15 +100,5 @@
 </form>
 
 @section Scripts {
-    @if (useGoogle)
-    {
-        <script>window.MAP_PROVIDER = 'google';</script>
-        <script src="https://maps.googleapis.com/maps/api/js?key=@Uri.EscapeDataString(Model.GoogleMapsKey)&language=ru&region=KZ"></script>
-    }
-    else
-    {
-        <script>window.MAP_PROVIDER = 'osm';</script>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    }
-    <script src="~/js/address_map.js" asp-append-version="true"></script>
+    <partial name="_MapScripts" model="Model.MapKey" />
 }

@@ -48,6 +48,21 @@ public class ModelLogicTests
     }
 
     [Fact]
+    public void Packs_sort_by_volume_across_units()
+    {
+        var product = new Product
+        {
+            Variants =
+            [
+                new ProductVariant { Id = 1, Article = "21", VolumeValue = 21m, VolumeUnit = "л" },
+                new ProductVariant { Id = 2, Article = "500", VolumeValue = 500m, VolumeUnit = "мл триггер" },
+                new ProductVariant { Id = 3, Article = "1", VolumeValue = 1m, VolumeUnit = "л" },
+            ],
+        };
+        Assert.Equal(["500", "1", "21"], product.ActiveVariants.Select(v => v.Article));
+    }
+
+    [Fact]
     public void Default_variant_prefers_cheapest_in_stock_then_cheapest_overall()
     {
         var product = new Product

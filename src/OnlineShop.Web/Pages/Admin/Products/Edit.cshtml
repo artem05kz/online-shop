@@ -5,14 +5,15 @@
     ViewData["AdminSection"] = "products";
     var existing = Model.Existing;
     var generalErrors = ViewData.ModelState[""]?.Errors ?? [];
+    var primary = Model.Images.FirstOrDefault(i => i.IsPrimary) ?? Model.Images.FirstOrDefault();
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новый товар" : Model.Input.Name)</h1>
     @if (existing is { IsActive: true })
     {
-        <a class="btn btn-ghost" href="@Url.Product(existing)" target="_blank" rel="noopener">Открыть на сайте</a>
+        <a class="btn btn-ghost" href="@Url.Product(existing)" target="_blank" rel="noopener">@Icons.Get("external") Как на сайте</a>
     }
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" href="/admin/products">@Icons.Get("arrow-left") Ко всем товарам</a>
 </div>
 
 @if (generalErrors.Count > 0)
@@ -26,65 +27,83 @@
 }
 
 <form method="post" enctype="multipart/form-data" id="changelist-form">
-    <div class="admin-box">
-        <h3>Основное</h3>
-        <div class="form-grid">
-            <div class="form-row">
-                <label asp-for="Input.Name"></label>
-                <input class="field" asp-for="Input.Name">
-                <span class="errorlist" asp-validation-for="Input.Name"></span>
-            </div>
-            <div class="form-row">
-                <label asp-for="Input.Slug"></label>
-                <input class="field" asp-for="Input.Slug">
-                <span class="help">Оставьте пустым, и он заполнится из названия.</span>
-                <span class="errorlist" asp-validation-for="Input.Slug"></span>
-            </div>
-            <div class="form-row">
-                <label asp-for="Input.CategoryId"></label>
-                <select class="select" asp-for="Input.CategoryId">
-                    <option value="">Выберите категорию</option>
-                    @foreach (var group in Model.Categories.GroupBy(c => c.Brand.Name))
+    <div class="product-edit">
+        <div>
+            @if (primary is not null)
+            {
+                <img class="photo-main" id="photo-main" src="@Media.Url(primary.ImagePath)" alt="">
+            }
+            else
+            {
+                <div class="photo-main empty">Фото пока нет</div>
+            }
+
+            @if (Model.Images.Count > 0)
+            {
+                <div class="photo-list">
+                    @for (var i = 0; i < Model.Images.Count; i++)
                     {
-                        <optgroup label="@group.Key">
-                            @foreach (var category in group)
-                            {
-                                <option value="@category.Id">@category.Name</option>
-                            }
-                        </optgroup>
+                        var image = Model.Images[i];
+                        <div class="photo-tile @(image == primary ? "primary" : "")">
+                            <input type="hidden" asp-for="Images[i].Id">
+                            <input type="hidden" asp-for="Images[i].ImagePath">
+                            <input type="hidden" asp-for="Images[i].IsPrimary">
+                            <input type="hidden" asp-for="Images[i].SortOrder">
+                            <img src="@Media.Url(image.ImagePath)" alt="">
+                            <label><input type="radio" name="PrimaryImageId" value="@image.Id" checked="@(image == primary)" data-src="@Media.Url(image.ImagePath)"> Главное</label>
+                            <label><input asp-for="Images[i].Delete"> Удалить</label>
+                        </div>
                     }
-                </select>
-                <span class="errorlist" asp-validation-for="Input.CategoryId"></span>
+                </div>
+            }
+
+            <label class="upload-box" for="new-images">
+                @Icons.Get("upload", 28)
+                <strong>Добавить фото</strong>
+                <span class="admin-count">JPG или PNG, можно несколько сразу</span>
+                <input id="new-images" class="visually-hidden" type="file" name="NewImages" multiple accept="image/jpeg,image/png,image/gif,image/webp">
+            </label>
+            <span class="errorlist" asp-validation-for="NewImages" style="display:block; margin-top:8px; font-weight:600; color:var(--a-danger);"></span>
+        </div>
+
+        <div>
+            <div class="admin-box">
+                <div class="form-row">
+                    <label asp-for="Input.Name"></label>
+                    <input class="field" asp-for="Input.Name" style="font-size:1.12rem; font-weight:600;">
+                    <span class="errorlist" asp-validation-for="Input.Name"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.CategoryId"></label>
+                    <select class="select" asp-for="Input.CategoryId">
+                        <option value="">Выберите категорию</option>
+                        @foreach (var node in Model.Tree.Flatten())
+                        {
+                            <option value="@node.Category.Id">@Model.Tree.Path(node.Category.Id)</option>
+                        }
+                    </select>
+                    <span class="help">Нужной категории нет? Её можно добавить в разделе <a href="/admin/categories">«Бренды и категории»</a>.</span>
+                    <span class="errorlist" asp-validation-for="Input.CategoryId"></span>
+                </div>
+                <label class="check">
+                    <input asp-for="Input.IsActive">
+                    <span>Показывать на сайте</span>
+                </label>
+            </div>
+            <div class="admin-box">
+                <h3>Описание</h3>
+                <textarea class="field" asp-for="Input.Description" rows="9"></textarea>
             </div>
         </div>
-        <label class="check">
-            <input asp-for="Input.IsActive">
-            <span>Показывать на сайте</span>
-        </label>
     </div>
-
-    <div class="admin-box">
-        <h3>Описание</h3>
-        <textarea class="field" asp-for="Input.Description" rows="7"></textarea>
-    </div>
-
-    @* pH нужен не каждому товару, поэтому блок свёрнут. Если значение уже есть, скрипт product_admin.js его раскроет. *@
-    <details class="admin-box">
-        <summary>Кислотность (pH)</summary>
-        <p class="hint">Нужно не для каждого товара: заполняйте, только если это важно указать. Пустое поле на сайте не показывается.</p>
-        <div class="form-row form-narrow">
-            <input class="field" asp-for="Input.Ph">
-            <span class="errorlist" asp-validation-for="Input.Ph"></span>
-        </div>
-    </details>
 
     <div class="admin-box">
         <h3>Фасовки и цены</h3>
-        <p class="hint">Чтобы добавить фасовку, заполните пустую строку внизу. Цены можно писать с запятой.</p>
+        <p class="hint">Цену можно писать с запятой. Новая фасовка: заполните пустую строку внизу.</p>
         <div class="admin-table-wrap">
-            <table class="admin-table" id="result_list">
+            <table class="admin-table pack-table" id="result_list">
                 <thead>
-                    <tr><th>Артикул</th><th>Фасовка</th><th>Оптовая цена</th><th>Розничная цена</th><th>Цена до скидки</th><th>Остаток</th><th>На сайте</th><th>Удалить</th></tr>
+                    <tr><th>Фасовка</th><th>Артикул</th><th>Цена, ₸</th><th>Старая цена</th><th>Опт, ₸</th><th>Остаток</th><th>На сайте</th><th>Удалить</th></tr>
                 </thead>
                 <tbody id="variant-rows">
                     @for (var i = 0; i < Model.Variants.Count; i++)
@@ -92,19 +111,19 @@
                         <tr>
                             <td>
                                 <input type="hidden" asp-for="Variants[i].Id">
-                                <input class="field small" asp-for="Variants[i].Article">
-                                <span class="errorlist" asp-validation-for="Variants[i].Article"></span>
+                                <input class="field tiny" asp-for="Variants[i].PackLabel">
+                                <span class="errorlist" asp-validation-for="Variants[i].PackLabel"></span>
                             </td>
-                            <td><input class="field tiny" asp-for="Variants[i].PackLabel"><span class="errorlist" asp-validation-for="Variants[i].PackLabel"></span></td>
+                            <td><input class="field small" asp-for="Variants[i].Article"><span class="errorlist" asp-validation-for="Variants[i].Article"></span></td>
+                            <td><input class="field small" asp-for="Variants[i].Price" inputmode="decimal" style="font-weight:700;"><span class="errorlist" asp-validation-for="Variants[i].Price"></span></td>
+                            <td><input class="field small" asp-for="Variants[i].OldPrice" inputmode="decimal" placeholder="нет"><span class="errorlist" asp-validation-for="Variants[i].OldPrice"></span></td>
                             <td><input class="field small" asp-for="Variants[i].WholesalePrice" inputmode="decimal"><span class="errorlist" asp-validation-for="Variants[i].WholesalePrice"></span></td>
-                            <td><input class="field small" asp-for="Variants[i].Price" inputmode="decimal"><span class="errorlist" asp-validation-for="Variants[i].Price"></span></td>
-                            <td><input class="field small" asp-for="Variants[i].OldPrice" inputmode="decimal"><span class="errorlist" asp-validation-for="Variants[i].OldPrice"></span></td>
                             <td><input class="field tiny" asp-for="Variants[i].StockQty" inputmode="numeric"><span class="errorlist" asp-validation-for="Variants[i].StockQty"></span></td>
-                            <td><input asp-for="Variants[i].IsActive"></td>
+                            <td><input asp-for="Variants[i].IsActive" title="Показывать на сайте"></td>
                             <td>
                                 @if (Model.Variants[i].Id != 0)
                                 {
-                                    <input asp-for="Variants[i].Delete">
+                                    <input asp-for="Variants[i].Delete" title="Удалить фасовку">
                                 }
                             </td>
                         </tr>
@@ -113,93 +132,100 @@
             </table>
         </div>
         <div class="admin-actions">
-            <button class="btn btn-ghost btn-sm" type="button" id="add-variant">Добавить ещё строку</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="add-variant">@Icons.Get("plus", 18) Ещё строка</button>
         </div>
     </div>
 
-    <div class="admin-box">
-        <h3>Фотографии</h3>
-        @if (Model.Images.Count > 0)
-        {
-            <div class="admin-table-wrap" style="margin-bottom:12px;">
-                <table class="admin-table">
-                    <thead><tr><th>Фото</th><th>Основная</th><th>Очерёдность</th><th>Удалить</th></tr></thead>
-                    <tbody>
-                        @for (var i = 0; i < Model.Images.Count; i++)
-                        {
-                            <tr>
-                                <td>
-                                    <input type="hidden" asp-for="Images[i].Id">
-                                    <input type="hidden" asp-for="Images[i].ImagePath">
-                                    <a href="@Media.Url(Model.Images[i].ImagePath)" target="_blank" rel="noopener"><img class="thumb" src="@Media.Url(Model.Images[i].ImagePath)" alt=""></a>
-                                </td>
-                                <td><input asp-for="Images[i].IsPrimary"></td>
-                                <td><input class="field tiny" asp-for="Images[i].SortOrder" type="number" min="0"></td>
-                                <td><input asp-for="Images[i].Delete"></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-        <div class="form-row">
-            <label for="new-images">Добавить фото</label>
-            <input id="new-images" type="file" name="NewImages" multiple accept="image/jpeg,image/png,image/gif,image/webp">
-            <span class="help">Можно выбрать несколько файлов. Если основная не отмечена, на сайте показывается первая по очерёдности.</span>
-            <span class="errorlist" asp-validation-for="NewImages"></span>
-        </div>
+    <div class="product-more">
+            @* pH нужен не каждому товару, поэтому блок свёрнут. Если значение есть, product_admin.js его раскроет. *@
+            <details class="admin-box">
+                <summary>Кислотность (pH)</summary>
+                <div class="form-row form-narrow">
+                    <input class="field" asp-for="Input.Ph" placeholder="Например: pH = 7">
+                    <span class="help">Пустое поле на сайте не показывается.</span>
+                    <span class="errorlist" asp-validation-for="Input.Ph"></span>
+                </div>
+            </details>
+
+            <details class="admin-box">
+                <summary>Адрес страницы и данные из 1С</summary>
+                <div class="form-row">
+                    <label asp-for="Input.Slug"></label>
+                    <input class="field" asp-for="Input.Slug">
+                    <span class="help">Заполняется сам из названия, менять не обязательно.</span>
+                    <span class="errorlist" asp-validation-for="Input.Slug"></span>
+                </div>
+                @if (existing is not null)
+                {
+                    <ul class="spec-list">
+                        <li><span>Группа в файле 1С</span><span>@(string.IsNullOrEmpty(existing.SourceGroupPath) ? "нет" : existing.SourceGroupPath)</span></li>
+                        <li><span>Создан</span><span>@Format.DateTimeText(existing.CreatedAt)</span></li>
+                        <li><span>Изменён</span><span>@Format.DateTimeText(existing.UpdatedAt)</span></li>
+                    </ul>
+                }
+            </details>
     </div>
 
-    @if (existing is not null)
-    {
-        <details class="admin-box">
-            <summary>Импорт из 1С (справочно)</summary>
-            <ul class="spec-list">
-                <li><span>Путь категории в файле 1С</span><span>@(string.IsNullOrEmpty(existing.SourceGroupPath) ? "нет" : existing.SourceGroupPath)</span></li>
-                <li><span>Дата создания</span><span>@Format.DateTimeText(existing.CreatedAt)</span></li>
-                <li><span>Дата изменения</span><span>@Format.DateTimeText(existing.UpdatedAt)</span></li>
-            </ul>
-        </details>
-    }
-
-    <div class="admin-actions">
-        <button class="btn" type="submit">Сохранить</button>
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+        <a class="btn btn-ghost" href="/admin/products">Отмена</a>
     </div>
 </form>
 
 @if (Model.Id is not null)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;"
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
           onsubmit="return confirm('Удалить товар вместе с фасовками и фото?');">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить товар</button>
+        <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить товар</button>
     </form>
 }
 
 @section Scripts {
     <script src="~/js/product_admin.js" asp-append-version="true"></script>
     <script>
-    // «Добавить ещё строку»: копия последней пустой строки фасовки со следующим номером.
     (function () {
+        // «Ещё строка»: копия последней пустой строки фасовки со следующим номером.
         var button = document.getElementById('add-variant');
         var body = document.getElementById('variant-rows');
-        if (!button || !body) return;
-        button.addEventListener('click', function () {
-            var rows = body.querySelectorAll('tr');
-            var last = rows[rows.length - 1];
-            var index = rows.length;
-            var copy = last.cloneNode(true);
-            copy.querySelectorAll('input').forEach(function (input) {
-                input.name = input.name.replace(/Variants\[\d+\]/, 'Variants[' + index + ']');
-                input.id = input.id.replace(/Variants_\d+__/, 'Variants_' + index + '__');
-                if (input.type === 'checkbox') { input.checked = input.name.endsWith('IsActive'); }
-                else if (input.type === 'hidden' && input.name.endsWith('.Id')) { input.value = '0'; }
-                else if (input.type !== 'hidden') { input.value = ''; }
+        if (button && body) {
+            button.addEventListener('click', function () {
+                var rows = body.querySelectorAll('tr');
+                var last = rows[rows.length - 1];
+                var index = rows.length;
+                var copy = last.cloneNode(true);
+                copy.querySelectorAll('input').forEach(function (input) {
+                    input.name = input.name.replace(/Variants\[\d+\]/, 'Variants[' + index + ']');
+                    input.id = input.id.replace(/Variants_\d+__/, 'Variants_' + index + '__');
+                    if (input.type === 'checkbox') { input.checked = input.name.endsWith('IsActive'); }
+                    else if (input.type === 'hidden' && input.name.endsWith('.Id')) { input.value = '0'; }
+                    else if (input.type !== 'hidden') { input.value = ''; }
+                });
+                copy.querySelectorAll('.errorlist').forEach(function (e) { e.textContent = ''; });
+                copy.classList.remove('row-edited');
+                copy.querySelectorAll('.unsaved-note').forEach(function (n) { n.remove(); });
+                body.appendChild(copy);
+                copy.querySelector('input:not([type=hidden])').focus();
             });
-            copy.querySelectorAll('.errorlist').forEach(function (e) { e.textContent = ''; });
-            copy.classList.remove('row-edited');
-            copy.querySelectorAll('.unsaved-note').forEach(function (n) { n.remove(); });
-            body.appendChild(copy);
+        }
+
+        // Выбор главного фото сразу показывает его крупно, ещё до сохранения.
+        var main = document.getElementById('photo-main');
+        document.querySelectorAll('input[name=PrimaryImageId]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                document.querySelectorAll('.photo-tile').forEach(function (t) { t.classList.remove('primary'); });
+                radio.closest('.photo-tile').classList.add('primary');
+                if (main) main.src = radio.getAttribute('data-src');
+            });
         });
+
+        // Выбранные новые фото подписываем под кнопкой, чтобы было видно, что они ждут сохранения.
+        var files = document.getElementById('new-images');
+        if (files) {
+            files.addEventListener('change', function () {
+                var box = files.closest('.upload-box').querySelector('.admin-count');
+                box.textContent = files.files.length ? 'Выбрано файлов: ' + files.files.length + '. Нажмите «Сохранить».' : 'JPG или PNG, можно несколько сразу';
+            });
+        }
     })();
     </script>
 }

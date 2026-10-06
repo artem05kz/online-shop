@@ -1,7 +1,10 @@
+@using Microsoft.EntityFrameworkCore
+@inject OnlineShop.Web.Data.ShopDbContext Db
 @{
     var title = ViewData["Title"] as string;
     var section = ViewData["AdminSection"] as string;
     var flash = TempData.TakeFlash();
+    var newOrders = await Db.Orders.CountAsync(o => o.Status == OrderStatus.New);
     string Active(string name) => section == name ? "active" : "";
 }
 <!DOCTYPE html>
@@ -9,7 +12,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@(title is null ? "Управление магазином GRASS" : $"{title} | Управление магазином GRASS")</title>
+    <title>@(title is null ? "Управление магазином" : $"{title} | Управление магазином")</title>
     <meta name="robots" content="noindex">
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
@@ -20,35 +23,37 @@
     <div class="inner">
         <a class="title" href="/admin">Управление магазином GRASS</a>
         <span class="spacer"></span>
-        <a href="/" target="_blank" rel="noopener">Открыть сайт</a>
-        <span>@User.Identity?.Name</span>
+        <a href="/" target="_blank" rel="noopener">@Icons.Get("external", 18) Открыть сайт</a>
+        <span>@Icons.Get("user", 18) @User.Identity?.Name</span>
         <form action="@ShopUrls.Logout" method="post">
             @Html.AntiForgeryToken()
-            <button type="submit">Выйти</button>
+            <button type="submit">@Icons.Get("logout", 18) Выйти</button>
         </form>
     </div>
 </header>
 
 <div class="admin-shell">
     <nav class="admin-nav" aria-label="Разделы панели">
-        <h4>Магазин</h4>
-        <a class="@Active("home")" href="/admin">Главная панели</a>
-        <a class="@Active("orders")" href="/admin/orders">Заказы</a>
+        <a class="@Active("home")" href="/admin">@Icons.Get("dashboard") Главная</a>
+        <a class="@Active("orders")" href="/admin/orders">@Icons.Get("orders") Заказы
+            @if (newOrders > 0)
+            {
+                <span class="badge" title="Новых заказов">@newOrders</span>
+            }
+        </a>
         <h4>Каталог</h4>
-        <a class="@Active("products")" href="/admin/products">Товары</a>
-        <a class="@Active("variants")" href="/admin/variants">Цены и остатки</a>
-        <a class="@Active("categories")" href="/admin/categories">Категории</a>
-        <a class="@Active("brands")" href="/admin/brands">Бренды</a>
-        <a class="@Active("banners")" href="/admin/banners">Баннеры</a>
-        <h4>Загрузка из 1С</h4>
-        <a class="@Active("import")" href="/admin/import">Загрузить товары</a>
-        <a class="@Active("import-stock")" href="/admin/import/stock">Обновить остаток</a>
+        <a class="@Active("products")" href="/admin/products">@Icons.Get("package") Товары</a>
+        <a class="@Active("variants")" href="/admin/variants">@Icons.Get("tag") Цены и остатки</a>
+        <a class="@Active("categories")" href="/admin/categories">@Icons.Get("layers") Бренды и категории</a>
+        <a class="@Active("banners")" href="/admin/banners">@Icons.Get("image") Баннеры</a>
+        <h4>Из 1С</h4>
+        <a class="@Active("import")" href="/admin/import">@Icons.Get("upload") Загрузить товары</a>
+        <a class="@Active("import-stock")" href="/admin/import/stock">@Icons.Get("refresh") Обновить остатки</a>
         <h4>Сайт</h4>
-        <a class="@Active("stores")" href="/admin/stores">Адреса магазинов</a>
-        <a class="@Active("contacts")" href="/admin/contacts">Контакты сайта</a>
-        <h4>Покупатели</h4>
-        <a class="@Active("users")" href="/admin/users">Покупатели и доступ</a>
-        <a class="@Active("addresses")" href="/admin/addresses">Адреса покупателей</a>
+        <a class="@Active("stores")" href="/admin/stores">@Icons.Get("pin") Адреса магазинов</a>
+        <a class="@Active("contacts")" href="/admin/contacts">@Icons.Get("phone") Контакты</a>
+        <a class="@Active("users")" href="/admin/users">@Icons.Get("users") Покупатели</a>
+        <a class="@Active("addresses")" href="/admin/addresses">@Icons.Get("truck") Адреса доставки</a>
     </nav>
 
     <main class="admin-main">
@@ -57,7 +62,7 @@
             <ul class="messages" style="margin-top:0;">
                 @foreach (var message in flash)
                 {
-                    <li class="message @message.CssClass">@message.Text</li>
+                    <li class="message @message.CssClass" style="font-size:1.05rem;">@message.Text</li>
                 }
             </ul>
         }

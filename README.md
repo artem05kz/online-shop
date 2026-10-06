@@ -57,10 +57,12 @@ dotnet run --project src/OnlineShop.Web -- --import-1c --price-list "прайс 
 |----------|------------|--------------|
 | `ConnectionStrings:Shop` | файл базы SQLite | `App_Data/shop.db` |
 | `Media:Root` | папка загруженных фото | `media` |
-| `GOOGLE_MAPS_API_KEY` | ключ Google Maps для карты в форме адреса | не задан, тогда OpenStreetMap |
+| `TWOGIS_API_KEY` | ключ 2ГИС: карта и поиск адреса по точке в форме адреса, карта магазинов | не задан, тогда OpenStreetMap |
 
 Параметры задаются в `appsettings.json` или переменными окружения
-(`ConnectionStrings__Shop`, `Media__Root`, `GOOGLE_MAPS_API_KEY`).
+(`ConnectionStrings__Shop`, `Media__Root`, `TWOGIS_API_KEY`). Ключ 2ГИС создаётся в
+[кабинете разработчика 2ГИС](https://platform.2gis.ru): бесплатный демо-ключ действует месяц,
+дальше нужна подписка. Ссылки «Маршрут в 2ГИС» у адресов магазинов работают и без ключа.
 
 ## Структура
 

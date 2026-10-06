@@ -3,16 +3,13 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.ViewModels;
 
-public record CategoryTile(Category Category, int ProductCount);
-
-public record CategorySection(Brand Brand, Category Category, IReadOnlyList<Product> Products);
+public record CategoryTile(Category Category, int ProductCount, string? ImagePath);
 
 public class HomeViewModel
 {
     public required IReadOnlyList<Banner> Banners { get; init; }
     public required IReadOnlyList<CategoryTile> Tiles { get; init; }
     public required IReadOnlyList<Product> Featured { get; init; }
-    public required IReadOnlyList<CategorySection> Sections { get; init; }
 }
 
 /// <summary>Список товаров с фильтрами: страница категории или результаты поиска.</summary>
@@ -30,6 +27,9 @@ public class ProductListViewModel
     public IReadOnlyList<Category> AllCategories { get; init; } = [];
 
     public bool ShowTaxonomyFilters => Category is null;
+
+    /// <summary>Все категории бренда со счётчиками для списка слева: перейти в соседнюю, не возвращаясь на главную.</summary>
+    public IReadOnlyList<CategoryTile> SideCategories { get; init; } = [];
 }
 
 public class ProductPageViewModel
@@ -43,4 +43,5 @@ public class StoreListViewModel
     public required IReadOnlyList<Store> Stores { get; init; }
     public required IReadOnlyList<string> Cities { get; init; }
     public required string SelectedCity { get; init; }
+    public string MapKey { get; init; } = "";
 }

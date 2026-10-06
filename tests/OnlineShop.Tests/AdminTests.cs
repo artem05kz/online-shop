@@ -92,7 +92,7 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         var manager = await Manager();
         var home = await Page(manager, "/");
         Assert.Contains("Админка", home);
-        Assert.Contains("Частые действия", await Page(manager, "/admin"));
+        Assert.Contains("Что сделать", await Page(manager, "/admin"));
     }
 
     [Fact]
@@ -114,7 +114,6 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     [InlineData("/admin/variants/add")]
     [InlineData("/admin/categories")]
     [InlineData("/admin/categories/add")]
-    [InlineData("/admin/brands")]
     [InlineData("/admin/brands/add")]
     [InlineData("/admin/banners")]
     [InlineData("/admin/banners/add")]
@@ -147,10 +146,11 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         var duplicate = await Post(client, "/admin/brands/add", token, ("Input.Name", name));
         Assert.Contains("Бренд с таким названием уже есть.", await Text(duplicate));
 
-        await Post(client, "/admin/brands?handler=SaveList", token,
-            ("Rows[0].Id", brand.Id.ToString()), ("Rows[0].SortOrder", "9"), ("Rows[0].IsActive", "false"));
-        Assert.Equal((9, false), Db(db => db.Brands.Where(b => b.Id == brand.Id).Select(b => new { b.SortOrder, b.IsActive }).AsEnumerable()
-            .Select(b => (b.SortOrder, b.IsActive)).Single()));
+        // Старый адрес списка брендов ведёт в общее дерево.
+        Assert.Equal("/admin/categories", (await client.GetAsync("/admin/brands")).Headers.Location!.OriginalString);
+
+        await Post(client, $"/admin/brands/{brand.Id}", token, ("Input.Name", name), ("Input.SortOrder", "5"), ("Input.IsActive", "false"));
+        Assert.False(Db(db => db.Brands.Single(b => b.Id == brand.Id).IsActive));
 
         var (productId, _) = SeedProduct($"B{Guid.NewGuid():N}"[..12]);
         var productBrand = Db(db => db.Products.Where(p => p.Id == productId).Select(p => p.Category.BrandId).Single());
@@ -160,6 +160,52 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
 
         await Post(client, $"/admin/brands/{brand.Id}?handler=Delete", token);
         Assert.False(Db(db => db.Brands.Any(b => b.Id == brand.Id)));
+    }
+
+    [Fact]
+    public async Task Tree_shows_nesting_and_arrows_reorder_siblings()
+    {
+        var client = await Manager();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var (brandId, parentId, firstId, secondId) = Db(db =>
+        {
+            var brand = new Brand { Name = $"Дерево {suffix}" };
+            var parent = new Category { Brand = brand, Name = "Очистители" };
+            var first = new Category { Brand = brand, Parent = parent, Name = "Для стёкол", SortOrder = 1 };
+            var second = new Category { Brand = brand, Parent = parent, Name = "Для дисков", SortOrder = 2 };
+            db.Categories.AddRange(parent, first, second);
+            db.SaveChanges();
+            return (brand.Id, parent.Id, first.Id, second.Id);
+        });
+
+        var tree = await Page(client, "/admin/categories");
+        Assert.Contains($"id=\"brand-{brandId}\"", tree);
+        Assert.True(tree.IndexOf($"category-{firstId}", StringComparison.Ordinal) < tree.IndexOf($"category-{secondId}", StringComparison.Ordinal));
+
+        // Путь стрелками на странице подкатегории и среди вариантов родителя.
+        var edit = await Page(client, $"/admin/categories/{secondId}");
+        Assert.Contains($"Дерево {suffix} → Очистители", edit);
+
+        var token = await TokenFrom(client, "/admin/categories");
+        List<int> Order() => Db(db => db.Categories.Where(c => c.ParentId == parentId).OrderBy(c => c.SortOrder).Select(c => c.Id).ToList());
+        await Post(client, $"/admin/categories?handler=Move&kind=category&id={secondId}&direction=-1", token);
+        Assert.Equal([secondId, firstId], Order());
+
+        // Самый верхний выше не сдвигается.
+        await Post(client, $"/admin/categories?handler=Move&kind=category&id={secondId}&direction=-1", token);
+        Assert.Equal([secondId, firstId], Order());
+    }
+
+    [Fact]
+    public async Task Product_list_filters_by_missing_photo_and_shows_category_path()
+    {
+        var client = await Manager();
+        var (productId, _) = SeedProduct($"F{Guid.NewGuid():N}"[..12]);
+        var page = await Page(client, "/admin/products?filter=nophoto");
+        Assert.Contains($"href=\"/admin/products/{productId}\"", page);
+        Assert.Contains("нет фото", page);
+        var brandName = Db(db => db.Products.Where(p => p.Id == productId).Select(p => p.Category.Brand.Name).Single());
+        Assert.Contains($"{brandName} → Категория", page);
     }
 
     [Fact]
@@ -197,6 +243,39 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         Assert.Equal((1890.5m, 4, true), (variants[0].Price!.Value, variants[0].StockQty, variants[0].IsActive));
         Assert.Equal((newArticle, 7490.5m, false), (variants[1].Article, variants[1].Price!.Value, variants[1].IsActive));
         Assert.Equal("Новое название", Db(db => db.Products.Single(p => p.Id == productId).Name));
+    }
+
+    [Fact]
+    public async Task Primary_photo_is_chosen_by_radio_button()
+    {
+        var client = await Manager();
+        var (productId, variantId) = SeedProduct($"I{Guid.NewGuid():N}"[..12]);
+        var png = Path.Combine(_files, "photo.png");
+        await File.WriteAllBytesAsync(png, OneCFiles.Png);
+        var article = Db(db => db.ProductVariants.Single(v => v.Id == variantId).Article);
+        var categoryId = Db(db => db.Products.Single(p => p.Id == productId).CategoryId);
+        var token = await TokenFrom(client, $"/admin/products/{productId}");
+        (string, string)[] basics =
+        [
+            ("Input.Name", "С фото"), ("Input.CategoryId", categoryId.ToString()), ("Input.IsActive", "true"),
+            ("Variants[0].Id", variantId.ToString()), ("Variants[0].Article", article), ("Variants[0].Price", "1000"),
+            ("Variants[0].StockQty", "3"), ("Variants[0].IsActive", "true"),
+        ];
+
+        await PostFiles(client, $"/admin/products/{productId}", token, [("NewImages", png, "a.png"), ("NewImages", png, "b.png")], basics);
+        var images = Db(db => db.ProductImages.Where(i => i.ProductId == productId).OrderBy(i => i.Id).ToList());
+        Assert.Equal(2, images.Count);
+        Assert.True(images[0].IsPrimary, "Первое загруженное фото становится главным само.");
+
+        var fields = basics.Concat(
+        [
+            ("Images[0].Id", images[0].Id.ToString()), ("Images[0].ImagePath", images[0].ImagePath),
+            ("Images[1].Id", images[1].Id.ToString()), ("Images[1].ImagePath", images[1].ImagePath),
+            ("PrimaryImageId", images[1].Id.ToString()),
+        ]).ToArray();
+        await Post(client, $"/admin/products/{productId}", token, fields);
+        var after = Db(db => db.ProductImages.Where(i => i.ProductId == productId).OrderBy(i => i.Id).Select(i => i.IsPrimary).ToList());
+        Assert.Equal([false, true], after);
     }
 
     [Fact]

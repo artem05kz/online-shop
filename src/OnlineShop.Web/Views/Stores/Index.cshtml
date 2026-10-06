@@ -25,6 +25,14 @@
     </form>
 }
 
+@{
+    var mapped = Model.Stores.Where(st => st.Latitude is not null && st.Longitude is not null).ToList();
+}
+@if (Model.MapKey.Length > 0 && mapped.Count > 0)
+{
+    <div id="stores-map" class="stores-map"></div>
+}
+
 @if (Model.Stores.Count > 0)
 {
     <div class="address-grid">
@@ -47,7 +55,14 @@
                 @if (!string.IsNullOrEmpty(store.MapUrl))
                 {
                     <div class="form-actions">
-                        <a class="btn btn-outline btn-sm" href="@store.MapUrl" target="_blank" rel="noopener">Как добраться</a>
+                        <a class="btn btn-outline btn-sm" href="@store.MapUrl" target="_blank" rel="noopener">@Icons.Get("map", 16) Как добраться</a>
+                    </div>
+                }
+                else if (store.Latitude is { } lat && store.Longitude is { } lng)
+                {
+                    <div class="form-actions">
+                        <a class="btn btn-outline btn-sm" href="@TwoGis.RouteUrl(lat, lng)" target="_blank" rel="noopener">@Icons.Get("map", 16) Маршрут в 2ГИС</a>
+                        <a class="btn btn-ghost btn-sm" href="@TwoGis.PlaceUrl(lat, lng)" target="_blank" rel="noopener">На карте 2ГИС</a>
                     </div>
                 }
             </div>
@@ -57,8 +72,32 @@
 else
 {
     <div class="empty">
-        <div class="empty-ico" aria-hidden="true">📍</div>
+        <div class="empty-ico">@Icons.Get("pin", 44)</div>
         <h2>Адреса пока не добавлены</h2>
         <p>Их можно добавить в панели управления, раздел «Адреса магазинов».</p>
     </div>
+}
+
+@section Scripts {
+    @if (Model.MapKey.Length > 0 && mapped.Count > 0)
+    {
+        <script src="https://mapgl.2gis.com/api/js/v1"></script>
+        <script type="application/json" id="stores-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            mapped.Select(st => new { lat = st.Latitude, lng = st.Longitude, title = st.Address })))</script>
+        <script>
+        // Все точки на одной карте 2ГИС: видно, какая ближе.
+        (function () {
+            var points = JSON.parse(document.getElementById('stores-data').textContent);
+            var map = new mapgl.Map('stores-map', {
+                key: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.MapKey)),
+                center: [points[0].lng, points[0].lat],
+                zoom: points.length > 1 ? 11 : 15,
+                lang: 'ru',
+            });
+            points.forEach(function (p) {
+                new mapgl.Marker(map, { coordinates: [p.lng, p.lat], label: { text: p.title, offset: [0, -60] } });
+            });
+        })();
+        </script>
+    }
 }

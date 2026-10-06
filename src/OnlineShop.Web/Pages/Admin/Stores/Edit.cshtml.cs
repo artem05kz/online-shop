@@ -8,7 +8,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Admin.Stores;
 
-public class EditModel(ShopDbContext db) : PageModel
+public class EditModel(ShopDbContext db, IConfiguration configuration) : PageModel
 {
     private const string TooLong = "Не длиннее {1} символов.";
 
@@ -53,6 +53,8 @@ public class EditModel(ShopDbContext db) : PageModel
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public int? Id { get; private set; }
+
+    public string MapKey => TwoGis.Key(configuration);
 
     public async Task<IActionResult> OnGetAsync(int? id)
     {

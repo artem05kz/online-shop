@@ -1,46 +1,58 @@
 @page "/admin/categories"
 @model OnlineShop.Web.Pages.Admin.Categories.IndexModel
 @{
-    ViewData["Title"] = "Категории";
+    ViewData["Title"] = "Бренды и категории";
     ViewData["AdminSection"] = "categories";
 }
 <div class="admin-head">
-    <h1>Категории</h1>
-    <a class="btn" href="/admin/categories/add">Добавить категорию</a>
+    <h1>Бренды и категории</h1>
+    <a class="btn" href="/admin/brands/add">@Icons.Get("plus") Новый бренд</a>
 </div>
 
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Поиск по названию">
-    <select class="select" name="brand" onchange="this.form.submit()">
-        <option value="">Все бренды</option>
-        @foreach (var brand in Model.Brands)
-        {
-            <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
-        }
-    </select>
-    <select class="select" name="active" onchange="this.form.submit()">
-        <option value="">Показ: все</option>
-        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
-        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
-    </select>
-    <button class="btn btn-ghost" type="submit">Найти</button>
-</form>
+@if (Model.Tree.Brands.Count == 0)
+{
+    <div class="admin-box">Брендов пока нет. Они появятся сами после загрузки товаров из 1С, или добавьте бренд кнопкой выше.</div>
+}
 
-<div class="admin-table-wrap">
-    <table class="admin-table">
-        <thead><tr><th>Название</th><th>Бренд</th><th>Родительская категория</th><th class="num">Очерёдность</th><th>На сайте</th></tr></thead>
-        <tbody>
-            @foreach (var category in Model.List.Items)
+<ul class="tree">
+    @foreach (var brand in Model.Tree.Brands)
+    {
+        var b = brand.Brand;
+        <li class="tree-brand" id="brand-@b.Id">
+            <div class="tree-row">
+                <span class="t-name">
+                    @Icons.Get("layers", 22)
+                    @b.Name
+                    @if (!b.IsActive)
+                    {
+                        <span class="pill off">@Icons.Get("eye-off", 16) скрыт</span>
+                    }
+                </span>
+                <span class="t-count">@brand.TotalProducts @Plural.Products(brand.TotalProducts)</span>
+                <span class="t-actions">
+                    <form method="post" asp-page-handler="Move" asp-route-kind="brand" asp-route-id="@b.Id" asp-route-direction="-1">
+                        <button class="btn btn-ghost btn-sm btn-icon" type="submit" title="Выше" aria-label="Переместить бренд выше">@Icons.Get("arrow-up")</button>
+                    </form>
+                    <form method="post" asp-page-handler="Move" asp-route-kind="brand" asp-route-id="@b.Id" asp-route-direction="1">
+                        <button class="btn btn-ghost btn-sm btn-icon" type="submit" title="Ниже" aria-label="Переместить бренд ниже">@Icons.Get("arrow-down")</button>
+                    </form>
+                    <a class="btn btn-ghost btn-sm" href="/admin/categories/add?brand=@b.Id">@Icons.Get("plus", 18) Категория</a>
+                    <a class="btn btn-ghost btn-sm" href="/admin/brands/@b.Id">@Icons.Get("pencil", 18) Изменить</a>
+                </span>
+            </div>
+            @if (brand.Roots.Count > 0)
             {
-                <tr>
-                    <td><a asp-page="Edit" asp-route-id="@category.Id">@category.Name</a></td>
-                    <td>@category.Brand.Name</td>
-                    <td>@(category.Parent?.Name ?? "Нет")</td>
-                    <td class="num">@category.SortOrder</td>
-                    <td>@(category.IsActive ? "да" : "нет")</td>
-                </tr>
+                <ul>
+                    @foreach (var node in brand.Roots)
+                    {
+                        <partial name="_Node" model="node" />
+                    }
+                </ul>
             }
-        </tbody>
-    </table>
-</div>
-<partial name="_AdminPager" model="PagerInfo.From(Model.List)" />
+            else
+            {
+                <p class="admin-count" style="margin:6px 0 0 26px;">Категорий нет.</p>
+            }
+        </li>
+    }
+</ul>

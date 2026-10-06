@@ -2,69 +2,105 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
-using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Products;
 
+/// <summary>
+/// Товары списком с фото, чтобы товар узнавался глазами, а не по названию из 1С.
+/// Фильтры-кнопки сверху отвечают на частые вопросы: где нет фото, цены, остатка.
+/// </summary>
 public class IndexModel(ShopDbContext db) : PageModel
 {
-    public record Row(int Id, string Name, string Brand, string Category, int VariantCount, bool IsActive, DateTime UpdatedAt);
+    public record Row(Product Product, string Path)
+    {
+        public IReadOnlyList<ProductVariant> Packs => Product.Variants.OrderBy(v => v.SortVolume).ThenBy(v => v.Id).ToList();
+        public decimal? MinPrice => Product.Variants.Where(v => v.IsActive && v.Price != null).Select(v => v.Price).Min();
+        public decimal? MaxPrice => Product.Variants.Where(v => v.IsActive && v.Price != null).Select(v => v.Price).Max();
+        public bool InStock => Product.Variants.Any(v => v.IsActive && v.StockQty > 0);
+        public bool HasUnpriced => Product.Variants.Any(v => v.IsActive && v.Price == null);
+    }
+
+    public record Show(string Value, string Label, int Count);
 
     [BindProperty(SupportsGet = true)] public string? Q { get; set; }
-    [BindProperty(SupportsGet = true)] public int? Brand { get; set; }
     [BindProperty(SupportsGet = true)] public int? Category { get; set; }
-    [BindProperty(SupportsGet = true)] public string? Active { get; set; }
+    [BindProperty(SupportsGet = true)] public string? Filter { get; set; }
     [BindProperty(SupportsGet = true)] public string? O { get; set; }
 
-    public IReadOnlyList<Brand> Brands { get; private set; } = [];
-    public IReadOnlyList<Category> Categories { get; private set; } = [];
+    public CatalogTree Tree { get; private set; } = null!;
+    public IReadOnlyList<Show> Shows { get; private set; } = [];
     public PagedList<Row> List { get; private set; } = null!;
+
+    public static readonly IReadOnlyList<(string Value, string Label)> SortOptions =
+    [
+        ("name", "По названию"),
+        ("new", "Сначала новые"),
+        ("updated", "Недавно изменённые"),
+    ];
 
     public async Task OnGetAsync(string? p)
     {
-        Brands = await db.Brands.Ordered().AsNoTracking().ToListAsync();
-        Categories = await db.Categories.Include(c => c.Brand)
-            .Where(c => Brand == null || c.BrandId == Brand)
-            .OrderBy(c => c.Brand.Name).ThenBy(c => c.Name).AsNoTracking().ToListAsync();
+        Tree = await CatalogTree.LoadAsync(db);
 
-        var query = db.Products.AsQueryable();
+        var scope = db.Products.AsQueryable();
+        if (Category is { } categoryId && Tree.Find(categoryId) is { } node)
+        {
+            // Категория вместе со всеми подкатегориями: «Очистители» показывают и товары из вложенных.
+            var ids = Tree.Flatten().Where(n => IsWithin(n, node)).Select(n => n.Category.Id).ToList();
+            scope = scope.Where(x => ids.Contains(x.CategoryId));
+        }
         if (!string.IsNullOrWhiteSpace(Q))
         {
-            // Поиск по названию, описанию и артикулу, как в Django-админке.
-            query = query.Search(Q);
-        }
-        if (Brand is not null)
-        {
-            query = query.Where(p => p.Category.BrandId == Brand);
-        }
-        if (Category is not null)
-        {
-            query = query.Where(p => p.CategoryId == Category);
-        }
-        if (Active is "1" or "0")
-        {
-            var active = Active == "1";
-            query = query.Where(p => p.IsActive == active);
+            scope = scope.Search(Q);
         }
 
+        // Сколько товаров попадёт в каждый фильтр: число на кнопке подсказывает, есть ли там что делать.
+        Shows =
+        [
+            new("", "Все", await scope.CountAsync()),
+            new("nophoto", "Без фото", await NoPhoto(scope).CountAsync()),
+            new("noprice", "Без цены", await NoPrice(scope).CountAsync()),
+            new("nostock", "Нет в наличии", await NoStock(scope).CountAsync()),
+            new("hidden", "Скрытые", await scope.CountAsync(x => !x.IsActive)),
+        ];
+
+        var query = Filter switch
+        {
+            "nophoto" => NoPhoto(scope),
+            "noprice" => NoPrice(scope),
+            "nostock" => NoStock(scope),
+            "hidden" => scope.Where(x => !x.IsActive),
+            _ => scope,
+        };
         query = O switch
         {
-            "-name" => query.OrderByDescending(p => p.Name),
-            "brand" => query.OrderBy(p => p.Category.Brand.Name).ThenBy(p => p.Name),
-            "-brand" => query.OrderByDescending(p => p.Category.Brand.Name).ThenBy(p => p.Name),
-            "category" => query.OrderBy(p => p.Category.Name).ThenBy(p => p.Name),
-            "-category" => query.OrderByDescending(p => p.Category.Name).ThenBy(p => p.Name),
-            "active" => query.OrderBy(p => p.IsActive).ThenBy(p => p.Name),
-            "-active" => query.OrderByDescending(p => p.IsActive).ThenBy(p => p.Name),
-            "updated" => query.OrderBy(p => p.UpdatedAt),
-            "-updated" => query.OrderByDescending(p => p.UpdatedAt),
-            _ => query.OrderBy(p => p.Name),
+            "new" => query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Name),
+            "updated" => query.OrderByDescending(x => x.UpdatedAt).ThenBy(x => x.Name),
+            _ => query.OrderBy(x => x.Name),
         };
 
-        var rows = query.Select(p => new Row(p.Id, p.Name, p.Category.Brand.Name, p.Category.Name,
-            p.Variants.Count, p.IsActive, p.UpdatedAt));
-        List = await PagedList<Row>.CreateAsync(rows, p, AdminList.PageSize);
+        var page = await PagedList<Product>.CreateAsync(
+            query.Include(x => x.Variants).Include(x => x.Images).AsSplitQuery().AsNoTracking(), p, 50);
+        List = new PagedList<Row>
+        {
+            Items = page.Items.Select(x => new Row(x, Tree.Path(x.CategoryId))).ToList(),
+            Page = page.Page, PageCount = page.PageCount, TotalCount = page.TotalCount,
+        };
     }
+
+    private static bool IsWithin(CategoryNode candidate, CategoryNode root)
+    {
+        static IEnumerable<CategoryNode> Walk(CategoryNode n) => new[] { n }.Concat(n.Children.SelectMany(Walk));
+        return Walk(root).Contains(candidate);
+    }
+
+    private static IQueryable<Product> NoPhoto(IQueryable<Product> q) => q.Where(x => !x.Images.Any());
+
+    private static IQueryable<Product> NoPrice(IQueryable<Product> q) =>
+        q.Where(x => x.Variants.Any(v => v.IsActive && v.Price == null));
+
+    private static IQueryable<Product> NoStock(IQueryable<Product> q) =>
+        q.Where(x => !x.Variants.Any(v => v.IsActive && v.StockQty > 0));
 }

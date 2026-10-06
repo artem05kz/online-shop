@@ -74,9 +74,12 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
     [BindProperty] public List<ImageRow> Images { get; set; } = [];
     [BindProperty] public List<IFormFile> NewImages { get; set; } = [];
 
+    /// <summary>Главное фото выбирается переключателем: одно на товар, его видно в каталоге.</summary>
+    [BindProperty] public int? PrimaryImageId { get; set; }
+
     public int? Id { get; private set; }
     public Product? Existing { get; private set; }
-    public IReadOnlyList<Category> Categories { get; private set; } = [];
+    public CatalogTree Tree { get; private set; } = null!;
 
     public async Task<IActionResult> OnGetAsync(int? id)
     {
@@ -94,7 +97,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
                 Name = p.Name, Slug = p.Slug, CategoryId = p.CategoryId, IsActive = p.IsActive,
                 Description = p.Description, Ph = p.Ph,
             };
-            Variants = p.Variants.OrderBy(v => v.VolumeValue).ThenBy(v => v.Id).Select(v => new VariantRow
+            Variants = p.Variants.OrderBy(v => v.SortVolume).ThenBy(v => v.Id).Select(v => new VariantRow
             {
                 Id = v.Id, Article = v.Article, PackLabel = v.PackLabel,
                 WholesalePrice = AdminNumbers.Text(v.WholesalePrice), Price = AdminNumbers.Text(v.Price),
@@ -185,7 +188,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
                 db.ProductImages.Remove(image);
                 continue;
             }
-            image.IsPrimary = row.IsPrimary;
+            image.IsPrimary = PrimaryImageId is { } primary ? image.Id == primary : row.IsPrimary;
             image.SortOrder = Math.Max(0, row.SortOrder);
         }
         var nextOrder = product.Images.Count == 0 ? 0 : product.Images.Max(i => i.SortOrder) + 1;
@@ -197,6 +200,12 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
                 var path = await media.SaveAsync(content, "products", fileName);
                 savedFiles.Add(path);
                 product.Images.Add(new ProductImage { ImagePath = path, SortOrder = nextOrder++ });
+            }
+            var remaining = product.Images.Where(i => db.Entry(i).State != EntityState.Deleted)
+                .OrderBy(i => i.SortOrder).ThenBy(i => i.Id).ToList();
+            if (remaining.Count > 0 && !remaining.Any(i => i.IsPrimary))
+            {
+                remaining[0].IsPrimary = true;
             }
             await db.SaveChangesAsync();
         }
@@ -239,10 +248,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         db.Products.Include(p => p.Variants).Include(p => p.Images).Include(p => p.Category)
             .AsSplitQuery().FirstOrDefaultAsync(p => p.Id == id);
 
-    private async Task LoadCategories() =>
-        Categories = await db.Categories.Include(c => c.Brand)
-            .OrderBy(c => c.Brand.SortOrder).ThenBy(c => c.Brand.Name).ThenBy(c => c.SortOrder).ThenBy(c => c.Name)
-            .AsNoTracking().ToListAsync();
+    private async Task LoadCategories() => Tree = await CatalogTree.LoadAsync(db);
 
     private record VariantValues(decimal? Wholesale, decimal? Price, decimal? Old, int? Stock);
 

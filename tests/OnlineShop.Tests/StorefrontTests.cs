@@ -162,6 +162,24 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     }
 
     [Fact]
+    public async Task Product_page_buys_the_pack_chosen_in_the_form()
+    {
+        var client = Client();
+        var page = await Page(client, "/product/шампунь-тест");
+        Assert.Contains("name=\"variantId\"", page);
+        Assert.Contains("В корзину", page);
+
+        var token = await TokenFrom(client, "/product/шампунь-тест");
+        var added = await Post(client, "/orders/cart/add", token, ("variantId", _factory.InStockVariantId.ToString()), ("quantity", "3"));
+        Assert.Equal(HttpStatusCode.Redirect, added.StatusCode);
+        Assert.Contains("5\u00a0670 ₸", await Page(client, "/orders/cart"));
+
+        // Скрытую фасовку подставить в форму нельзя.
+        var hidden = await Post(client, "/orders/cart/add", token, ("variantId", _factory.HiddenVariantId.ToString()));
+        Assert.Equal(HttpStatusCode.NotFound, hidden.StatusCode);
+    }
+
+    [Fact]
     public async Task Cart_rejects_hidden_packs_foreign_redirects_and_missing_token()
     {
         var client = Client();

@@ -9,7 +9,6 @@ namespace OnlineShop.Web.Controllers;
 public class CatalogController(ShopDbContext db) : Controller
 {
     private const int FeaturedCount = 8;
-    private const int SectionSize = 4;
     private const int RelatedCount = 4;
 
     [HttpGet("/")]
@@ -32,9 +31,19 @@ public class CatalogController(ShopDbContext db) : Controller
             .Select(g => new { CategoryId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.CategoryId, x => x.Count);
 
+        // У плитки категории фото первого товара с фото: категорию узнают по картинке быстрее, чем по названию.
+        var tileIds = rootCategories.Where(c => productCounts.GetValueOrDefault(c.Id) > 0).Select(c => c.Id).ToList();
+        var tileImages = (await db.ProductImages
+                .Where(i => i.Product.IsActive && tileIds.Contains(i.Product.CategoryId))
+                .OrderBy(i => i.Product.Name).ThenByDescending(i => i.IsPrimary).ThenBy(i => i.SortOrder)
+                .Select(i => new { i.Product.CategoryId, i.ImagePath })
+                .ToListAsync())
+            .GroupBy(x => x.CategoryId)
+            .ToDictionary(g => g.Key, g => g.First().ImagePath);
+
         var tiles = rootCategories
-            .Where(c => productCounts.GetValueOrDefault(c.Id) > 0)
-            .Select(c => new CategoryTile(c, productCounts[c.Id]))
+            .Where(c => tileIds.Contains(c.Id))
+            .Select(c => new CategoryTile(c, productCounts[c.Id], tileImages.GetValueOrDefault(c.Id)))
             .ToList();
 
         var featured = await db.Products.ForListing()
@@ -44,20 +53,7 @@ public class CatalogController(ShopDbContext db) : Controller
             .AsNoTracking()
             .ToListAsync();
 
-        // Категорий немного, поэтому по запросу на каждую проще, чем грузить весь каталог ради четырёх товаров.
-        var sections = new List<CategorySection>();
-        foreach (var tile in tiles)
-        {
-            var products = await db.Products.ForListing()
-                .Where(p => p.CategoryId == tile.Category.Id)
-                .Ordered()
-                .Take(SectionSize)
-                .AsNoTracking()
-                .ToListAsync();
-            sections.Add(new CategorySection(tile.Category.Brand, tile.Category, products));
-        }
-
-        return View(new HomeViewModel { Banners = banners, Tiles = tiles, Featured = featured, Sections = sections });
+        return View(new HomeViewModel { Banners = banners, Tiles = tiles, Featured = featured });
     }
 
     [HttpGet("/catalog/{brandSlug}/{categorySlug}")]
@@ -80,10 +76,19 @@ public class CatalogController(ShopDbContext db) : Controller
             .ApplySort(filter.Sort)
             .AsNoTracking();
 
+        var siblings = await db.Categories
+            .Where(c => c.BrandId == category.BrandId && c.ParentId == null && c.IsActive)
+            .Ordered()
+            .Select(c => new { Category = c, Count = c.Products.Count(p => p.IsActive) })
+            .AsNoTracking()
+            .ToListAsync();
+
         return View(new ProductListViewModel
         {
             Filter = filter,
             Category = category,
+            SideCategories = siblings.Where(x => x.Count > 0 || x.Category.Id == category.Id)
+                .Select(x => new CategoryTile(x.Category, x.Count, null)).ToList(),
             Page = await PagedList<Models.Product>.CreateAsync(query, page, CatalogQuery.PageSize),
         });
     }

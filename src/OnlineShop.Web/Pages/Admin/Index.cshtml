@@ -1,43 +1,52 @@
 @page "/admin"
 @model IndexModel
 @{
-    ViewData["Title"] = "Главная панели";
+    ViewData["Title"] = "Главная";
     ViewData["AdminSection"] = "home";
 }
-<h1>Частые действия</h1>
+<h1>Что сделать</h1>
 <div class="quick-grid">
-    <a class="quick-card" href="/admin/import/stock">
-        <span class="qc-title">Обновить остаток на складе</span>
-        <span class="qc-note">Загрузить только файл «Остатки» из 1С. Цены и фото не меняются.</span>
-    </a>
-    <a class="quick-card" href="/admin/import">
-        <span class="qc-title">Загрузить товары из 1С</span>
-        <span class="qc-note">Прайс-лист с названиями, фото и ценами. Можно выбрать, что грузить.</span>
-    </a>
     <a class="quick-card" href="/admin/orders?status=new">
-        <span class="qc-title">Заказы покупателей</span>
-        <span class="qc-note">Посмотреть новые заказы и поменять статус.</span>
+        <span class="qc-icon">@Icons.Get("orders", 28)</span>
+        <span class="qc-title">Новые заказы</span>
         @if (Model.NewOrders > 0)
         {
-            <span class="qc-badge">новых: @Model.NewOrders</span>
+            <span class="qc-badge">ждут ответа: @Model.NewOrders</span>
+        }
+        else
+        {
+            <span class="qc-note">Новых заказов нет.</span>
         }
     </a>
     <a class="quick-card" href="/admin/variants">
-        <span class="qc-title">Цены и остатки по артикулам</span>
-        <span class="qc-note">Быстро поправить цену или количество прямо в списке.</span>
+        <span class="qc-icon">@Icons.Get("tag", 28)</span>
+        <span class="qc-title">Поменять цену или остаток</span>
+        <span class="qc-note">Все фасовки одним списком.</span>
+    </a>
+    <a class="quick-card" href="/admin/import/stock">
+        <span class="qc-icon">@Icons.Get("refresh", 28)</span>
+        <span class="qc-title">Обновить остатки из 1С</span>
+        <span class="qc-note">Только количество, цены не меняются.</span>
+    </a>
+    <a class="quick-card" href="/admin/import">
+        <span class="qc-icon">@Icons.Get("upload", 28)</span>
+        <span class="qc-title">Загрузить товары из 1С</span>
+        <span class="qc-note">Прайс-лист: названия, фото, описания.</span>
+    </a>
+    <a class="quick-card" href="/admin/products/add">
+        <span class="qc-icon">@Icons.Get("plus", 28)</span>
+        <span class="qc-title">Добавить товар вручную</span>
     </a>
     <a class="quick-card" href="/admin/banners">
+        <span class="qc-icon">@Icons.Get("image", 28)</span>
         <span class="qc-title">Баннеры на главной</span>
-        <span class="qc-note">Картинки в верхней части главной страницы.</span>
-    </a>
-    <a class="quick-card" href="/" target="_blank" rel="noopener">
-        <span class="qc-title">Открыть сайт</span>
-        <span class="qc-note">Посмотреть, как всё выглядит для покупателя.</span>
     </a>
 </div>
 
-<h2>Коротко о каталоге</h2>
-<div class="admin-box">
-    Товаров в каталоге: <strong>@Model.Products</strong>.
-    Видимых фасовок без остатка: <strong>@Model.OutOfStock</strong>.
+<h2>Каталог</h2>
+<div class="stats">
+    <a class="stat" href="/admin/products"><div class="v">@Model.Products</div><div class="l">товаров всего</div></a>
+    <a class="stat" href="/admin/products?filter=nophoto"><div class="v">@Model.NoPhoto</div><div class="l">без фото</div></a>
+    <a class="stat" href="/admin/products?filter=noprice"><div class="v">@Model.NoPrice</div><div class="l">с фасовкой без цены</div></a>
+    <a class="stat" href="/admin/products?filter=nostock"><div class="v">@Model.NoStock</div><div class="l">нет в наличии</div></a>
 </div>

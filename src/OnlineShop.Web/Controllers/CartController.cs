@@ -31,6 +31,11 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
         return Url.IsLocalUrl(next) ? LocalRedirect(next) : RedirectToAction(nameof(Index));
     }
 
+    /// <summary>Добавление со страницы товара, где фасовка выбирается переключателем в той же форме.</summary>
+    [HttpPost("add")]
+    public Task<IActionResult> AddSelected([FromForm] int variantId, int quantity = 1, string? next = null) =>
+        Add(variantId, quantity, next);
+
     [HttpPost("update/{variantId:int}")]
     public IActionResult Update(int variantId, int quantity = 1)
     {

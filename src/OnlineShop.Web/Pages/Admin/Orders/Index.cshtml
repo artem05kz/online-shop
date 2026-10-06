@@ -21,7 +21,7 @@
     {
         <input type="hidden" name="o" value="@Model.O">
     }
-    <button class="btn btn-ghost" type="submit">Найти</button>
+    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
 </form>
 
 <form id="changelist-form" method="post" asp-page-handler="SaveList"
@@ -43,8 +43,15 @@
                 @for (var i = 0; i < Model.Rows.Count; i++)
                 {
                     var row = Model.Rows[i];
-                    <tr>
-                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">№@row.Id</a></td>
+                    <tr class="@(row.Status == OrderStatus.New ? "is-new" : "")">
+                        <td>
+                            <input type="hidden" asp-for="Rows[i].Id">
+                            <a asp-page="Edit" asp-route-id="@row.Id" style="font-weight:700;">№@row.Id</a>
+                            @if (row.Status == OrderStatus.New)
+                            {
+                                <span class="pill new">новый</span>
+                            }
+                        </td>
                         <td>@row.UserName</td>
                         <td>@row.ContactName</td>
                         <td><a href="tel:@row.ContactPhone">@row.ContactPhone</a></td>
@@ -63,11 +70,12 @@
             </tbody>
         </table>
     </div>
-    <div class="admin-actions">
-        @if (Model.Rows.Count > 0)
-        {
-            <button class="btn" type="submit">Сохранить статусы</button>
-        }
-    </div>
+    @if (Model.Rows.Count > 0)
+    {
+        <div class="savebar">
+            <button class="btn" type="submit">@Icons.Get("check") Сохранить статусы</button>
+            <span class="note">Нажмите на номер заказа, чтобы открыть его целиком.</span>
+        </div>
+    }
 </form>
 <partial name="_AdminPager" model="Model.Pager" />

@@ -7,6 +7,19 @@
     var filter = Model.Filter;
 }
 <aside class="filters" id="filters">
+    @if (Model.SideCategories.Count > 1)
+    {
+        <nav class="side-cats" aria-label="Категории">
+            <h3>Категории</h3>
+            <ul>
+                @foreach (var tile in Model.SideCategories)
+                {
+                    tile.Category.Brand = Model.Category!.Brand;
+                    <li><a href="@Url.Category(tile.Category)" class="@(tile.Category.Id == Model.Category.Id ? "active" : null)">@tile.Category.Name <span class="n">@tile.ProductCount</span></a></li>
+                }
+            </ul>
+        </nav>
+    }
     <form method="get">
         @if (!string.IsNullOrEmpty(Model.Query))
         {

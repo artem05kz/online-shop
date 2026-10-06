@@ -6,64 +6,95 @@
 }
 <div class="admin-head">
     <h1>Товары</h1>
-    <a class="btn btn-ghost" href="/admin/import/stock">Обновить остаток</a>
-    <a class="btn btn-ghost" href="/admin/import">Загрузить из 1С</a>
-    <a class="btn" href="/admin/products/add">Добавить товар</a>
+    <a class="btn btn-ghost" href="/admin/import">@Icons.Get("upload") Загрузить из 1С</a>
+    <a class="btn" href="/admin/products/add">@Icons.Get("plus") Новый товар</a>
 </div>
 
 <form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название, описание или артикул">
-    <select class="select" name="brand" onchange="this.form.submit()">
-        <option value="">Все бренды</option>
-        @foreach (var brand in Model.Brands)
-        {
-            <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
-        }
-    </select>
-    <select class="select" name="category" onchange="this.form.submit()">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название или артикул">
+    <select class="select" name="category" onchange="this.form.submit()" aria-label="Категория">
         <option value="">Все категории</option>
-        @foreach (var category in Model.Categories)
+        @foreach (var node in Model.Tree.Flatten())
         {
-            <option value="@category.Id" selected="@(Model.Category == category.Id)">@category.Brand.Name / @category.Name</option>
+            <option value="@node.Category.Id" selected="@(Model.Category == node.Category.Id)">@Model.Tree.Path(node.Category.Id)</option>
         }
     </select>
-    <select class="select" name="active" onchange="this.form.submit()">
-        <option value="">Показ: все</option>
-        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
-        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
+    <select class="select" name="o" onchange="this.form.submit()" aria-label="Порядок">
+        @foreach (var (value, label) in OnlineShop.Web.Pages.Admin.Products.IndexModel.SortOptions)
+        {
+            <option value="@value" selected="@((Model.O ?? "name") == value)">@label</option>
+        }
     </select>
-    @if (!string.IsNullOrEmpty(Model.O))
+    @if (!string.IsNullOrEmpty(Model.Filter))
     {
-        <input type="hidden" name="o" value="@Model.O">
+        <input type="hidden" name="filter" value="@Model.Filter">
     }
-    <button class="btn btn-ghost" type="submit">Найти</button>
+    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
 </form>
 
-<div class="admin-table-wrap">
-    <table class="admin-table">
-        <thead>
-            <tr>
-                <th>@AdminList.SortHeader(Request, "name", "Название")</th>
-                <th>@AdminList.SortHeader(Request, "brand", "Бренд")</th>
-                <th>@AdminList.SortHeader(Request, "category", "Категория")</th>
-                <th class="num">Фасовок</th>
-                <th>@AdminList.SortHeader(Request, "active", "На сайте")</th>
-                <th>@AdminList.SortHeader(Request, "updated", "Изменён")</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var row in Model.List.Items)
+<div class="chips">
+    @foreach (var show in Model.Shows)
+    {
+        <a class="chip-link @((Model.Filter ?? "") == show.Value ? "on" : "")"
+           href="@QueryStrings.With(Request.Query, "filter", show.Value)">@show.Label <span class="n">@show.Count</span></a>
+    }
+</div>
+
+@if (Model.List.Items.Count == 0)
+{
+    <div class="admin-box">Ничего не нашлось. Попробуйте другое название или нажмите «Все».</div>
+}
+
+<div class="item-list">
+    @foreach (var row in Model.List.Items)
+    {
+        var product = row.Product;
+        var image = product.PrimaryImage;
+        <a class="item" href="/admin/products/@product.Id">
+            @if (image is not null)
             {
-                <tr>
-                    <td><a asp-page="Edit" asp-route-id="@row.Id">@row.Name</a></td>
-                    <td>@row.Brand</td>
-                    <td>@row.Category</td>
-                    <td class="num">@row.VariantCount</td>
-                    <td>@(row.IsActive ? "да" : "нет")</td>
-                    <td class="muted">@Format.DateTimeText(row.UpdatedAt)</td>
-                </tr>
+                <img class="thumb" src="@Media.Url(image.ImagePath)" alt="" loading="lazy">
             }
-        </tbody>
-    </table>
+            else
+            {
+                <span class="thumb empty">нет фото</span>
+            }
+            <span>
+                <span class="name">@product.Name</span>
+                <span class="path">@row.Path</span>
+                <span class="facts">
+                    <span>Фасовки: @string.Join(", ", row.Packs.Select(v => string.IsNullOrEmpty(v.PackLabel) ? v.Article : v.PackLabel))</span>
+                </span>
+            </span>
+            <span class="side">
+                <span class="price">
+                    @if (row.MinPrice is { } min)
+                    {
+                        @(row.MaxPrice > min ? $"{Format.Money(min)} - {Format.Money(row.MaxPrice!.Value)}" : Format.Money(min))
+                    }
+                    else
+                    {
+                        <span class="pill warn">нет цены</span>
+                    }
+                </span>
+                @if (!product.IsActive)
+                {
+                    <span class="pill off">@Icons.Get("eye-off", 16) скрыт</span>
+                }
+                else if (row.InStock)
+                {
+                    <span class="pill ok">@Icons.Get("check", 16) в наличии</span>
+                }
+                else
+                {
+                    <span class="pill bad">нет в наличии</span>
+                }
+                @if (row.HasUnpriced && row.MinPrice is not null)
+                {
+                    <span class="pill warn">есть фасовка без цены</span>
+                }
+            </span>
+        </a>
+    }
 </div>
 <partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
+using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Brands;
 
@@ -33,6 +34,9 @@ public class EditModel(ShopDbContext db) : PageModel
 
     public int? Id { get; private set; }
 
+    /// <summary>Категории этого бренда деревом, чтобы со страницы бренда было видно, что в нём есть.</summary>
+    public BrandNode? Node { get; private set; }
+
     public async Task<IActionResult> OnGetAsync(int? id)
     {
         Id = id;
@@ -40,6 +44,7 @@ public class EditModel(ShopDbContext db) : PageModel
         {
             return Page();
         }
+        Node = (await CatalogTree.LoadAsync(db)).Brands.FirstOrDefault(b => b.Brand.Id == id);
         var brand = await db.Brands.FindAsync(id);
         if (brand is null)
         {
@@ -70,6 +75,7 @@ public class EditModel(ShopDbContext db) : PageModel
         }
         if (!ModelState.IsValid)
         {
+            Node = id is null ? null : (await CatalogTree.LoadAsync(db)).Brands.FirstOrDefault(b => b.Brand.Id == id);
             return Page();
         }
 
@@ -84,7 +90,7 @@ public class EditModel(ShopDbContext db) : PageModel
         }
         await db.SaveChangesAsync();
         TempData.Flash($"Бренд «{brand.Name}» сохранён.");
-        return RedirectToPage("Index");
+        return Redirect($"/admin/categories#brand-{brand.Id}");
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)

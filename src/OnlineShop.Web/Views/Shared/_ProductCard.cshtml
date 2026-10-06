@@ -1,7 +1,11 @@
 @model Product
+@inject StorefrontLayout StorefrontLayout
 @{
     var url = Url.Product(Model);
     var variant = Model.DefaultVariant;
+    // Бренд на карточке нужен, только когда их на сайте несколько: иначе на каждой карточке одно и то же слово.
+    var showBrand = (await StorefrontLayout.GetAsync()).NavBrands.Count > 1;
+    var packs = Model.ActiveVariants.Select(v => v.PackLabel).Where(l => l.Length > 0).ToList();
 }
 <article class="product-card">
     <a class="thumb" href="@url">
@@ -12,8 +16,15 @@
         }
     </a>
 
-    <p class="brand">@Model.Category.Brand.Name</p>
+    @if (showBrand)
+    {
+        <p class="brand">@Model.Category.Brand.Name</p>
+    }
     <a class="name" href="@url">@Model.Name</a>
+    @if (packs.Count > 1)
+    {
+        <p class="packs">@string.Join(" · ", packs)</p>
+    }
 
     <div class="price-row">
         @if (Model.MinPrice is { } price)

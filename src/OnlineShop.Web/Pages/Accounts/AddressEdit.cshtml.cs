@@ -80,8 +80,8 @@ public class AddressEditModel(ShopDbContext db, IConfiguration configuration) : 
 
     public bool IsNew { get; private set; }
 
-    /// <summary>Ключ Google Maps. Без него на форме открытые карты OpenStreetMap, им ключ не нужен.</summary>
-    public string GoogleMapsKey => configuration["GOOGLE_MAPS_API_KEY"] ?? "";
+    /// <summary>Ключ 2ГИС. Без него на форме открытые карты OpenStreetMap, им ключ не нужен.</summary>
+    public string MapKey => TwoGis.Key(configuration);
 
     public async Task<IActionResult> OnGetAsync(int? id)
     {

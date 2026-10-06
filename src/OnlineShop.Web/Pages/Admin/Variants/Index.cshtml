@@ -5,9 +5,8 @@
     ViewData["AdminSection"] = "variants";
 }
 <div class="admin-head">
-    <h1>Цены и остатки по артикулам</h1>
-    <a class="btn btn-ghost" href="/admin/import/stock">Обновить остаток</a>
-    <a class="btn btn-ghost" href="/admin/import">Загрузить из 1С</a>
+    <h1>Цены и остатки</h1>
+    <a class="btn btn-ghost" href="/admin/import/stock">@Icons.Get("refresh") Обновить остатки из 1С</a>
 </div>
 
 <form class="admin-filters" method="get">
@@ -28,7 +27,7 @@
     {
         <input type="hidden" name="o" value="@Model.O">
     }
-    <button class="btn btn-ghost" type="submit">Найти</button>
+    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
 </form>
 
 <form id="changelist-form" method="post" asp-page-handler="SaveList"
@@ -37,9 +36,9 @@
         <table class="admin-table" id="result_list">
             <thead>
                 <tr>
-                    <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
                     <th>@AdminList.SortHeader(Request, "product", "Товар")</th>
                     <th>Фасовка</th>
+                    <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
                     <th>@AdminList.SortHeader(Request, "price", "Розничная цена")</th>
                     <th>@AdminList.SortHeader(Request, "stock", "Остаток")</th>
                     <th>На сайте</th>
@@ -53,10 +52,16 @@
                         <td>
                             <input type="hidden" asp-for="Rows[i].Id">
                             <input type="hidden" asp-for="Rows[i].Article">
-                            <a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a>
+                            <span class="cell-product">
+                                @if (row.ImagePath is not null)
+                                {
+                                    <img class="thumb" src="@Media.Url(row.ImagePath)" alt="" loading="lazy">
+                                }
+                                <a href="/admin/products/@row.ProductId">@row.ProductName</a>
+                            </span>
                         </td>
-                        <td><a href="/admin/products/@row.ProductId">@row.ProductName</a></td>
-                        <td>@row.PackLabel</td>
+                        <td><strong>@row.PackLabel</strong></td>
+                        <td><a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a></td>
                         <td><input class="field small" asp-for="Rows[i].Price" inputmode="decimal"></td>
                         <td><input class="field tiny" asp-for="Rows[i].StockQty" inputmode="numeric"></td>
                         <td><input asp-for="Rows[i].IsActive"></td>
@@ -65,11 +70,12 @@
             </tbody>
         </table>
     </div>
-    <div class="admin-actions">
-        @if (Model.Rows.Count > 0)
-        {
-            <button class="btn" type="submit">Сохранить</button>
-        }
-    </div>
+    @if (Model.Rows.Count > 0)
+    {
+        <div class="savebar">
+            <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+            <span class="note">Изменённые строки подсвечиваются зелёным.</span>
+        </div>
+    }
 </form>
 <partial name="_AdminPager" model="Model.Pager" />

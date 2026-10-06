@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
+using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Categories;
 
@@ -40,11 +41,17 @@ public class EditModel(ShopDbContext db) : PageModel
 
     public int? Id { get; private set; }
     public IReadOnlyList<Brand> Brands { get; private set; } = [];
-    public IReadOnlyList<Category> Parents { get; private set; } = [];
+    public CatalogTree Tree { get; private set; } = null!;
 
-    public async Task<IActionResult> OnGetAsync(int? id)
+    /// <summary>Эту категорию и вложенные в неё нельзя выбрать родителем: получилась бы петля.</summary>
+    public HashSet<int> Excluded { get; private set; } = [];
+
+    public async Task<IActionResult> OnGetAsync(int? id, int? brand, int? parent)
     {
         Id = id;
+        // С кнопок «+ Категория» и «+ Подкатегория» в дереве бренд и родитель уже выбраны.
+        Input.BrandId = brand;
+        Input.ParentId = parent;
         if (id is not null)
         {
             var category = await db.Categories.FindAsync(id);
@@ -112,7 +119,7 @@ public class EditModel(ShopDbContext db) : PageModel
         }
         await db.SaveChangesAsync();
         TempData.Flash($"Категория «{category.Name}» сохранена.");
-        return RedirectToPage("Index");
+        return Redirect($"/admin/categories#category-{category.Id}");
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(int id)
@@ -140,10 +147,8 @@ public class EditModel(ShopDbContext db) : PageModel
     private async Task LoadChoices()
     {
         Brands = await db.Brands.Ordered().AsNoTracking().ToListAsync();
-        Parents = await db.Categories.Include(c => c.Brand)
-            .Where(c => c.Id != Id)
-            .OrderBy(c => c.Brand.SortOrder).ThenBy(c => c.Brand.Name).ThenBy(c => c.SortOrder).ThenBy(c => c.Name)
-            .AsNoTracking().ToListAsync();
+        Tree = await CatalogTree.LoadAsync(db);
+        Excluded = Id is { } self ? (await SubtreeIds(self)).ToHashSet() : [];
     }
 
     private async Task<List<int>> SubtreeIds(int rootId)

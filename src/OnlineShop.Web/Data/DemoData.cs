@@ -106,12 +106,12 @@ public static class DemoData
             {
                 Address = "г. Актау, 1 микрорайон, демо-адрес, бутик №1", Kind = StoreKind.Shop,
                 WorkingHours = "Пн-Сб, 9:00-18:00", LunchHours = "с 13:00 до 14:00", Phone = "+7 700 000-00-01",
-                MapUrl = "https://www.openstreetmap.org/#map=14/43.6525/51.1575", SortOrder = 1,
+                Latitude = 43.6530, Longitude = 51.1620, SortOrder = 1,
             },
             new Store
             {
                 Address = "г. Актау, промзона, демо-склад", Kind = StoreKind.Pickup,
-                WorkingHours = "Пн-Пт, 10:00-17:00", Phone = "+7 700 000-00-02", SortOrder = 2,
+                WorkingHours = "Пн-Пт, 10:00-17:00", Phone = "+7 700 000-00-02", Latitude = 43.6395, Longitude = 51.2155, SortOrder = 2,
             },
             new Store { City = "Жанаозен", Address = "г. Жанаозен, демо-адрес, пункт выдачи", SortOrder = 3 });
 

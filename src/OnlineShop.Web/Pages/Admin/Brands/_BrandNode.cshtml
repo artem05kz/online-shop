@@ -1,0 +1,24 @@
+@model OnlineShop.Web.Services.CategoryNode
+@* Категория в дереве на странице бренда: только просмотр и переход к правке. *@
+<li>
+    <div class="tree-row">
+        <span class="t-name">
+            @Icons.Get("folder")
+            <a href="/admin/categories/@Model.Category.Id">@Model.Category.Name</a>
+            @if (!Model.Category.IsActive)
+            {
+                <span class="pill off">скрыта</span>
+            }
+        </span>
+        <span class="t-count">@Model.TotalProducts @Plural.Products(Model.TotalProducts)</span>
+    </div>
+    @if (Model.Children.Count > 0)
+    {
+        <ul>
+            @foreach (var child in Model.Children)
+            {
+                <partial name="_BrandNode" model="child" />
+            }
+        </ul>
+    }
+</li>

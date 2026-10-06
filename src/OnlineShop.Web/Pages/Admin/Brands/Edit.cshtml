@@ -2,43 +2,70 @@
 @model OnlineShop.Web.Pages.Admin.Brands.EditModel
 @{
     ViewData["Title"] = Model.Id is null ? "Новый бренд" : "Бренд";
-    ViewData["AdminSection"] = "brands";
+    ViewData["AdminSection"] = "categories";
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новый бренд" : Model.Input.Name)</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" href="/admin/categories">@Icons.Get("arrow-left") Ко всем брендам</a>
 </div>
 
-<form method="post" class="admin-box form-narrow">
-    <div class="form-row">
-        <label asp-for="Input.Name"></label>
-        <input class="field" asp-for="Input.Name">
-        <span class="errorlist" asp-validation-for="Input.Name"></span>
+<form method="post">
+    <div class="admin-box" style="max-width:720px;">
+        <div class="form-row">
+            <label asp-for="Input.Name"></label>
+            <input class="field" asp-for="Input.Name">
+            <span class="errorlist" asp-validation-for="Input.Name"></span>
+        </div>
+        <label class="check" style="margin-bottom:6px;">
+            <input asp-for="Input.IsActive">
+            <span>Показывать на сайте</span>
+        </label>
+        <details style="margin-top:14px;">
+            <summary class="admin-count" style="cursor:pointer;">Адрес страницы на сайте</summary>
+            <div class="form-row" style="margin-top:10px;">
+                <input class="field" asp-for="Input.Slug">
+                <span class="help">Заполняется сам из названия, менять не обязательно.</span>
+                <span class="errorlist" asp-validation-for="Input.Slug"></span>
+            </div>
+        </details>
+        <input type="hidden" asp-for="Input.SortOrder">
     </div>
-    <div class="form-row">
-        <label asp-for="Input.Slug"></label>
-        <input class="field" asp-for="Input.Slug">
-        <span class="help">Часть адреса страницы. Оставьте пустым, и он заполнится из названия.</span>
-        <span class="errorlist" asp-validation-for="Input.Slug"></span>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.SortOrder"></label>
-        <input class="field" asp-for="Input.SortOrder" type="number" min="0">
-        <span class="help">Бренды выводятся по этому числу от меньшего к большему. Например, бренд с числом 1 будет выше бренда с числом 2.</span>
-        <span class="errorlist" asp-validation-for="Input.SortOrder"></span>
-    </div>
-    <label class="check" style="margin-bottom:16px;">
-        <input asp-for="Input.IsActive">
-        <span>Показывать на сайте</span>
-    </label>
-    <div class="admin-actions">
-        <button class="btn" type="submit">Сохранить</button>
+    <div class="savebar" style="max-width:720px;">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+        <a class="btn btn-ghost" href="/admin/categories">Отмена</a>
     </div>
 </form>
 
-@if (Model.Id is not null)
+@if (Model.Node is { } brand)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Удалить бренд вместе с его категориями?');">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить бренд</button>
+    <h2>Категории бренда</h2>
+    <div class="admin-box" style="max-width:720px;">
+        @if (brand.Roots.Count > 0)
+        {
+            <ul class="tree">
+                <li class="tree-brand">
+                    <div class="tree-row"><span class="t-name">@Icons.Get("layers", 22) @brand.Brand.Name</span>
+                        <span class="t-count">@brand.TotalProducts @Plural.Products(brand.TotalProducts)</span></div>
+                    <ul>
+                        @foreach (var root in brand.Roots)
+                        {
+                            <partial name="_BrandNode" model="root" />
+                        }
+                    </ul>
+                </li>
+            </ul>
+        }
+        else
+        {
+            <p style="margin-top:0;">Категорий пока нет.</p>
+        }
+        <div class="admin-actions">
+            <a class="btn btn-ghost" href="/admin/categories/add?brand=@brand.Brand.Id">@Icons.Get("plus") Добавить категорию</a>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
+          onsubmit="return confirm('Удалить бренд вместе с его категориями?');">
+        <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить бренд</button>
     </form>
 }

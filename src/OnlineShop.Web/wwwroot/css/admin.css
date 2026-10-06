@@ -1,166 +1,358 @@
-/* Панель управления. Подключается после style.css и берёт из него цвета, кнопки и поля форм.
-   Крупный спокойный текст и зелёный акцент, как было в настройке админки Django-версии. */
+/* Панель управления. Подключается после style.css и берёт из него поля форм.
+   Рассчитана на людей, которым мелкий бледный текст и маленькие кнопки неудобны:
+   крупный шрифт, контрастный текст, высокие кнопки с подписью, одна главная кнопка на экране. */
 
-body.admin { background: var(--bg-soft); font-size: 15px; }
+:root {
+    --a-primary: #3d7a18;        /* тёмно-зелёный: белый текст на нём читается с контрастом выше 5:1 */
+    --a-primary-hover: #315f14;
+    --a-primary-soft: #eaf4e2;
+    --a-ink: #1b1f23;
+    --a-ink-soft: #3c434a;       /* подсказки темнее обычного серого, чтобы читались без напряжения */
+    --a-line: #d5dade;
+    --a-bg: #f3f5f6;
+    --a-danger: #b3261e;
+    --a-warn-bg: #fff3d6;
+    --a-warn-ink: #6b4a00;
+    --a-radius: 12px;
+}
 
-.admin-top {
-    background: #1f3d24;
-    color: #fff;
-}
-.admin-top .inner {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 12px 20px;
-}
-.admin-top .title { font-weight: 700; font-size: 1.05rem; color: #fff; }
+body.admin { background: var(--a-bg); color: var(--a-ink); font-size: 17px; line-height: 1.5; }
+body.admin a { color: var(--a-primary); }
+body.admin .icon { flex: none; vertical-align: -4px; }
+body.admin :focus-visible { outline: 3px solid #2f6fd6; outline-offset: 2px; }
+
+/* ---------- Шапка ---------- */
+.admin-top { background: #1f3d24; color: #fff; }
+.admin-top .inner { display: flex; align-items: center; gap: 22px; padding: 14px 24px; }
+.admin-top .title { font-weight: 700; font-size: 1.1rem; color: #fff !important; }
 .admin-top .spacer { flex: 1; }
-.admin-top a, .admin-top button { color: #d9ecd1; font-size: .9rem; }
+.admin-top a, .admin-top button { color: #e4f1dc !important; font-size: 1rem; display: inline-flex; align-items: center; gap: 8px; }
 .admin-top form { display: inline; }
 .admin-top button { background: none; border: 0; cursor: pointer; padding: 0; font: inherit; }
 
+/* ---------- Меню слева ---------- */
 .admin-shell {
     display: grid;
-    grid-template-columns: 230px minmax(0, 1fr);
-    gap: 24px;
-    padding: 22px 20px 60px;
-    max-width: 1500px;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 28px;
+    padding: 24px 24px 120px;
+    max-width: 1440px;
     margin: 0 auto;
 }
+.admin-nav { display: flex; flex-direction: column; gap: 4px; }
 .admin-nav h4 {
-    margin: 18px 0 6px;
-    font-size: .72rem;
-    letter-spacing: .08em;
+    margin: 20px 0 6px 12px;
+    font-size: .82rem;
+    letter-spacing: .06em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--a-ink-soft);
 }
 .admin-nav h4:first-child { margin-top: 0; }
 .admin-nav a {
-    display: block;
-    padding: 7px 10px;
-    border-radius: 8px;
-    color: var(--ink-soft);
-    font-size: .93rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    color: var(--a-ink) !important;
+    font-size: 1.02rem;
 }
 .admin-nav a:hover { background: #fff; }
-.admin-nav a.active { background: var(--green-soft); color: var(--green-dark); font-weight: 600; }
+.admin-nav a.active { background: var(--a-primary); color: #fff !important; font-weight: 600; }
+.admin-nav .badge {
+    margin-left: auto;
+    background: #e8590c;
+    color: #fff;
+    border-radius: 20px;
+    padding: 0 9px;
+    font-size: .85rem;
+    font-weight: 700;
+}
 
 .admin-main { min-width: 0; }
-.admin-main h1 { font-size: 1.4rem; margin: 0 0 16px; }
-.admin-main h2 { font-size: 1.1rem; margin: 26px 0 10px; }
+.admin-main h1 { font-size: 1.7rem; margin: 0 0 18px; line-height: 1.25; }
+.admin-main h2 { font-size: 1.25rem; margin: 28px 0 12px; }
+.admin-main h3 { font-size: 1.12rem; }
 
-.admin-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-}
+.admin-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
 .admin-head h1 { margin: 0; margin-right: auto; }
 
+/* ---------- Кнопки ---------- */
+body.admin .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 2px solid var(--a-primary);
+    background: var(--a-primary);
+    color: #fff !important;
+    font-size: 1.02rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+body.admin .btn:hover { background: var(--a-primary-hover); border-color: var(--a-primary-hover); }
+body.admin .btn-ghost { background: #fff; color: var(--a-primary) !important; }
+body.admin .btn-ghost:hover { background: var(--a-primary-soft); }
+body.admin .btn-danger { background: #fff; border-color: var(--a-danger); color: var(--a-danger) !important; }
+body.admin .btn-danger:hover { background: #fdecea; border-color: var(--a-danger); }
+body.admin .btn-sm { min-height: 42px; padding: 8px 14px; font-size: .97rem; }
+body.admin .btn-icon { min-width: 42px; padding: 8px; }
+
+/* ---------- Поля форм ---------- */
+body.admin .field, body.admin .select {
+    font-size: 1.02rem;
+    padding: 11px 14px;
+    min-height: 48px;
+    border: 2px solid var(--a-line);
+    color: var(--a-ink);
+}
+body.admin .select { padding-right: 38px; }
+body.admin textarea.field { min-height: 120px; line-height: 1.5; }
+body.admin .field:focus, body.admin .select:focus { border-color: var(--a-primary); }
+body.admin .form-row label, body.admin .form-grid label { font-size: 1rem; font-weight: 600; color: var(--a-ink); }
+body.admin .form-row .help, body.admin .form-grid .help { font-size: .93rem; color: var(--a-ink-soft); }
+body.admin .form-row .errorlist, body.admin .form-grid .errorlist { font-size: .95rem; padding-left: 0; font-weight: 600; color: var(--a-danger); }
+body.admin .check { font-size: 1.02rem; gap: 12px; align-items: center; }
+body.admin .check input[type=checkbox], body.admin input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--a-primary); }
+
+/* ---------- Блоки ---------- */
 .admin-box {
     background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 18px 20px;
-    margin-bottom: 16px;
+    border: 1px solid var(--a-line);
+    border-radius: var(--a-radius);
+    padding: 22px 24px;
+    margin-bottom: 18px;
 }
-.admin-box > h3 { margin: 0 0 12px; font-size: 1rem; }
-.admin-box .hint { color: var(--muted); font-size: .86rem; margin: -6px 0 12px; }
-details.admin-box > summary { cursor: pointer; font-weight: 700; }
-details.admin-box[open] > summary { margin-bottom: 12px; }
+.admin-box > h3 { margin: 0 0 14px; }
+.admin-box .hint { color: var(--a-ink-soft); font-size: .95rem; margin: -6px 0 14px; }
+details.admin-box > summary { cursor: pointer; font-weight: 700; font-size: 1.08rem; list-style: none; display: flex; align-items: center; gap: 10px; }
+details.admin-box > summary::before { content: "▸"; color: var(--a-primary); }
+details.admin-box[open] > summary::before { content: "▾"; }
+details.admin-box[open] > summary { margin-bottom: 14px; }
 
-/* Поиск и фильтры над списком */
-.admin-filters {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+/* ---------- Поиск и фильтры ---------- */
+.admin-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+.admin-filters .field { width: auto; min-width: 300px; flex: 1 1 300px; }
+.admin-filters .select { width: auto; min-width: 190px; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.chip-link {
+    display: inline-flex;
     align-items: center;
-    margin-bottom: 12px;
+    gap: 6px;
+    min-height: 40px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 2px solid var(--a-line);
+    background: #fff;
+    color: var(--a-ink) !important;
+    font-size: .97rem;
 }
-.admin-filters .field { width: auto; min-width: 260px; }
-.admin-filters .select { width: auto; min-width: 170px; }
+.chip-link.on { border-color: var(--a-primary); background: var(--a-primary-soft); font-weight: 600; }
+.chip-link .n { color: var(--a-ink-soft); font-weight: 400; }
 
-/* Таблицы. Широкая таблица прокручивается сама, а не вся страница. */
-.admin-table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
-.admin-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-.admin-table th, .admin-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--line);
-    text-align: left;
-    vertical-align: middle;
-    line-height: 1.4;
+/* ---------- Список товаров карточками-строками ---------- */
+.item-list { display: flex; flex-direction: column; gap: 10px; }
+.item {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--a-line);
+    border-radius: var(--a-radius);
+    padding: 12px 16px;
+    color: inherit !important;
+    text-decoration: none;
 }
-.admin-table thead th {
-    background: var(--bg-soft);
-    font-size: .8rem;
-    color: var(--ink-soft);
-    white-space: nowrap;
+a.item:hover { border-color: var(--a-primary); box-shadow: 0 2px 10px rgba(0, 0, 0, .06); }
+.item .thumb {
+    width: 88px;
+    height: 88px;
+    border-radius: 10px;
+    background: #f7f8f9;
+    border: 1px solid var(--a-line);
+    object-fit: contain;
 }
-.admin-table thead th a { color: inherit; }
-.admin-table thead th a.sorted { color: var(--green-dark); }
+.item .thumb.empty { display: flex; align-items: center; justify-content: center; color: var(--a-ink-soft); font-size: .8rem; text-align: center; }
+.item .name { font-size: 1.12rem; font-weight: 700; line-height: 1.3; }
+.item .path { color: var(--a-ink-soft); font-size: .95rem; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.item .facts { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; font-size: .97rem; }
+.item .side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.item .price { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; font-size: .9rem; font-weight: 600; white-space: nowrap; }
+.pill.ok { background: #e3f3d8; color: #2c5c10; }
+.pill.warn { background: var(--a-warn-bg); color: var(--a-warn-ink); }
+.pill.off { background: #eceff1; color: #3c434a; }
+.pill.bad { background: #fdecea; color: var(--a-danger); }
+.pill.new { background: #e8590c; color: #fff; }
+
+/* ---------- Таблицы ---------- */
+.admin-table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--a-line); border-radius: var(--a-radius); }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 1rem; }
+.admin-table th, .admin-table td { padding: 11px 10px; border-bottom: 1px solid var(--a-line); text-align: left; vertical-align: middle; line-height: 1.4; }
+.admin-table thead th { background: #f7f8f9; font-size: .92rem; color: var(--a-ink-soft); white-space: nowrap; }
+.admin-table thead th a { color: inherit !important; }
+.admin-table thead th a.sorted { color: var(--a-primary) !important; }
 .admin-table tbody tr:last-child td { border-bottom: 0; }
-.admin-table tbody tr:hover td { background: #fafcf9; }
 .admin-table .num { text-align: right; white-space: nowrap; }
-.admin-table .field, .admin-table .select { padding: 6px 8px; font-size: .88rem; }
-.admin-table input.small { width: 90px; }
-.admin-table input.tiny { width: 70px; }
-.admin-table .muted { color: var(--muted); }
-.admin-table img.thumb { width: 54px; height: 54px; object-fit: contain; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.admin-table .field, .admin-table .select { padding: 8px 10px; min-height: 44px; font-size: 1rem; }
+.admin-table input.small { width: 108px; }
+.admin-table input.tiny { width: 84px; }
+.admin-table .muted { color: var(--a-ink-soft); }
+.admin-table img.thumb { width: 56px; height: 56px; object-fit: contain; border: 1px solid var(--a-line); border-radius: 8px; background: #fff; }
+.admin-table .cell-product { display: flex; align-items: center; gap: 12px; }
+.admin-table tr.is-new td { background: #fff7f0; }
 
-.admin-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 14px;
-}
+.admin-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
 .admin-actions .push { margin-left: auto; }
-.admin-count { color: var(--muted); font-size: .88rem; }
+.admin-count { color: var(--a-ink-soft); font-size: 1rem; }
 
-.yes { color: var(--green-dark); font-weight: 700; }
-.no { color: var(--muted); }
+/* Кнопка «Сохранить» всегда на виду внизу экрана, чтобы не искать её под длинной формой. */
+.savebar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 24px -4px 0;
+    padding: 14px 18px;
+    background: #fff;
+    border: 1px solid var(--a-line);
+    border-radius: var(--a-radius);
+    box-shadow: 0 -4px 18px rgba(0, 0, 0, .08);
+}
+.savebar .btn { min-width: 180px; }
+.savebar .note { color: var(--a-ink-soft); font-size: .95rem; }
 
-/* Главная панели: частые действия карточками */
-.quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+/* ---------- Главная панели ---------- */
+.quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .quick-card {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 16px 18px;
+    gap: 10px;
+    padding: 22px;
     background: #fff;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    color: inherit;
+    border: 2px solid var(--a-line);
+    border-radius: var(--a-radius);
+    color: inherit !important;
+    text-decoration: none;
 }
-.quick-card:hover { border-color: var(--green); }
-.quick-card .qc-title { font-weight: 700; color: var(--green-dark); }
-.quick-card .qc-note { color: var(--muted); font-size: .86rem; line-height: 1.45; }
-.quick-card .qc-badge { align-self: flex-start; background: var(--green); color: #fff; border-radius: 20px; padding: 1px 9px; font-size: .78rem; font-weight: 700; }
+.quick-card:hover { border-color: var(--a-primary); }
+.quick-card .qc-icon { width: 52px; height: 52px; border-radius: 12px; background: var(--a-primary-soft); color: var(--a-primary); display: flex; align-items: center; justify-content: center; }
+.quick-card .qc-title { font-weight: 700; font-size: 1.15rem; color: var(--a-ink); }
+.quick-card .qc-note { color: var(--a-ink-soft); font-size: .97rem; line-height: 1.45; }
+.quick-card .qc-badge { align-self: flex-start; background: #e8590c; color: #fff; border-radius: 20px; padding: 2px 12px; font-size: .92rem; font-weight: 700; }
 
-.warnings { list-style: none; padding: 0; margin: 0 0 12px; }
-.warnings li {
-    padding: 8px 12px;
-    margin-bottom: 6px;
-    border-radius: 8px;
-    background: #fdf1e0;
-    color: #7a5208;
-    font-size: .88rem;
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.stat { background: #fff; border: 1px solid var(--a-line); border-radius: var(--a-radius); padding: 16px 18px; color: inherit !important; text-decoration: none; }
+.stat .v { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
+.stat .l { color: var(--a-ink-soft); font-size: .97rem; margin-top: 4px; }
+a.stat:hover { border-color: var(--a-primary); }
+
+/* ---------- Дерево брендов и категорий ---------- */
+/* Вертикальная линия от родителя и короткая горизонтальная к каждой строке,
+   как дерево папок: сразу видно, что во что вложено. */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { margin-left: 26px; }
+.tree ul > li { position: relative; padding-left: 26px; }
+/* Вертикальная линия у каждой строки, у последней только до её середины. */
+.tree ul > li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-left: 2px solid #9fb0bd;
 }
+.tree ul > li:last-child::before { bottom: auto; height: 36px; }
+/* Горизонтальная черта со стрелкой к самой строке. */
+.tree ul > li::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 35px;
+    width: 20px;
+    border-top: 2px solid #9fb0bd;
+}
+.tree-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    margin: 6px 0;
+    padding: 12px 16px;
+    min-height: 58px;
+    background: #fff;
+    border: 1px solid var(--a-line);
+    border-radius: 10px;
+}
+.tree-row .t-name { font-size: 1.08rem; font-weight: 600; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tree-row .t-count { color: var(--a-ink-soft); font-size: .95rem; white-space: nowrap; }
+.tree-row .t-actions { display: flex; gap: 6px; flex-wrap: nowrap; }
+.tree-row form { display: inline; }
+.tree-brand > .tree-row { background: #1f3d24; border-color: #1f3d24; color: #fff; }
+.tree-brand > .tree-row .t-name { font-size: 1.2rem; }
+.tree-brand > .tree-row .t-count { color: #d7e8ce; }
+.tree-brand > .tree-row .btn-ghost { background: transparent; border-color: #a9cf94; color: #fff !important; }
+.tree-brand > .tree-row .btn-ghost:hover { background: rgba(255, 255, 255, .1); }
+.tree-brand { margin-bottom: 22px; }
 
-/* Подсветка изменённых, но ещё не сохранённых строк (скрипт admin_edit_highlight.js) */
-tr.row-edited > th,
-tr.row-edited > td { background: rgba(98, 178, 44, .13) !important; }
-tr.row-edited > th:first-child,
-tr.row-edited > td:first-child { box-shadow: inset 3px 0 0 var(--green-dark); }
+/* Путь категории стрелками: Ifoam → Очистители → Для стёкол */
+.crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 1.02rem; }
+.crumbs .sep { color: var(--a-ink-soft); }
+.crumbs .here { font-weight: 700; }
+
+/* ---------- Карточка товара в панели ---------- */
+.product-edit { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+.photo-main { width: 100%; aspect-ratio: 1; object-fit: contain; background: #f7f8f9; border: 1px solid var(--a-line); border-radius: var(--a-radius); }
+.photo-main.empty { display: flex; align-items: center; justify-content: center; color: var(--a-ink-soft); }
+.photo-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.photo-tile { position: relative; border: 2px solid var(--a-line); border-radius: 10px; padding: 6px; background: #fff; }
+.photo-tile.primary { border-color: var(--a-primary); }
+.photo-tile img { width: 100%; aspect-ratio: 1; object-fit: contain; }
+.photo-tile label { display: flex; align-items: center; gap: 6px; font-size: .88rem; margin-top: 4px; }
+.upload-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 18px;
+    border: 2px dashed #9fb0bd;
+    border-radius: var(--a-radius);
+    text-align: center;
+    cursor: pointer;
+    background: #fafbfc;
+}
+.upload-box:hover { border-color: var(--a-primary); }
+.upload-box input[type=file] { max-width: 100%; }
+
+.pack-table td { vertical-align: top; }
+.product-more { max-width: 100%; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pack-table .field { min-width: 0; }
+
+.warnings { list-style: none; padding: 0; margin: 0 0 14px; }
+.warnings li { padding: 12px 16px; margin-bottom: 8px; border-radius: 10px; background: var(--a-warn-bg); color: var(--a-warn-ink); font-size: .98rem; }
+
+/* ---------- Подсветка несохранённых правок (admin_edit_highlight.js) ---------- */
+tr.row-edited > th, tr.row-edited > td { background: #eef7e6 !important; }
+tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: inset 4px 0 0 var(--a-primary); }
 .unsaved-note {
     display: inline-block;
     margin-left: 8px;
-    padding: 2px 8px;
+    padding: 2px 10px;
     border-radius: 20px;
-    background: var(--green-dark);
+    background: var(--a-primary);
     color: #fff;
-    font-size: .72rem;
+    font-size: .82rem;
     font-weight: 700;
     white-space: nowrap;
 }
@@ -168,33 +360,45 @@ tr.row-edited > td:first-child { box-shadow: inset 3px 0 0 var(--green-dark); }
     position: sticky;
     top: 0;
     z-index: 20;
-    margin: 0 0 12px;
-    padding: 11px 15px;
-    border-radius: 8px;
-    border: 1px solid var(--green-dark);
-    border-left: 4px solid var(--green-dark);
-    /* Фон непрозрачный: полоса прилипает к верху, и сквозь неё иначе просвечивала бы таблица. */
+    margin: 0 0 14px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 2px solid var(--a-primary);
     background: #fff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, .18);
-    font-size: .9rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .14);
+    font-size: 1.02rem;
     font-weight: 600;
 }
 
-/* Таблицы предпросмотра импорта: свой поиск и сортировка, прокрутка внутри блока,
-   чтобы страница не прыгала, когда поиск прячет строки. */
-.import-table-wrap { overflow: auto; max-height: 65vh; margin-bottom: 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
-.import-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .86rem; }
-.import-table th, .import-table td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; word-break: break-word; }
-.import-table td:first-child, .import-table th:first-child { width: 34px; }
-.import-table thead th { background: var(--bg-soft); cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 1; }
+/* ---------- Предпросмотр загрузки из 1С ---------- */
+.import-table-wrap { overflow: auto; max-height: 65vh; margin-bottom: 18px; background: #fff; border: 1px solid var(--a-line); border-radius: var(--a-radius); }
+.import-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .97rem; }
+.import-table th, .import-table td { border-bottom: 1px solid var(--a-line); padding: 8px 10px; text-align: left; word-break: break-word; }
+.import-table td:first-child, .import-table th:first-child { width: 44px; }
+.import-table thead th { background: #f7f8f9; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 1; }
 .import-table thead th.sorted-asc::after { content: " \25B2"; }
 .import-table thead th.sorted-desc::after { content: " \25BC"; }
 .import-table tbody tr.row-hidden { display: none; }
-.import-table .field { padding: 5px 7px; font-size: .86rem; }
+.import-table .field { padding: 7px 9px; min-height: 40px; font-size: .97rem; }
 
+/* ---------- Карта выбора точки ---------- */
+.map-picker { height: 360px; border-radius: var(--a-radius); border: 1px solid var(--a-line); }
+
+@media (max-width: 1000px) {
+    .product-edit { grid-template-columns: 1fr; }
+}
 @media (max-width: 900px) {
-    .admin-shell { grid-template-columns: 1fr; }
-    .admin-nav { display: flex; flex-wrap: wrap; gap: 4px; }
+    .admin-shell { grid-template-columns: 1fr; padding: 16px 16px 120px; }
+    .admin-nav { flex-direction: row; flex-wrap: wrap; }
     .admin-nav h4 { display: none; }
+    .admin-nav a { min-height: 44px; }
     .admin-filters .field, .admin-filters .select { min-width: 0; width: 100%; }
+    .item { grid-template-columns: 64px minmax(0, 1fr); }
+    .item .thumb { width: 64px; height: 64px; }
+    .item .side { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; }
+    .tree ul { margin-left: 10px; }
+    .tree ul > li { padding-left: 18px; }
+    .tree ul > li::after { width: 14px; }
+    .tree-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .tree-row .t-actions { grid-column: 1 / -1; flex-wrap: wrap; }
 }

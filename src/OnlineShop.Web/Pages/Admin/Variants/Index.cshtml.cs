@@ -20,6 +20,7 @@ public class IndexModel(ShopDbContext db) : PageModel
         public string Article { get; set; } = "";
         public int ProductId { get; set; }
         public string ProductName { get; set; } = "";
+        public string? ImagePath { get; set; }
         public string PackLabel { get; set; } = "";
         public string? Price { get; set; }
         public string? StockQty { get; set; }
@@ -68,11 +69,12 @@ public class IndexModel(ShopDbContext db) : PageModel
             _ => query.OrderBy(v => v.Product.Name).ThenBy(v => v.VolumeValue),
         };
 
-        var list = await PagedList<ProductVariant>.CreateAsync(query.Include(v => v.Product).AsNoTracking(), p, AdminList.PageSize);
+        var list = await PagedList<ProductVariant>.CreateAsync(query.Include(v => v.Product).ThenInclude(p => p.Images).AsNoTracking(), p, AdminList.PageSize);
         Pager = PagerInfo.From(list);
         Rows = list.Items.Select(v => new Row
         {
             Id = v.Id, Article = v.Article, ProductId = v.ProductId, ProductName = v.Product.Name, PackLabel = v.PackLabel,
+            ImagePath = v.Product.PrimaryImage?.ImagePath,
             Price = AdminNumbers.Text(v.Price), StockQty = v.StockQty.ToString(), IsActive = v.IsActive,
         }).ToList();
     }

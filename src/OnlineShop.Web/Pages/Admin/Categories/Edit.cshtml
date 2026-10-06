@@ -3,65 +3,138 @@
 @{
     ViewData["Title"] = Model.Id is null ? "Новая категория" : "Категория";
     ViewData["AdminSection"] = "categories";
+    var node = Model.Id is { } id ? Model.Tree.Find(id) : null;
+    var chain = Model.Id is { } self ? Model.Tree.Ancestry(self) : Array.Empty<Category>();
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новая категория" : Model.Input.Name)</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" href="/admin/categories">@Icons.Get("arrow-left") Ко всем категориям</a>
 </div>
 
-<form method="post" class="admin-box form-narrow">
-    <div class="form-row">
-        <label asp-for="Input.BrandId"></label>
-        <select class="select" asp-for="Input.BrandId">
-            <option value="">Выберите бренд</option>
-            @foreach (var brand in Model.Brands)
+@if (chain.Count > 0)
+{
+    @* Где находится категория: бренд и все родители по порядку. *@
+    <div class="admin-box crumbs">
+        <a href="/admin/brands/@chain[0].BrandId">@chain[0].Brand.Name</a>
+        @foreach (var c in chain)
+        {
+            <span class="sep">@Icons.Get("arrow-right", 18)</span>
+            @if (c.Id == Model.Id)
             {
-                <option value="@brand.Id">@brand.Name</option>
+                <span class="here">@c.Name</span>
             }
-        </select>
-        <span class="errorlist" asp-validation-for="Input.BrandId"></span>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.ParentId"></label>
-        @* В Django пустой вариант был строкой из дефисов, она читалась как заглушка, поэтому «Нет». *@
-        <select class="select" asp-for="Input.ParentId">
-            <option value="">Нет</option>
-            @foreach (var parent in Model.Parents)
+            else
             {
-                <option value="@parent.Id">@parent.Brand.Name / @parent.Name</option>
+                <a href="/admin/categories/@c.Id">@c.Name</a>
             }
-        </select>
-        <span class="errorlist" asp-validation-for="Input.ParentId"></span>
+        }
     </div>
-    <div class="form-row">
-        <label asp-for="Input.Name"></label>
-        <input class="field" asp-for="Input.Name">
-        <span class="errorlist" asp-validation-for="Input.Name"></span>
+}
+
+<form method="post" id="category-form">
+    <div class="admin-box" style="max-width:720px;">
+        <div class="form-row">
+            <label asp-for="Input.Name"></label>
+            <input class="field" asp-for="Input.Name">
+            <span class="errorlist" asp-validation-for="Input.Name"></span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.BrandId"></label>
+            <select class="select" asp-for="Input.BrandId" id="brand-select">
+                <option value="">Выберите бренд</option>
+                @foreach (var brand in Model.Brands)
+                {
+                    <option value="@brand.Id">@brand.Name</option>
+                }
+            </select>
+            <span class="errorlist" asp-validation-for="Input.BrandId"></span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.ParentId">Находится внутри категории</label>
+            <select class="select" asp-for="Input.ParentId" id="parent-select">
+                <option value="">Нет, это главная категория бренда</option>
+                @foreach (var option in Model.Tree.Flatten().Where(n => !Model.Excluded.Contains(n.Category.Id)))
+                {
+                    <option value="@option.Category.Id" data-brand="@option.Category.BrandId">@Model.Tree.Path(option.Category.Id)</option>
+                }
+            </select>
+            <span class="errorlist" asp-validation-for="Input.ParentId"></span>
+        </div>
+        <label class="check" style="margin-bottom:6px;">
+            <input asp-for="Input.IsActive">
+            <span>Показывать на сайте</span>
+        </label>
+        <details style="margin-top:14px;">
+            <summary class="admin-count" style="cursor:pointer;">Адрес страницы на сайте</summary>
+            <div class="form-row" style="margin-top:10px;">
+                <input class="field" asp-for="Input.Slug">
+                <span class="help">Заполняется сам из названия, менять не обязательно.</span>
+                <span class="errorlist" asp-validation-for="Input.Slug"></span>
+            </div>
+        </details>
+        <input type="hidden" asp-for="Input.SortOrder">
     </div>
-    <div class="form-row">
-        <label asp-for="Input.Slug"></label>
-        <input class="field" asp-for="Input.Slug">
-        <span class="help">Часть адреса страницы. Оставьте пустым, и он заполнится из названия.</span>
-        <span class="errorlist" asp-validation-for="Input.Slug"></span>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.SortOrder"></label>
-        <input class="field" asp-for="Input.SortOrder" type="number" min="0">
-        <span class="help">Категории выводятся по этому числу от меньшего к большему.</span>
-        <span class="errorlist" asp-validation-for="Input.SortOrder"></span>
-    </div>
-    <label class="check" style="margin-bottom:16px;">
-        <input asp-for="Input.IsActive">
-        <span>Показывать на сайте</span>
-    </label>
-    <div class="admin-actions">
-        <button class="btn" type="submit">Сохранить</button>
+
+    <div class="savebar" style="max-width:720px;">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+        <a class="btn btn-ghost" href="/admin/categories">Отмена</a>
     </div>
 </form>
 
-@if (Model.Id is not null)
+@if (node is not null)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Удалить категорию вместе с вложенными?');">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить категорию</button>
+    <h2>Что внутри</h2>
+    <div class="admin-box" style="max-width:720px;">
+        @if (node.Children.Count > 0)
+        {
+            <ul class="tree">
+                <li>
+                    <div class="tree-row"><span class="t-name">@Icons.Get("folder") @node.Category.Name</span></div>
+                    <ul>
+                        @foreach (var child in node.Children)
+                        {
+                            <li><div class="tree-row">
+                                <span class="t-name">@Icons.Get("folder") <a href="/admin/categories/@child.Category.Id">@child.Category.Name</a></span>
+                                <span class="t-count">@child.TotalProducts @Plural.Products(child.TotalProducts)</span>
+                            </div></li>
+                        }
+                    </ul>
+                </li>
+            </ul>
+        }
+        else
+        {
+            <p style="margin-top:0;">Подкатегорий нет.</p>
+        }
+        <div class="admin-actions">
+            <a class="btn btn-ghost" href="/admin/categories/add?brand=@node.Category.BrandId&parent=@node.Category.Id">@Icons.Get("plus") Добавить подкатегорию</a>
+            <a class="btn btn-ghost" href="/admin/products?category=@node.Category.Id">@Icons.Get("package") Товары здесь: @node.ProductCount</a>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
+          onsubmit="return confirm('Удалить эту категорию вместе с подкатегориями?');">
+        <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить категорию</button>
     </form>
+}
+
+@section Scripts {
+    <script>
+    // В списке «Находится внутри» оставляем только категории выбранного бренда:
+    // вложить категорию в чужой бренд нельзя, и лишние строки только путают.
+    (function () {
+        var brand = document.getElementById('brand-select');
+        var parent = document.getElementById('parent-select');
+        function sync() {
+            Array.prototype.forEach.call(parent.options, function (o) {
+                if (!o.value) return;
+                var other = brand.value && o.getAttribute('data-brand') !== brand.value;
+                o.hidden = other;
+                if (other && o.selected) parent.value = '';
+            });
+        }
+        brand.addEventListener('change', sync);
+        sync();
+    })();
+    </script>
 }
