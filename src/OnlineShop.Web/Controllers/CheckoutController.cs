@@ -5,13 +5,14 @@ using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 using OnlineShop.Web.Services;
+using OnlineShop.Web.Services.Telegram;
 using OnlineShop.Web.ViewModels;
 
 namespace OnlineShop.Web.Controllers;
 
 [Authorize]
 [Route("/orders/checkout")]
-public class CheckoutController(ShopDbContext db, Cart cart) : Controller
+public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -85,6 +86,7 @@ public class CheckoutController(ShopDbContext db, Cart cart) : Controller
         };
         db.Orders.Add(order);
         await db.SaveChangesAsync();
+        alerts.Enqueue(order.Id, $"{Request.Scheme}://{Request.Host}");
 
         cart.Clear();
         TempData.Flash($"Заказ №{order.Id} оформлен. Оплата при получении.");

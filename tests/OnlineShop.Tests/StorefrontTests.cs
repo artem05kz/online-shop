@@ -35,6 +35,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         public int AddressId { get; private set; }
         public int InStockVariantId { get; private set; }
         public int HiddenVariantId { get; private set; }
+        public const long ManagerChatId = 700;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -71,6 +72,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             });
             var other = new ApplicationUser { UserName = "other", NormalizedUserName = "OTHER" };
             db.Users.AddRange(buyer, other);
+            db.TelegramRecipients.Add(new TelegramRecipient { Phone = "77010000700", ChatId = ManagerChatId, CreatedAt = DateTime.UtcNow });
             db.SaveChanges();
 
             BuyerId = buyer.Id;
@@ -326,6 +328,14 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             var item = Assert.Single(order.Items);
             Assert.Equal(("Шампунь Тест", "1 л", "100", 1890m, 2), (item.ProductName, item.PackLabel, item.Article, item.Price, item.Quantity));
         }
+
+        // Менеджеру в Telegram уходит заказ со ссылкой на него в панели.
+        var orderId = orderUrl.Split('/').Last();
+        var alert = await _factory.Telegram.WaitForMessage(ShopFactory.ManagerChatId);
+        Assert.StartsWith($"<b>Новый заказ №{orderId}</b>", alert.Text);
+        Assert.Contains("Шампунь Тест, 1 л: 2 × 1 890 ₸", alert.Text);
+        Assert.Contains("Комментарий: позвонить заранее", alert.Text);
+        Assert.EndsWith($"/admin/orders/{orderId}", alert.Text);
 
         var page = await Page(client, orderUrl);
         Assert.Contains("оформлен. Оплата при получении.", page);

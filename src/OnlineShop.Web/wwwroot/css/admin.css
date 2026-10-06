@@ -423,3 +423,8 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
     .tree-row { grid-template-columns: minmax(0, 1fr) auto; }
     .tree-row .t-actions { grid-column: 1 / -1; flex-wrap: wrap; }
 }
+
+/* На телефоне у кнопок в узких таблицах остаётся только иконка, подпись есть во всплывающей подсказке. */
+@media (max-width: 480px) {
+    .narrow-hide { display: none; }
+}

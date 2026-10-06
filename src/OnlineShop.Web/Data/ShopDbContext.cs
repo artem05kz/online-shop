@@ -22,6 +22,7 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
     public DbSet<Address> Addresses => Set<Address>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<TelegramRecipient> TelegramRecipients => Set<TelegramRecipient>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -94,6 +95,12 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
         {
             e.HasOne(i => i.Order).WithMany(o => o.Items).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Variant).WithMany(v => v.OrderItems).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<TelegramRecipient>(e =>
+        {
+            e.HasIndex(r => r.Phone).IsUnique();
+            e.HasIndex(r => r.ChatId);
         });
 
         builder.Entity<IdentityRole<int>>().HasData(new IdentityRole<int>

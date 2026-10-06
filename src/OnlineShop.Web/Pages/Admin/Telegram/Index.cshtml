@@ -1,0 +1,107 @@
+@page "/admin/telegram"
+@model OnlineShop.Web.Pages.Admin.Telegram.IndexModel
+@{
+    ViewData["Title"] = "Уведомления в Telegram";
+    ViewData["AdminSection"] = "telegram";
+    var botName = Model.BotUsername is null ? "бота магазина" : "@" + Model.BotUsername;
+}
+<div class="admin-head">
+    <h1>Уведомления в Telegram</h1>
+</div>
+<p class="admin-count">О каждом новом заказе бот пишет на все подключённые телефоны из списка: состав, сумма, телефон и адрес покупателя.</p>
+
+<div class="admin-box" style="max-width:760px;">
+    <h3>Бот</h3>
+    @if (!Model.IsConfigured)
+    {
+        <p><span class="pill warn">@Icons.Get("alert", 16) Бот не подключён</span></p>
+        <p class="hint">Нужен токен бота от @@BotFather в Telegram. Его вписывает владелец сайта в настройках (параметр <code>Telegram:BotToken</code>), после этого сайт перезапускают.</p>
+    }
+    else if (Model.Problem is not null)
+    {
+        <p><span class="pill bad">@Icons.Get("alert", 16) Бот не работает</span></p>
+        <p>@Model.Problem</p>
+    }
+    else
+    {
+        <p><span class="pill ok">@Icons.Get("check", 16) Бот работает</span></p>
+        @if (Model.BotUsername is not null)
+        {
+            <p><a class="btn btn-ghost" href="https://t.me/@Model.BotUsername" target="_blank" rel="noopener">@Icons.Get("send", 18) Открыть @botName</a></p>
+        }
+        <form method="post" asp-page-handler="Test">
+            <button class="btn btn-ghost" type="submit">Отправить пробное сообщение</button>
+        </form>
+    }
+</div>
+
+<div class="admin-box" style="max-width:760px;">
+    <h3>Как подключить телефон</h3>
+    <ol style="font-size:1.05rem; line-height:1.7; margin:0; padding-left:1.4em;">
+        <li>Добавьте номер в список ниже.</li>
+        <li>На этом телефоне откройте в Telegram @botName и нажмите «Старт».</li>
+        <li>Нажмите кнопку «Отправить мой номер». Напротив номера в списке появится «Подключён».</li>
+    </ol>
+</div>
+
+<form method="post" asp-page-handler="Add" class="admin-box" style="max-width:760px;">
+    <h3>Добавить номер</h3>
+    <div class="form-grid">
+        <div class="form-row">
+            <label asp-for="Input.Phone"></label>
+            <input class="field" asp-for="Input.Phone" type="tel" placeholder="+7 701 123-45-67">
+            <span class="errorlist" asp-validation-for="Input.Phone"></span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.Name"></label>
+            <input class="field" asp-for="Input.Name" placeholder="Например: Марат, склад">
+            <span class="errorlist" asp-validation-for="Input.Name"></span>
+        </div>
+    </div>
+    <button class="btn" type="submit">@Icons.Get("plus", 18) Добавить</button>
+</form>
+
+<h2>Номера (@Model.Recipients.Count)</h2>
+@if (Model.Recipients.Count == 0)
+{
+    <p class="admin-count">Список пуст: уведомления никуда не приходят.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead><tr><th>Телефон</th><th>Состояние</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var row in Model.Recipients)
+                {
+                    <tr>
+                        <td>
+                            <b style="white-space:nowrap;">@PhoneNumbers.Display(row.Phone)</b>
+                            @if (row.Name.Length > 0)
+                            {
+                                <div class="muted">@row.Name</div>
+                            }
+                        </td>
+                        <td>
+                            @if (row.LinkedAt is { } linkedAt)
+                            {
+                                <span class="pill ok">@Icons.Get("check", 16) Подключён</span>
+                                <div class="muted">с @Format.ToLocal(linkedAt).ToString("dd.MM.yyyy")</div>
+                            }
+                            else
+                            {
+                                <span class="pill warn" style="white-space:normal;">@Icons.Get("clock", 16) Ждёт «Старт» в боте</span>
+                            }
+                        </td>
+                        <td>
+                            <form method="post" asp-page-handler="Delete" asp-route-id="@row.Id"
+                                  onsubmit="return confirm('Удалить номер @PhoneNumbers.Display(row.Phone)? Заказы туда больше не будут приходить.');">
+                                <button class="btn btn-ghost btn-sm" type="submit" title="Удалить номер">@Icons.Get("trash", 16) <span class="narrow-hide">Удалить</span></button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

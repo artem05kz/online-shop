@@ -127,6 +127,7 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     [InlineData("/admin/addresses")]
     [InlineData("/admin/import")]
     [InlineData("/admin/import/stock")]
+    [InlineData("/admin/telegram")]
     public async Task Every_section_opens(string url)
     {
         var response = await (await Manager()).GetAsync(url);

@@ -16,8 +16,17 @@ using OnlineShop.Web.Models;
 using OnlineShop.Web;
 using OnlineShop.Web.Services;
 using OnlineShop.Web.Services.Import;
+using OnlineShop.Web.Services.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Токен бота Telegram на машине разработчика хранится в user-secrets, вне репозитория. В режиме
+// Development их подключает сам ASP.NET, но конфигурация Claude Code запускает сайт без профиля,
+// то есть в Production. На сервере файла секретов нет, там токен задаётся переменной окружения.
+if (!builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>(optional: true);
+}
 
 // Относительный путь к файлу базы считаем от папки проекта, а не от текущей папки консоли,
 // иначе при запуске из корня репозитория и из src/ создавались бы две разные базы.
@@ -89,6 +98,15 @@ builder.Services.AddSingleton(new ImportUploads(Path.Combine(Path.GetDirectoryNa
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<StorefrontLayout>();
+
+// Уведомления о заказах в Telegram. Без токена бот не запускается, остальной сайт работает как обычно.
+builder.Services.AddSingleton(sp => TelegramOptions.From(sp.GetRequiredService<IConfiguration>()));
+builder.Services.AddSingleton<ITelegramApi, TelegramApi>();
+builder.Services.AddSingleton<OrderAlerts>();
+builder.Services.AddSingleton<TelegramBot>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramBot>());
+builder.Services.AddScoped<TelegramLinker>();
+builder.Services.AddScoped<TelegramNotifier>();
 
 builder.Services.AddControllersWithViews(options =>
         options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))

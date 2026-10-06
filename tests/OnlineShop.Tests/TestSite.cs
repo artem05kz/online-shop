@@ -2,6 +2,10 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OnlineShop.Web.Services.Telegram;
 
 namespace OnlineShop.Tests;
 
@@ -12,11 +16,19 @@ public class TempShopFactory : WebApplicationFactory<Program>
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "online-shop-tests", Guid.NewGuid().ToString("N"));
 
+    /// <summary>Заглушка Telegram: тесты никогда не ходят в настоящий Telegram, даже если на машине задан токен.</summary>
+    public FakeTelegramApi Telegram { get; } = new();
+
+    /// <summary>Пустая строка: бот не подключён.</summary>
+    public string BotToken { get; init; } = "test-token";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         Directory.CreateDirectory(_dir);
         builder.UseSetting("ConnectionStrings:Shop", $"Data Source={Path.Combine(_dir, "shop.db")}");
         builder.UseSetting("Media:Root", Path.Combine(_dir, "media"));
+        builder.UseSetting(TelegramOptions.TokenKey, BotToken);
+        builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<ITelegramApi>(Telegram)));
     }
 
     /// <summary>Клиент с куками, но без автоматических переходов: тесты проверяют, куда сайт перенаправляет.</summary>
