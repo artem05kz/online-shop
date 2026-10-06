@@ -84,13 +84,16 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton(new MediaStorage(mediaRoot));
+builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton(new ImportUploads(Path.Combine(Path.GetDirectoryName(connection.DataSource)!, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<StorefrontLayout>();
 
 builder.Services.AddControllersWithViews(options =>
-    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+        options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
+    // В ответах JSON (подсказки поиска) кириллица как есть, а не кодами Ш: вдвое короче.
+    .AddJsonOptions(options => options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All));
 // Скрытое поле «false» у галочки ставим рядом с ней, а не в конец формы: строки таблиц в панели
 // копируются скриптом, и без этого у новой строки снятая галочка читалась бы как включённая.
 builder.Services.Configure<MvcViewOptions>(options =>

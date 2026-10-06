@@ -22,14 +22,14 @@
 
 <div class="product-page">
     <div class="gallery">
-        <img id="gallery-main" src="@Media.PhotoUrl(product)" alt="@product.Name">
+        <img id="gallery-main" src="@Media.PhotoUrl(product, Media.Large)" alt="@product.Name">
         @if (images.Count > 1)
         {
             <div class="gallery-thumbs">
                 @foreach (var image in images)
                 {
-                    <button type="button" class="gallery-thumb@(image == images[0] ? " active" : "")" data-src="@Media.Url(image.ImagePath)" aria-label="Другое фото">
-                        <img src="@Media.Url(image.ImagePath)" alt="">
+                    <button type="button" class="gallery-thumb@(image == images[0] ? " active" : "")" data-src="@Media.Thumb(image.ImagePath, Media.Large)" aria-label="Другое фото">
+                        <img src="@Media.Thumb(image.ImagePath, Media.Small)" alt="">
                     </button>
                 }
             </div>

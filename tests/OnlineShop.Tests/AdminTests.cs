@@ -90,6 +90,8 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         Assert.Equal("/accounts/denied", buyer.Headers.Location!.AbsolutePath);
 
         var manager = await Manager();
+        // Кнопка свёрнутого меню для телефона есть на каждой странице панели.
+        Assert.Contains("id=\"admin-menu-btn\"", await Page(manager, "/admin/products"));
         var home = await Page(manager, "/");
         Assert.Contains("Админка", home);
         Assert.Contains("Что сделать", await Page(manager, "/admin"));

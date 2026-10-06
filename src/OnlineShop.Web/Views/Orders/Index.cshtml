@@ -58,6 +58,9 @@
         </div>
         <div class="form-actions">
             <a class="btn btn-outline btn-sm" asp-action="Detail" asp-route-id="@order.Id">Подробнее о заказе</a>
+            <form asp-action="Repeat" asp-route-id="@order.Id" method="post">
+                <button class="btn btn-sm" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
+            </form>
         </div>
     </div>
 }

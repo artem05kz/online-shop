@@ -51,17 +51,36 @@ public class MediaStorage(string root)
         return $"{relativeDir}/{name}";
     }
 
-    public void Delete(string? relativePath)
+    /// <summary>Полный путь к файлу в папке загрузок или null, если путь пытается выйти за её пределы.</summary>
+    public string? FullPath(string? relativePath)
     {
         if (string.IsNullOrEmpty(relativePath))
         {
+            return null;
+        }
+        var rootFull = Path.GetFullPath(root);
+        var full = Path.GetFullPath(Path.Combine(rootFull, relativePath));
+        return full.StartsWith(rootFull + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ? full : null;
+    }
+
+    /// <summary>Удаляет файл и его уменьшенные копии (см. <see cref="Thumbnails"/>).</summary>
+    public void Delete(string? relativePath)
+    {
+        // Удаляем только внутри папки загрузок, что бы ни оказалось в базе.
+        if (FullPath(relativePath) is not { } full)
+        {
             return;
         }
-        var full = Path.GetFullPath(Path.Combine(root, relativePath));
-        // Удаляем только внутри папки загрузок, что бы ни оказалось в базе.
-        if (full.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase) && File.Exists(full))
+        if (File.Exists(full))
         {
             File.Delete(full);
+        }
+        foreach (var size in Thumbnails.Sizes)
+        {
+            if (FullPath($"{Thumbnails.Folder}/{size}/{relativePath}.webp") is { } copy && File.Exists(copy))
+            {
+                File.Delete(copy);
+            }
         }
     }
 

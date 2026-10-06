@@ -54,7 +54,9 @@
         </button>
 
         <form class="search" asp-controller="Catalog" asp-action="Search" method="get" role="search">
-            <input type="text" name="q" placeholder="Поиск: название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу">
+            <input type="text" name="q" placeholder="Поиск: название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу"
+                   id="search-input" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggest">
+            <div class="search-suggest" id="search-suggest" role="listbox" hidden></div>
             <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
         </form>
 
@@ -215,6 +217,7 @@
 </footer>
 
 <script src="~/js/site.js" asp-append-version="true"></script>
+<script src="~/js/search_suggest.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

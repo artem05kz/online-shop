@@ -71,6 +71,7 @@ body.admin :focus-visible { outline: 3px solid #2f6fd6; outline-offset: 2px; }
 }
 
 .admin-main { min-width: 0; }
+.admin-menu-btn { display: none; }
 .admin-main h1 { font-size: 1.7rem; margin: 0 0 18px; line-height: 1.25; }
 .admin-main h2 { font-size: 1.25rem; margin: 28px 0 12px; }
 .admin-main h3 { font-size: 1.12rem; }
@@ -388,10 +389,30 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
     .product-edit { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
-    .admin-shell { grid-template-columns: 1fr; padding: 16px 16px 120px; }
-    .admin-nav { flex-direction: row; flex-wrap: wrap; }
-    .admin-nav h4 { display: none; }
-    .admin-nav a { min-height: 44px; }
+    .admin-shell { grid-template-columns: 1fr; gap: 14px; padding: 14px 14px 120px; }
+    .admin-top .inner { gap: 16px; padding: 12px 14px; }
+    .admin-top .title { font-size: 1rem; }
+    .admin-top .lbl { display: none; }
+    .admin-menu-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 52px;
+        padding: 10px 16px;
+        border: 2px solid var(--a-line);
+        border-radius: var(--a-radius);
+        background: #fff;
+        color: var(--a-ink);
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .admin-menu-btn .where { font-weight: 400; color: var(--a-ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .admin-nav { display: none; background: #fff; border: 1px solid var(--a-line); border-radius: var(--a-radius); padding: 8px; }
+    .admin-nav.open { display: flex; }
+    .admin-nav h4 { margin-left: 10px; }
+    .admin-head h1 { font-size: 1.4rem; width: 100%; }
     .admin-filters .field, .admin-filters .select { min-width: 0; width: 100%; }
     .item { grid-template-columns: 64px minmax(0, 1fr); }
     .item .thumb { width: 64px; height: 64px; }

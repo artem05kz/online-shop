@@ -44,7 +44,7 @@
             var product = item.Variant.Product;
             <div class="line-item">
                 <a class="thumb" href="@Url.Product(product)">
-                    <img src="@Media.PhotoUrl(product)" alt="@item.ProductName">
+                    <img src="@Media.PhotoUrl(product, Media.Small)" alt="@item.ProductName">
                 </a>
                 <div>
                     <a class="li-name" href="@Url.Product(product)">@item.ProductName</a>
@@ -78,6 +78,9 @@
         <div class="panel">
             <h3>Оплата</h3>
             <p class="muted">Наличными или картой при получении. Заказ подтверждает менеджер по телефону.</p>
+            <form asp-action="Repeat" asp-route-id="@Model.Id" method="post" style="margin-bottom:10px;">
+                <button class="btn btn-block" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
+            </form>
             <a class="btn btn-ghost btn-block" href="@ShopUrls.OrderHistory">Ко всем заказам</a>
         </div>
     </div>

@@ -21,7 +21,7 @@
                     <tr>
                         <td>
                             <input type="hidden" asp-for="Rows[i].Id">
-                            <img class="thumb" src="@Media.Url(row.ImagePath)" alt="">
+                            <img class="thumb" src="@Media.Thumb(row.ImagePath, Media.Small)" alt="">
                         </td>
                         <td><a asp-page="Edit" asp-route-id="@row.Id">@(string.IsNullOrEmpty(row.Title) ? $"Баннер №{row.Id}" : row.Title)</a></td>
                         <td class="muted">@(row.StartsAt is { } s ? Format.DateTimeText(s) : "всегда")</td>

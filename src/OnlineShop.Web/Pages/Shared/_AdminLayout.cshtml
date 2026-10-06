@@ -23,17 +23,25 @@
     <div class="inner">
         <a class="title" href="/admin">Управление магазином GRASS</a>
         <span class="spacer"></span>
-        <a href="/" target="_blank" rel="noopener">@Icons.Get("external", 18) Открыть сайт</a>
-        <span>@Icons.Get("user", 18) @User.Identity?.Name</span>
+        <a href="/" target="_blank" rel="noopener" title="Открыть сайт">@Icons.Get("external", 18) <span class="lbl">Открыть сайт</span></a>
+        <span title="Вы вошли как">@Icons.Get("user", 18) <span class="lbl">@User.Identity?.Name</span></span>
         <form action="@ShopUrls.Logout" method="post">
             @Html.AntiForgeryToken()
-            <button type="submit">@Icons.Get("logout", 18) Выйти</button>
+            <button type="submit" title="Выйти">@Icons.Get("logout", 18) <span class="lbl">Выйти</span></button>
         </form>
     </div>
 </header>
 
 <div class="admin-shell">
-    <nav class="admin-nav" aria-label="Разделы панели">
+    @* На телефоне меню свёрнуто в одну кнопку, на ней видно, где вы сейчас. *@
+    <button type="button" class="admin-menu-btn" id="admin-menu-btn" aria-expanded="false" aria-controls="admin-nav">
+        @Icons.Get("menu") <span>Меню</span><span class="where">@title</span>
+        @if (newOrders > 0)
+        {
+            <span class="badge" style="margin-left:auto; background:#e8590c; color:#fff; border-radius:20px; padding:0 9px; font-size:.85rem;">новых заказов: @newOrders</span>
+        }
+    </button>
+    <nav class="admin-nav" id="admin-nav" aria-label="Разделы панели">
         <a class="@Active("home")" href="/admin">@Icons.Get("dashboard") Главная</a>
         <a class="@Active("orders")" href="/admin/orders">@Icons.Get("orders") Заказы
             @if (newOrders > 0)
@@ -71,6 +79,16 @@
 </div>
 
 <script src="~/js/admin_edit_highlight.js" asp-append-version="true"></script>
+<script>
+(function () {
+    var button = document.getElementById('admin-menu-btn');
+    var nav = document.getElementById('admin-nav');
+    button.addEventListener('click', function () {
+        var open = nav.classList.toggle('open');
+        button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+})();
+</script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

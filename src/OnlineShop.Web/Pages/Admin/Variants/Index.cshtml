@@ -55,7 +55,7 @@
                             <span class="cell-product">
                                 @if (row.ImagePath is not null)
                                 {
-                                    <img class="thumb" src="@Media.Url(row.ImagePath)" alt="" loading="lazy">
+                                    <img class="thumb" src="@Media.Thumb(row.ImagePath, Media.Small)" alt="" loading="lazy">
                                 }
                                 <a href="/admin/products/@row.ProductId">@row.ProductName</a>
                             </span>

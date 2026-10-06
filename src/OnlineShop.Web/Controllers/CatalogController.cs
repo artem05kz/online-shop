@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Services;
 using OnlineShop.Web.ViewModels;
 
@@ -116,6 +117,37 @@ public class CatalogController(ShopDbContext db) : Controller
                 .AsNoTracking()
                 .ToListAsync(),
         });
+    }
+
+    /// <summary>
+    /// Подсказки под строкой поиска: до шести товаров с фото и ценой. Сначала те, у которых
+    /// название начинается с набранного, потом остальные совпадения.
+    /// </summary>
+    [HttpGet("/search/suggest")]
+    public async Task<IActionResult> Suggest(string? q)
+    {
+        var text = (q ?? "").Trim();
+        if (text.Length < 2)
+        {
+            return Json(Array.Empty<object>());
+        }
+        var needle = text.ToLowerInvariant();
+        var products = await db.Products.ForListing()
+            .Search(text)
+            .OrderBy(p => SqliteFunctions.Lower(p.Name).StartsWith(needle) ? 0 : 1)
+            .ThenBy(p => p.Name)
+            .Take(6)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return Json(products.Select(p => new
+        {
+            name = p.Name,
+            url = Url.Product(p),
+            image = Media.PhotoUrl(p, Media.Small),
+            price = p.MinPrice is { } price ? (p.HasSeveralPacks ? "от " : "") + Format.Money(price) : "цена уточняется",
+            inStock = p.InStock,
+        }));
     }
 
     [HttpGet("/product/{slug}")]

@@ -40,7 +40,7 @@
             {
                 <a class="tile" href="@Url.Category(tile.Category)">
                     <span class="tile-img">
-                        <img src="@(tile.ImagePath is null ? Media.NoPhoto : Media.Url(tile.ImagePath))" alt="" loading="lazy">
+                        <img src="@(tile.ImagePath is null ? Media.NoPhoto : Media.Thumb(tile.ImagePath, Media.Card))" alt="" loading="lazy">
                     </span>
                     <span class="tile-name">@tile.Category.Name</span>
                     <span class="tile-count">@tile.ProductCount @Plural.Products(tile.ProductCount)</span>

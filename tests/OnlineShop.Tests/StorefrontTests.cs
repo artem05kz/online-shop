@@ -180,6 +180,94 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     }
 
     [Fact]
+    public async Task Thumbnails_are_small_webp_cached_and_removed_with_original()
+    {
+        var media = _factory.Services.GetRequiredService<OnlineShop.Web.Services.MediaStorage>();
+        // Настоящая картинка побольше: 1200x900, чтобы было что уменьшать.
+        using var bitmap = new SkiaSharp.SKBitmap(1200, 900);
+        using (var canvas = new SkiaSharp.SKCanvas(bitmap))
+        {
+            canvas.Clear(SkiaSharp.SKColors.SeaGreen);
+        }
+        using var png = SkiaSharp.SKImage.FromBitmap(bitmap).Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+        var path = await media.SaveAsync(png.ToArray(), "products", "big.png");
+
+        var client = Client();
+        var thumb = await client.GetAsync($"/media/thumb/400/{path}");
+        Assert.Equal(HttpStatusCode.OK, thumb.StatusCode);
+        Assert.Equal("image/webp", thumb.Content.Headers.ContentType!.MediaType);
+        var bytes = await thumb.Content.ReadAsByteArrayAsync();
+        using (var decoded = SkiaSharp.SKBitmap.Decode(bytes))
+        {
+            Assert.Equal((400, 300), (decoded.Width, decoded.Height));
+        }
+        Assert.Contains("max-age", thumb.Headers.CacheControl!.ToString());
+
+        var copy = media.FullPath($"_thumbs/400/{path}.webp")!;
+        Assert.True(File.Exists(copy));
+
+        // Размер, которого сайт не просит, и выход за папку загрузок не обрабатываются.
+        Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync($"/media/thumb/333/{path}")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync("/media/thumb/400/..%2F..%2Fshop.db")).StatusCode);
+
+        media.Delete(path);
+        Assert.False(File.Exists(copy));
+    }
+
+    [Fact]
+    public async Task Search_suggestions_return_matching_products_with_photo_and_price()
+    {
+        var client = Client();
+        using var json = System.Text.Json.JsonDocument.Parse(await client.GetStringAsync("/search/suggest?q=ШАМП"));
+        var first = json.RootElement.EnumerateArray().Single();
+        Assert.Equal("Шампунь Тест", first.GetProperty("name").GetString());
+        Assert.Equal("1 890 ₸", first.GetProperty("price").GetString());
+        Assert.Equal("/img/no-photo.svg", first.GetProperty("image").GetString());
+        Assert.StartsWith("/product/", first.GetProperty("url").GetString());
+
+        Assert.Equal("[]", await client.GetStringAsync("/search/suggest?q=ш"));
+        Assert.Contains("search-suggest", await Page(client, "/"));
+    }
+
+    [Fact]
+    public async Task Repeat_order_puts_available_items_back_into_cart()
+    {
+        int orderId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var order = new Order
+            {
+                UserId = _factory.BuyerId, ContactName = "Иван", ContactPhone = "+7", City = "Актау", StreetAndDetails = "1",
+                Items =
+                [
+                    new OrderItem { VariantId = _factory.InStockVariantId, ProductName = "Шампунь Тест", PackLabel = "1 л", Price = 1500m, Quantity = 2 },
+                    new OrderItem { VariantId = _factory.HiddenVariantId, ProductName = "Шампунь Тест", PackLabel = "20 л", Price = 9000m, Quantity = 1 },
+                ],
+            };
+            db.Orders.Add(order);
+            db.SaveChanges();
+            orderId = order.Id;
+        }
+
+        var client = Client(_factory.BuyerId);
+        var token = await TokenFrom(client, $"/orders/my/{orderId}");
+        var repeated = await Post(client, $"/orders/my/{orderId}/repeat", token);
+        Assert.Equal("/orders/cart", repeated.Headers.Location!.OriginalString);
+
+        var cart = await Page(client, "/orders/cart");
+        // Цена сегодняшняя (1890), а не из заказа (1500); скрытая фасовка пропущена с объяснением.
+        Assert.Contains("3 780 ₸", cart);
+        Assert.Contains("добавлено позиций из заказа", cart);
+        Assert.Contains("Сейчас нет в продаже: Шампунь Тест (20 л).", cart);
+
+        // Чужой заказ повторить нельзя.
+        var stranger = Client(_factory.OtherBuyerId);
+        var strangerToken = await TokenFrom(stranger, "/product/шампунь-тест");
+        Assert.Equal(HttpStatusCode.NotFound, (await Post(stranger, $"/orders/my/{orderId}/repeat", strangerToken)).StatusCode);
+    }
+
+    [Fact]
     public async Task Cart_rejects_hidden_packs_foreign_redirects_and_missing_token()
     {
         var client = Client();

@@ -31,7 +31,7 @@
         <div>
             @if (primary is not null)
             {
-                <img class="photo-main" id="photo-main" src="@Media.Url(primary.ImagePath)" alt="">
+                <img class="photo-main" id="photo-main" src="@Media.Thumb(primary.ImagePath, Media.Large)" alt="">
             }
             else
             {
@@ -49,8 +49,8 @@
                             <input type="hidden" asp-for="Images[i].ImagePath">
                             <input type="hidden" asp-for="Images[i].IsPrimary">
                             <input type="hidden" asp-for="Images[i].SortOrder">
-                            <img src="@Media.Url(image.ImagePath)" alt="">
-                            <label><input type="radio" name="PrimaryImageId" value="@image.Id" checked="@(image == primary)" data-src="@Media.Url(image.ImagePath)"> Главное</label>
+                            <img src="@Media.Thumb(image.ImagePath, Media.Small)" alt="">
+                            <label><input type="radio" name="PrimaryImageId" value="@image.Id" checked="@(image == primary)" data-src="@Media.Thumb(image.ImagePath, Media.Large)"> Главное</label>
                             <label><input asp-for="Images[i].Delete"> Удалить</label>
                         </div>
                     }
