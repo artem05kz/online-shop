@@ -12,9 +12,27 @@
 <form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
     <div class="form-row">
         <label for="Image">Изображение</label>
+        <p class="hint" style="margin-top:0;">
+            Размер <b>@BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight</b> точек (пропорция @BannerShape.RatioWidth:@BannerShape.RatioHeight),
+            не меньше @BannerShape.MinWidth × @(BannerShape.MinWidth / BannerShape.RatioWidth). На телефоне баннер показывается целиком, только меньше,
+            поэтому надпись делайте крупной и держите внутри пунктирной рамки: по краям лежат стрелки и точки переключения.
+        </p>
+        @* Рамка той же пропорции, что на сайте: что видно здесь, то увидит покупатель. *@
+        <div class="banner-preview" id="banner-preview">
+            @if (Model.CurrentImage is not null)
+            {
+                <img src="@Media.Url(Model.CurrentImage)" alt="" id="banner-preview-img">
+            }
+            else
+            {
+                <img alt="" id="banner-preview-img" hidden>
+                <span class="banner-preview-empty">Здесь появится картинка</span>
+            }
+            <span class="banner-safe" aria-hidden="true"></span>
+        </div>
+        <p class="banner-preview-note" id="banner-preview-note">@Model.CurrentImageNote</p>
         @if (Model.CurrentImage is not null)
         {
-            <img src="@Media.Url(Model.CurrentImage)" alt="" style="max-width:100%; border-radius:8px; border:1px solid var(--line);">
             <span class="help">Чтобы заменить, выберите новый файл. Старый удалится сам.</span>
         }
         <input type="file" id="Image" name="Image" accept="image/jpeg,image/png,image/gif,image/webp">
@@ -59,6 +77,34 @@
         <a class="btn btn-ghost" href="/admin/banners">Отмена</a>
     </div>
 </form>
+
+@section Scripts {
+<script>
+// Превью сразу после выбора файла, до сохранения: видно, что обрежется и где лягут стрелки.
+(function () {
+    var input = document.getElementById('Image');
+    var img = document.getElementById('banner-preview-img');
+    var note = document.getElementById('banner-preview-note');
+    var empty = document.querySelector('.banner-preview-empty');
+    var target = @BannerShape.RatioWidth / @BannerShape.RatioHeight;
+    input.addEventListener('change', function () {
+        var file = input.files && input.files[0];
+        if (!file) return;
+        var url = URL.createObjectURL(file);
+        img.onload = function () {
+            var w = img.naturalWidth, h = img.naturalHeight, ratio = w / h, text = 'Размер ' + w + ' × ' + h + '.';
+            if (ratio > target * 1.03) text += ' Картинка шире нужного: края слева и справа обрежутся.';
+            else if (ratio < target * 0.97) text += ' Картинка выше нужного: верх и низ обрежутся.';
+            if (w < @BannerShape.MinWidth) text += ' Маловато для больших экранов, будет нечётко.';
+            note.textContent = text;
+        };
+        img.src = url;
+        img.hidden = false;
+        if (empty) empty.remove();
+    });
+})();
+</script>
+}
 
 @if (Model.Id is not null)
 {

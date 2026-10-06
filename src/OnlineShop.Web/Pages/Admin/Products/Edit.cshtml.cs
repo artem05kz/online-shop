@@ -13,9 +13,13 @@ namespace OnlineShop.Web.Pages.Admin.Products;
 /// Карточка товара целиком: основные поля, фасовки и фото на одной странице, как в Django-админке.
 /// Поля, которые менеджер чаще всего правит после импорта (название, описание), стоят первыми.
 /// </summary>
+// Несколько фото с телефона за раз легко превышают 30 МБ, которые сервер принимает по умолчанию.
+[RequestSizeLimit(100 * 1024 * 1024)]
+[RequestFormLimits(MultipartBodyLengthLimit = 100 * 1024 * 1024)]
 public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
 {
-    private const long MaxImageBytes = 10 * 1024 * 1024;
+    // Снимок с телефона весит до 15 МБ. Хранится он уже сжатым (ImageShrinker), поэтому принять его можно.
+    private const long MaxImageBytes = 20 * 1024 * 1024;
 
     public class InputModel
     {
@@ -197,7 +201,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         {
             foreach (var (content, fileName) in uploads)
             {
-                var path = await media.SaveAsync(content, "products", fileName);
+                var path = await media.SaveImageAsync(content, "products", fileName, ImageShrinker.ProductMaxSide);
                 savedFiles.Add(path);
                 product.Images.Add(new ProductImage { ImagePath = path, SortOrder = nextOrder++ });
             }
@@ -333,7 +337,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         {
             if (file.Length > MaxImageBytes)
             {
-                ModelState.AddModelError("NewImages", $"Файл «{file.FileName}» больше 10 МБ.");
+                ModelState.AddModelError("NewImages", $"Файл «{file.FileName}» больше 20 МБ.");
                 continue;
             }
             using var memory = new MemoryStream();

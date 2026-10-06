@@ -1,4 +1,5 @@
 @model ProductPageViewModel
+@inject Favorites Favorites
 @{
     var product = Model.Product;
     var brand = product.Category.Brand;
@@ -38,6 +39,7 @@
 
     <div>
         <h1>@product.Name</h1>
+        <partial name="_FavoriteButton" model="new FavoriteButtonModel(product.Id, (await Favorites.IdsAsync()).Contains(product.Id), WithLabel: true)" />
 
         @if (packs.Count == 0)
         {

@@ -92,7 +92,7 @@ public class ImportApplier(ShopDbContext db, MediaStorage media)
                 if (parsed.ImageBytes is { Length: > 0 } && product.Images.Count == 0)
                 {
                     var ext = parsed.ImageExt.Length > 0 ? parsed.ImageExt : "jpg";
-                    var path = await media.SaveAsync(parsed.ImageBytes, "products", $"{parsed.Key}.{ext}");
+                    var path = await media.SaveImageAsync(parsed.ImageBytes, "products", $"{parsed.Key}.{ext}", ImageShrinker.ProductMaxSide);
                     savedFiles.Add(path);
                     product.Images.Add(new ProductImage { ImagePath = path, IsPrimary = true });
                     stats.ImagesAdded++;

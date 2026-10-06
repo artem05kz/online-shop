@@ -9,8 +9,8 @@ namespace OnlineShop.Web.Services;
 /// </summary>
 public class Thumbnails(MediaStorage media, ILogger<Thumbnails> logger)
 {
-    /// <summary>Размеры, которые просит сайт: миниатюра в панели и корзине, карточка товара, большое фото.</summary>
-    public static readonly IReadOnlySet<int> Sizes = new HashSet<int> { 160, 400, 800 };
+    /// <summary>Размеры, которые просит сайт: миниатюра в панели и корзине, карточка товара, большое фото, ширины баннера.</summary>
+    public static readonly IReadOnlySet<int> Sizes = new HashSet<int>([160, 400, 800, .. BannerShape.Widths]);
 
     private const int Quality = 82;
     public const string Folder = "_thumbs";

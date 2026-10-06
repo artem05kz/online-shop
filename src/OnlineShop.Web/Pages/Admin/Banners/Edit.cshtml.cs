@@ -9,9 +9,12 @@ using OnlineShop.Web.Services;
 namespace OnlineShop.Web.Pages.Admin.Banners;
 
 /// <summary>Баннер: картинку и сроки показа менеджер задаёт сам, для новой акции код менять не нужно.</summary>
+[RequestSizeLimit(40 * 1024 * 1024)]
+[RequestFormLimits(MultipartBodyLengthLimit = 40 * 1024 * 1024)]
 public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
 {
-    private const long MaxImageBytes = 10 * 1024 * 1024;
+    // Картинка 4K в PNG весит до 25 МБ. Хранится она уже сжатой, поэтому большой файл принять можно.
+    private const long MaxImageBytes = 25 * 1024 * 1024;
 
     public class InputModel
     {
@@ -41,6 +44,9 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
     public int? Id { get; private set; }
     public string? CurrentImage { get; private set; }
 
+    /// <summary>Размер текущей картинки и что с ней не так, под превью.</summary>
+    public string CurrentImageNote { get; private set; } = "";
+
     public async Task<IActionResult> OnGetAsync(int? id)
     {
         Id = id;
@@ -54,6 +60,10 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
             return NotFound();
         }
         CurrentImage = banner.ImagePath;
+        if (media.FullPath(banner.ImagePath) is { } full && System.IO.File.Exists(full) && ImageShrinker.Size(full) is { } size)
+        {
+            CurrentImageNote = string.Join(" ", BannerShape.Check(size.Width, size.Height).Prepend($"Размер {size.Width} × {size.Height}."));
+        }
         Input = new InputModel
         {
             Title = banner.Title, LinkUrl = banner.LinkUrl, SortOrder = banner.SortOrder, IsActive = banner.IsActive,
@@ -81,7 +91,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
             upload = memory.ToArray();
             if (Image.Length > MaxImageBytes)
             {
-                ModelState.AddModelError(nameof(Image), "Файл больше 10 МБ.");
+                ModelState.AddModelError(nameof(Image), "Файл больше 25 МБ.");
             }
             else if (!MediaStorage.LooksLikeImage(Image.FileName, upload))
             {
@@ -103,10 +113,14 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
 
         var oldImage = banner.ImagePath;
         string? newImage = null;
+        var warnings = new List<string>();
         if (upload is not null)
         {
-            newImage = await media.SaveAsync(upload, "banners", Image!.FileName);
+            // Текст на баннере мелкий, поэтому качество выше, чем у фото товаров.
+            var shrunk = ImageShrinker.Shrink(upload, Path.GetExtension(Image!.FileName), ImageShrinker.BannerMaxSide, quality: 90);
+            newImage = await media.SaveAsync(shrunk.Content, "banners", Path.ChangeExtension(Image.FileName, shrunk.Extension));
             banner.ImagePath = newImage;
+            warnings.AddRange(BannerShape.Check(shrunk.Width, shrunk.Height));
         }
         banner.Title = Input.Title?.Trim() ?? "";
         banner.LinkUrl = Input.LinkUrl?.Trim() ?? "";
@@ -133,6 +147,10 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
             media.Delete(oldImage);
         }
         TempData.Flash("Баннер сохранён.");
+        foreach (var warning in warnings)
+        {
+            TempData.Flash(warning, FlashLevel.Info);
+        }
         return RedirectToPage("Index");
     }
 

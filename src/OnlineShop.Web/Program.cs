@@ -97,6 +97,7 @@ builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton(new ImportUploads(Path.Combine(Path.GetDirectoryName(connection.DataSource)!, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
+builder.Services.AddScoped<Favorites>();
 builder.Services.AddScoped<StorefrontLayout>();
 
 // Уведомления о заказах в Telegram. Без токена бот не запускается, остальной сайт работает как обычно.

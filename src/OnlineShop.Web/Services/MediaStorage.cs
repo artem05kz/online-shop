@@ -51,6 +51,13 @@ public class MediaStorage(string root)
         return $"{relativeDir}/{name}";
     }
 
+    /// <summary>Сохраняет картинку, предварительно сжав её (см. <see cref="ImageShrinker"/>).</summary>
+    public Task<string> SaveImageAsync(byte[] content, string folder, string fileName, int maxSide, int quality = 85)
+    {
+        var shrunk = ImageShrinker.Shrink(content, Path.GetExtension(fileName), maxSide, quality);
+        return SaveAsync(shrunk.Content, folder, Path.ChangeExtension(fileName, shrunk.Extension));
+    }
+
     /// <summary>Полный путь к файлу в папке загрузок или null, если путь пытается выйти за её пределы.</summary>
     public string? FullPath(string? relativePath)
     {

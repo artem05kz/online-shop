@@ -23,6 +23,7 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<TelegramRecipient> TelegramRecipients => Set<TelegramRecipient>();
+    public DbSet<Favorite> Favorites => Set<Favorite>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -95,6 +96,13 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
         {
             e.HasOne(i => i.Order).WithMany(o => o.Items).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Variant).WithMany(v => v.OrderItems).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Favorite>(e =>
+        {
+            e.HasOne(f => f.User).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(f => f.Product).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(f => new { f.UserId, f.ProductId }).IsUnique();
         });
 
         builder.Entity<TelegramRecipient>(e =>

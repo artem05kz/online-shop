@@ -182,6 +182,7 @@ h3 { font-size: 1.1rem; }
 }
 .header-link:hover { background: var(--bg-soft); color: var(--green-dark); }
 .header-link .ico { display: inline-flex; line-height: 1; }
+.cart-count[hidden] { display: none; }
 .cart-count {
     position: absolute;
     top: 2px; right: 4px;
@@ -317,7 +318,9 @@ h3 { font-size: 1.1rem; }
 .banner-carousel {
     position: relative;
     width: 100%;
-    aspect-ratio: 1000 / 300;
+    /* Одна пропорция на всех экранах, как в BannerShape: надпись на картинке не съезжает
+       и не обрезается, на телефоне баннер просто меньше. */
+    aspect-ratio: 3 / 1;
     overflow: hidden;
     border-radius: var(--radius-lg);
     margin: 22px 0;
@@ -399,6 +402,7 @@ h3 { font-size: 1.1rem; }
     gap: 16px;
 }
 .product-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     background: var(--bg);
@@ -945,13 +949,13 @@ textarea.field { resize: vertical; }
     .catalog-btn .btn-text { display: none; }
     .catalog-btn { padding: 11px 13px; order: 1; }
     .logo { order: 0; font-size: 1.15rem; }
-    .header-actions { order: 2; margin-left: auto; }
+    .header-actions { order: 2; margin-left: auto; gap: 2px; }
     .search { order: 3; flex-basis: 100%; }
-    .header-link { padding: 6px 7px; }
+    .header-link { padding: 6px 5px; }
     .header-link .lbl { display: none; }
     .header-link .ico { font-size: 1.3rem; }
 
-    .banner-carousel { aspect-ratio: 16 / 9; border-radius: var(--radius); }
+    .banner-carousel { border-radius: var(--radius); }
     .banner-nav { width: 32px; height: 32px; font-size: 1.2rem; }
     .banner-prev { left: 8px; }
     .banner-next { right: 8px; }
@@ -1083,3 +1087,25 @@ textarea.field { resize: vertical; }
 .suggest-price.out { color: var(--muted); font-weight: 400; }
 .suggest-all { display: block; padding: 10px 12px; border-top: 1px solid var(--line); font-size: .9rem; font-weight: 600; color: var(--green-dark); }
 .suggest-empty { padding: 12px; font-size: .9rem; color: var(--ink-soft); }
+
+/* ---------- Избранное ---------- */
+.fav-form { margin: 0; }
+.product-card .fav-form { position: absolute; top: 20px; right: 20px; z-index: 1; }
+.fav-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 40px; height: 40px; padding: 0;
+    border: 1px solid var(--line); border-radius: 50%;
+    background: rgba(255, 255, 255, .92); color: var(--muted);
+    cursor: pointer; transition: color .15s ease, border-color .15s ease;
+}
+.fav-btn:hover { color: #d6336c; border-color: #d6336c; }
+.fav-btn.active { color: #d6336c; }
+/* Значок Lucide рисуется контуром, у отмеченного товара заливаем его. */
+.fav-btn.active svg { fill: currentColor; }
+.fav-form-label { margin: -6px 0 16px; }
+.fav-form-label .fav-btn { width: auto; height: auto; padding: 8px 16px; border-radius: 999px; font: inherit; font-size: .95rem; color: var(--ink, #1d211d); }
+.fav-form-label .fav-btn.active { color: #d6336c; border-color: #d6336c; }
+@media (max-width: 600px) {
+    .product-card .fav-form { top: 14px; right: 14px; }
+    .product-card .fav-btn { width: 34px; height: 34px; }
+}

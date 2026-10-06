@@ -127,11 +127,12 @@ public static class DemoData
             + $"точек {await db.Stores.CountAsync()}.";
     }
 
+    // Пропорция 3:1, как у BannerShape. Надпись отступает от краёв: там лежат стрелки карусели.
     private static string BannerSvg(string color, string text) => $"""
-        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360">
-          <rect width="1200" height="360" fill="{color}"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+          <rect width="1200" height="400" fill="{color}"/>
           <circle cx="1050" cy="60" r="220" fill="#ffffff" opacity="0.12"/>
-          <text x="70" y="200" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">{text}</text>
+          <text x="150" y="215" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="#ffffff">{text}</text>
         </svg>
         """;
 }

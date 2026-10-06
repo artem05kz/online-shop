@@ -1,3 +1,4 @@
+using OnlineShop.Web.Services;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class LoginModel(SignInManager<ApplicationUser> signInManager) : PageModel
+public class LoginModel(SignInManager<ApplicationUser> signInManager, Favorites favorites) : PageModel
 {
     public class InputModel
     {
@@ -47,6 +48,10 @@ public class LoginModel(SignInManager<ApplicationUser> signInManager) : PageMode
         {
             Error = "Неверный логин или пароль.";
             return Page();
+        }
+        if (await signInManager.UserManager.FindByNameAsync(Input.UserName.Trim()) is { } user)
+        {
+            await favorites.MergeGuestAsync(user.Id);
         }
         return Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToAction("Home", "Catalog");
     }

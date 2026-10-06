@@ -428,3 +428,11 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
 @media (max-width: 480px) {
     .narrow-hide { display: none; }
 }
+
+/* Превью баннера в пропорции сайта (BannerShape, .banner-carousel в style.css). */
+.banner-preview { position: relative; aspect-ratio: 3 / 1; overflow: hidden; border-radius: 8px; border: 1px solid var(--line); background: #eef1ee; margin: 8px 0; }
+.banner-preview img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.banner-preview-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #6b746b; }
+/* Где надпись не закроют стрелки по бокам и точки внизу, в том числе на телефоне. */
+.banner-safe { position: absolute; inset: 5% 10% 14% 10%; border: 2px dashed rgba(255, 255, 255, .9); outline: 1px dashed rgba(0, 0, 0, .45); border-radius: 4px; pointer-events: none; }
+.banner-preview-note { margin: 0 0 8px; font-size: .95rem; color: #3c434a; }

@@ -1,3 +1,4 @@
+using OnlineShop.Web.Services;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager) : PageModel
+public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites) : PageModel
 {
     public class InputModel
     {
@@ -83,6 +84,7 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
 
         // Сразу после регистрации покупатель уже вошёл: ещё раз вводить пароль не нужно.
         await signInManager.SignInAsync(user, isPersistent: true);
+        await favorites.MergeGuestAsync(user.Id);
         return Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToAction("Home", "Catalog");
     }
 }

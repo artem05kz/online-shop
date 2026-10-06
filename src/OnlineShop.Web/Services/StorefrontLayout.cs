@@ -4,13 +4,13 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Services;
 
-public record LayoutData(IReadOnlyList<Brand> NavBrands, SiteContact? Contact, int CartCount);
+public record LayoutData(IReadOnlyList<Brand> NavBrands, SiteContact? Contact, int CartCount, int FavoritesCount);
 
 /// <summary>
 /// Данные, нужные на каждой странице витрины: каталог в шапке, контакты в шапке и подвале,
-/// счётчик корзины. Аналог context processor site_nav из Django, загружается один раз за запрос.
+/// счётчики корзины и избранного. Аналог context processor site_nav из Django, загружается один раз за запрос.
 /// </summary>
-public class StorefrontLayout(ShopDbContext db, Cart cart)
+public class StorefrontLayout(ShopDbContext db, Cart cart, Favorites favorites)
 {
     private LayoutData? _data;
 
@@ -36,6 +36,11 @@ public class StorefrontLayout(ShopDbContext db, Cart cart)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        return _data = new LayoutData(brands, contact, cart.Count);
+        // Считаем только то, что сейчас продаётся: снятые товары на странице избранного не показываются.
+        var favoriteIds = await favorites.IdsAsync();
+        var favoritesCount = favoriteIds.Count == 0 ? 0
+            : await db.Products.CountAsync(p => favoriteIds.Contains(p.Id) && p.IsActive);
+
+        return _data = new LayoutData(brands, contact, cart.Count, favoritesCount);
     }
 }

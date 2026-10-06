@@ -1,0 +1,13 @@
+@model FavoriteButtonModel
+@* Сердечко «в избранное». Скрипт favorites.js отправляет форму без перезагрузки страницы. *@
+<form class="fav-form@(Model.WithLabel ? " fav-form-label" : "")" method="post" asp-controller="Favorites" asp-action="Toggle" asp-route-productId="@Model.ProductId">
+    <input type="hidden" name="next" value="@(Context.Request.Path + Context.Request.QueryString)">
+    <button type="submit" class="fav-btn@(Model.Active ? " active" : "")" data-product-id="@Model.ProductId"
+            aria-pressed="@(Model.Active ? "true" : "false")" title="@(Model.Active ? "Убрать из избранного" : "В избранное")">
+        @Icons.Get("heart", Model.WithLabel ? 20 : 22)
+        @if (Model.WithLabel)
+        {
+            <span class="fav-label">@(Model.Active ? "В избранном" : "В избранное")</span>
+        }
+    </button>
+</form>

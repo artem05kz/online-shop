@@ -418,6 +418,31 @@ namespace OnlineShop.Web.Data.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("OnlineShop.Web.Models.Favorite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UserId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("Favorites");
+                });
+
             modelBuilder.Entity("OnlineShop.Web.Models.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -888,6 +913,25 @@ namespace OnlineShop.Web.Data.Migrations
                     b.Navigation("Brand");
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.Favorite", b =>
+                {
+                    b.HasOne("OnlineShop.Web.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OnlineShop.Web.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("OnlineShop.Web.Models.Order", b =>

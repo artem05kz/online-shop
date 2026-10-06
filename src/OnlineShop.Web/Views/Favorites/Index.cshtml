@@ -1,0 +1,28 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Избранное";
+}
+<h1>Избранное</h1>
+
+@if (Model.Count == 0)
+{
+    <div class="empty">
+        <div class="empty-ico">@Icons.Get("heart", 44)</div>
+        <h2>Здесь пока пусто</h2>
+        <p>Нажмите на сердечко у товара, и он появится на этой странице.</p>
+        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+    </div>
+}
+else
+{
+    @if (!(User.Identity?.IsAuthenticated ?? false))
+    {
+        <p class="muted">Избранное сохранено в этом браузере. <a href="@ShopUrls.Login?ReturnUrl=/favorites">Войдите</a>, чтобы оно было видно и с телефона, и с компьютера.</p>
+    }
+    <div class="product-grid">
+        @foreach (var product in Model)
+        {
+            <partial name="_ProductCard" model="product" />
+        }
+    </div>
+}

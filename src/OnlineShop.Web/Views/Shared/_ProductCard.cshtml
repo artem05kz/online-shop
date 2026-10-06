@@ -1,13 +1,16 @@
 @model Product
 @inject StorefrontLayout StorefrontLayout
+@inject Favorites Favorites
 @{
     var url = Url.Product(Model);
     var variant = Model.DefaultVariant;
     // Бренд на карточке нужен, только когда их на сайте несколько: иначе на каждой карточке одно и то же слово.
     var showBrand = (await StorefrontLayout.GetAsync()).NavBrands.Count > 1;
+    var isFavorite = (await Favorites.IdsAsync()).Contains(Model.Id);
     var packs = Model.ActiveVariants.Select(v => v.PackLabel).Where(l => l.Length > 0).ToList();
 }
 <article class="product-card">
+    <partial name="_FavoriteButton" model="new FavoriteButtonModel(Model.Id, isFavorite)" />
     <a class="thumb" href="@url">
         <img src="@Media.PhotoUrl(Model)" alt="@Model.Name" loading="lazy">
         @if (!Model.InStock)
