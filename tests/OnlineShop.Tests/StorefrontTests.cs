@@ -64,7 +64,11 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             db.Products.Add(new Product { Category = category, Name = "Шампунь Тест", Variants = [visible, hidden] });
             db.Products.Add(new Product { Category = category, Name = "Снятый товар", IsActive = false });
 
-            var buyer = new ApplicationUser { UserName = "buyer", NormalizedUserName = "BUYER", FirstName = "Иван" };
+            var buyer = new ApplicationUser
+            {
+                UserName = "buyer", NormalizedUserName = "BUYER", FirstName = "Иван",
+                Email = "buyer@example.com", NormalizedEmail = "BUYER@EXAMPLE.COM", EmailConfirmed = true,
+            };
             buyer.Addresses.Add(new Address
             {
                 FullName = "Иван Петров", Phone = "+7 700 000-00-00", Street = "14 микрорайон", House = "5",

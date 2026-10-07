@@ -20,7 +20,7 @@ public class AccountTests(TempShopFactory factory) : IClassFixture<TempShopFacto
         var userName = $"покупатель{Interlocked.Increment(ref _counter)}";
         var token = await TokenFrom(client, "/accounts/register");
         var response = await Post(client, "/accounts/register" + (returnUrl is null ? "" : $"?returnUrl={Uri.EscapeDataString(returnUrl)}"), token,
-            ("Input.UserName", userName), ("Input.Email", ""),
+            ("Input.UserName", userName), ("Input.Email", $"{Guid.NewGuid():N}@example.com"),
             ("Input.Password", "зелёный-шампунь"), ("Input.ConfirmPassword", "зелёный-шампунь"), ("Input.AcceptPrivacy", "true"));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         return (client, userName);
@@ -43,16 +43,16 @@ public class AccountTests(TempShopFactory factory) : IClassFixture<TempShopFacto
         var token = await TokenFrom(client, "/accounts/register");
 
         var page = await Text(await Post(client, "/accounts/register", token,
-            ("Input.UserName", takenName), ("Input.Password", "12345678"), ("Input.ConfirmPassword", "12345679")));
+            ("Input.UserName", takenName), ("Input.Email", "x1@example.com"), ("Input.Password", "12345678"), ("Input.ConfirmPassword", "12345679")));
         Assert.Contains("Пароли не совпадают.", page);
 
         page = await Text(await Post(client, "/accounts/register", token,
-            ("Input.UserName", takenName), ("Input.Password", "12345678"), ("Input.ConfirmPassword", "12345678")));
+            ("Input.UserName", takenName), ("Input.Email", "x2@example.com"), ("Input.Password", "12345678"), ("Input.ConfirmPassword", "12345678")));
         Assert.Contains("Пользователь с таким логином уже существует.", page);
         Assert.Contains("Пароль не может состоять только из цифр.", page);
 
         page = await Text(await Post(client, "/accounts/register", token,
-            ("Input.UserName", "ivan petrov"), ("Input.Password", "коротко"), ("Input.ConfirmPassword", "коротко")));
+            ("Input.UserName", "ivan petrov"), ("Input.Email", "x3@example.com"), ("Input.Password", "коротко"), ("Input.ConfirmPassword", "коротко")));
         Assert.Contains("Логин может содержать только буквы, цифры", page);
     }
 
@@ -112,16 +112,13 @@ public class AccountTests(TempShopFactory factory) : IClassFixture<TempShopFacto
     }
 
     [Fact]
-    public async Task Profile_saves_names_and_validates_email()
+    public async Task Profile_saves_names()
     {
         var (client, _) = await RegisterNew();
         var token = await TokenFrom(client, "/accounts/profile");
 
-        var bad = await Post(client, "/accounts/profile", token, ("Input.Email", "не почта"));
-        Assert.Contains("Введите правильный адрес электронной почты.", await Text(bad));
-
         var saved = await Post(client, "/accounts/profile", token,
-            ("Input.FirstName", " Айгерим "), ("Input.LastName", "Сапарова"), ("Input.Email", "a@example.com"));
+            ("Input.FirstName", " Айгерим "), ("Input.LastName", "Сапарова"));
         Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
         var page = await Page(client, "/accounts/profile");
         Assert.Contains("Данные сохранены.", page);

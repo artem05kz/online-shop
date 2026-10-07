@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Services.Email;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Orders;
 
-public class IndexModel(ShopDbContext db) : PageModel
+public class IndexModel(ShopDbContext db, AccountMail mail) : PageModel
 {
     public class Row
     {
@@ -66,14 +67,16 @@ public class IndexModel(ShopDbContext db) : PageModel
     {
         var byId = Rows.ToDictionary(r => r.Id, r => r.Status);
         var orders = await db.Orders.Where(o => byId.Keys.Contains(o.Id)).ToListAsync();
-        var changed = 0;
+        var changed = new List<int>();
         foreach (var order in orders.Where(o => o.Status != byId[o.Id]))
         {
             order.Status = byId[order.Id];
-            changed++;
+            changed.Add(order.Id);
         }
         await db.SaveChangesAsync();
-        TempData.Flash(changed == 0 ? "Изменений не было." : $"Статус изменён у заказов: {changed}.");
+        // Покупатель узнаёт о новом статусе из письма.
+        await mail.NotifyStatusChangedAsync(changed, $"{Request.Scheme}://{Request.Host}");
+        TempData.Flash(changed.Count == 0 ? "Изменений не было." : $"Статус изменён у заказов: {changed.Count}. Покупателям с подтверждённой почтой ушли письма.");
         return RedirectToPage(new { q = Q, status = Status, o = O, p = Request.Query["p"].ToString() });
     }
 }

@@ -34,6 +34,9 @@ public class TempShopFactory : WebApplicationFactory<Program>
     /// <summary>Заглушка Telegram: тесты никогда не ходят в настоящий Telegram, даже если на машине задан токен.</summary>
     public FakeTelegramApi Telegram { get; } = new();
 
+    /// <summary>Заглушка почты: письма не уходят наружу, тесты читают их отсюда.</summary>
+    public FakeEmailSender Email { get; } = new();
+
     /// <summary>Пустая строка: бот не подключён.</summary>
     public string BotToken { get; init; } = "test-token";
 
@@ -67,7 +70,11 @@ public class TempShopFactory : WebApplicationFactory<Program>
         {
             builder.UseSetting("Security:PasswordHashIterations", iterations.ToString());
         }
-        builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<ITelegramApi>(Telegram)));
+        builder.ConfigureTestServices(services =>
+        {
+            services.Replace(ServiceDescriptor.Singleton<ITelegramApi>(Telegram));
+            services.Replace(ServiceDescriptor.Singleton<OnlineShop.Web.Services.Email.IEmailSender>(Email));
+        });
     }
 
     /// <summary>Клиент с куками, но без автоматических переходов: тесты проверяют, куда сайт перенаправляет.</summary>

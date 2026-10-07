@@ -1,5 +1,6 @@
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Services;
+using OnlineShop.Web.Services.Email;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart) : PageModel
+public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart, AccountMail mail) : PageModel
 {
     public class InputModel
     {
@@ -19,8 +20,9 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         public string UserName { get; set; } = "";
 
         [Display(Name = "Электронная почта")]
+        [Required(ErrorMessage = "Укажите почту: на неё придут статусы заказов и код, если забудете пароль.")]
         [EmailAddress(ErrorMessage = "Введите правильный адрес электронной почты.")]
-        [StringLength(254, ErrorMessage = "Не длиннее {1} символов.")]
+        [StringLength(254)]
         public string? Email { get; set; }
 
         [Display(Name = "Пароль")]
@@ -54,7 +56,7 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
             return Page();
         }
 
-        var email = string.IsNullOrWhiteSpace(Input.Email) ? null : Input.Email.Trim();
+        var email = Input.Email!.Trim();
         var user = new ApplicationUser { UserName = Input.UserName.Trim(), Email = email, PersonalDataConsentAt = DateTime.UtcNow };
 
         // Identity при создании останавливается на первой неудаче: при плохом пароле про занятый
@@ -63,6 +65,10 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         if (await userManager.FindByNameAsync(user.UserName) is not null)
         {
             errors.Add(userManager.ErrorDescriber.DuplicateUserName(user.UserName));
+        }
+        if (await mail.IsTakenAsync(email))
+        {
+            ModelState.AddModelError("Input.Email", "Эта почта уже привязана к другому аккаунту. Если он ваш, войдите или восстановите пароль.");
         }
         foreach (var validator in userManager.PasswordValidators)
         {
@@ -73,11 +79,11 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         {
             ModelState.AddModelError("Input.AcceptPrivacy", PrivacyConsent.Required);
         }
-        if (errors.Count == 0 && Input.AcceptPrivacy)
+        if (errors.Count == 0 && ModelState.IsValid && Input.AcceptPrivacy)
         {
             errors.AddRange((await userManager.CreateAsync(user, Input.Password)).Errors);
         }
-        if (errors.Count > 0 || !Input.AcceptPrivacy)
+        if (errors.Count > 0 || !ModelState.IsValid)
         {
             foreach (var error in errors)
             {
@@ -94,6 +100,8 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         await signInManager.SignInAsync(user, isPersistent: true);
         await favorites.MergeGuestAsync(user.Id);
         await cart.MergeGuestAsync(user.Id);
-        return Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToAction("Home", "Catalog");
+        await mail.SendConfirmationCodeAsync(user);
+        TempData.Flash($"Аккаунт создан. Отправили код на {email}: подтвердите почту, чтобы получать статусы заказов.", FlashLevel.Info);
+        return RedirectToPage("Email", new { returnUrl = Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null });
     }
 }

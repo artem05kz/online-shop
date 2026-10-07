@@ -19,7 +19,7 @@ public class PrivacyTests(TempShopFactory factory) : IClassFixture<TempShopFacto
     }
 
     private static Task<HttpResponseMessage> Register(HttpClient client, string token, string login, bool accept) =>
-        Post(client, "/accounts/register", token, [("Input.UserName", login), ("Input.Email", ""),
+        Post(client, "/accounts/register", token, [("Input.UserName", login), ("Input.Email", $"{Guid.NewGuid():N}@example.com"),
             ("Input.Password", Password), ("Input.ConfirmPassword", Password),
             .. accept ? new[] { ("Input.AcceptPrivacy", "true") } : []]);
 
@@ -76,7 +76,7 @@ public class PrivacyTests(TempShopFactory factory) : IClassFixture<TempShopFacto
         var token = await TokenFrom(client, "/accounts/register");
         await Register(client, token, "старый-покупатель", accept: true);
         Db(db => db.Users.Where(u => u.UserName == "старый-покупатель")
-            .ExecuteUpdate(s => s.SetProperty(u => u.PersonalDataConsentAt, (DateTime?)null)));
+            .ExecuteUpdate(s => s.SetProperty(u => u.PersonalDataConsentAt, (DateTime?)null).SetProperty(u => u.EmailConfirmed, true)));
 
         // После входа нужен новый токен формы: прежний выдан гостю.
         token = await TokenFrom(client, "/");

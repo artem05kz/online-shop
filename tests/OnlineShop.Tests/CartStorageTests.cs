@@ -31,7 +31,7 @@ public class CartStorageTests
     private static async Task Register(HttpClient client, string userName)
     {
         var token = await TokenFrom(client, "/accounts/register");
-        var response = await Post(client, "/accounts/register", token, ("Input.UserName", userName), ("Input.Email", ""),
+        var response = await Post(client, "/accounts/register", token, ("Input.UserName", userName), ("Input.Email", $"{Guid.NewGuid():N}@example.com"),
             ("Input.Password", Password), ("Input.ConfirmPassword", Password), ("Input.AcceptPrivacy", "true"));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
     }

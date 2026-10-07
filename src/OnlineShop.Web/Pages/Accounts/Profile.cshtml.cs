@@ -25,22 +25,21 @@ public class ProfileModel(UserManager<ApplicationUser> userManager) : PageModel
         [StringLength(150, ErrorMessage = "Не длиннее {1} символов.")]
         public string? LastName { get; set; }
 
-        [Display(Name = "Электронная почта")]
-        [EmailAddress(ErrorMessage = "Введите правильный адрес электронной почты.")]
-        [StringLength(254, ErrorMessage = "Не длиннее {1} символов.")]
-        public string? Email { get; set; }
     }
 
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
     public string UserName { get; private set; } = "";
+    public string? Email { get; private set; }
+    public bool EmailConfirmed { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
         var user = await CurrentUser();
         UserName = user.UserName ?? "";
-        Input = new InputModel { FirstName = user.FirstName, LastName = user.LastName, Email = user.Email };
+        (Email, EmailConfirmed) = (user.Email, user.EmailConfirmed);
+        Input = new InputModel { FirstName = user.FirstName, LastName = user.LastName };
         return Page();
     }
 
@@ -48,6 +47,7 @@ public class ProfileModel(UserManager<ApplicationUser> userManager) : PageModel
     {
         var user = await CurrentUser();
         UserName = user.UserName ?? "";
+        (Email, EmailConfirmed) = (user.Email, user.EmailConfirmed);
         if (!ModelState.IsValid)
         {
             return Page();
@@ -55,13 +55,12 @@ public class ProfileModel(UserManager<ApplicationUser> userManager) : PageModel
 
         user.FirstName = Input.FirstName?.Trim() ?? "";
         user.LastName = Input.LastName?.Trim() ?? "";
-        user.Email = string.IsNullOrWhiteSpace(Input.Email) ? null : Input.Email.Trim();
         var result = await userManager.UpdateAsync(user);
         if (!result.Succeeded)
         {
             foreach (var error in result.Errors)
             {
-                ModelState.AddModelError("Input.Email", error.Description);
+                ModelState.AddModelError("", error.Description);
             }
             return Page();
         }

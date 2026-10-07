@@ -13,7 +13,9 @@ public static class LoginThrottle
     public const string ConfigKey = "Security:AuthAttemptsPerMinute";
     public const int DefaultPerMinute = 10;
 
-    private static readonly string[] GuardedPaths = ["/accounts/login", "/accounts/register"];
+    // Вход, регистрация и всё, где вводят или запрашивают код из письма.
+    private static readonly string[] GuardedPaths =
+        ["/accounts/login", "/accounts/register", "/accounts/email", "/accounts/forgot-password", "/accounts/reset-password"];
 
     public static IServiceCollection AddLoginThrottle(this IServiceCollection services, IConfiguration configuration)
     {

@@ -30,6 +30,12 @@ services:
       ConnectionStrings__Shop: Host=db;Database=shop;Username=shop;Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
       TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      # Почта для кодов и писем о заказах. Без SMTP_HOST письма складываются файлами в томе app-data.
+      Email__Host: ${SMTP_HOST:-}
+      Email__Port: ${SMTP_PORT:-465}
+      Email__User: ${SMTP_USER:-}
+      Email__Password: ${SMTP_PASSWORD:-}
+      Email__From: ${MAIL_FROM:-GRASS Актау <Grassaktau@mail.ru>}
       # Сайт стоит за Caddy: адрес покупателя и HTTPS берём из заголовков, которые ставит Caddy.
       # Наружу открыт только Caddy, поэтому подделать эти заголовки снаружи нельзя.
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"

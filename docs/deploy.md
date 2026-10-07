@@ -78,6 +78,10 @@ docker compose restart app
    | `HTTP_PORT`, `HTTPS_PORT` | `80` и `443` |
    | `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather |
    | `TWOGIS_API_KEY` | ключ 2ГИС, если есть |
+   | `SMTP_HOST`, `SMTP_PORT` | для Mail.ru `smtp.mail.ru` и `465` |
+   | `SMTP_USER` | адрес ящика, например `Grassaktau@mail.ru` |
+   | `SMTP_PASSWORD` | «пароль для внешних приложений» из настроек безопасности Mail.ru (не обычный пароль) |
+   | `MAIL_FROM` | `GRASS Актау <адрес ящика>` |
 
 3. `docker compose up -d --build`. Caddy получит сертификат за минуту, сайт откроется по `https://`.
 4. Перенести данные (см. выше): скопировать на сервер `shop.db` и папку `media`
@@ -143,6 +147,9 @@ docker compose start app
   (`No XML encryptor configured`). Кто получил доступ к базе, и так получил всё, поэтому отдельное
   шифрование ключей не добавлено.
 - Журнал сайта: `docker compose logs app --tail 100`.
+- Без `SMTP_HOST` письма не уходят, а ложатся файлами `.eml` в том `app-data` (папка `mail`), в журнале
+  об этом предупреждение. Покупатели тогда не смогут подтвердить почту и оформить заказ: SMTP настроить
+  до запуска.
 - Caddy читает `deploy/Caddyfile` только при запуске: после правки `docker compose restart caddy`.
 - Content-Security-Policy разрешает скрипты только со своего сайта, unpkg (Leaflet) и 2ГИС. Если после
   подключения ключа 2ГИС карта не покажется, причину видно в консоли браузера (строки «Content Security Policy»),

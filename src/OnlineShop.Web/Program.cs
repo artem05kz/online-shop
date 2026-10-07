@@ -17,6 +17,7 @@ using OnlineShop.Web.Models;
 using OnlineShop.Web;
 using OnlineShop.Web.Services;
 using OnlineShop.Web.Services.Import;
+using OnlineShop.Web.Services.Email;
 using OnlineShop.Web.Services.Telegram;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,10 @@ var builder = WebApplication.CreateBuilder(args);
 if (!builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>(optional: true);
+    // Добавленные последними секреты перекрыли бы переменные окружения и параметры запуска.
+    // Возвращаем привычный порядок: переменная окружения главнее файла секретов, как в Development.
+    builder.Configuration.AddEnvironmentVariables();
+    builder.Configuration.AddCommandLine(args);
 }
 
 // База: SQLite для разработки и тестов (один файл, ничего не надо ставить), PostgreSQL на сервере.
@@ -77,6 +82,9 @@ builder.Services
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
         options.Lockout.AllowedForNewUsers = true;
+        // Коды подтверждения почты и смены пароля шестизначные, их удобно вводить из письма руками.
+        options.Tokens.EmailConfirmationTokenProvider = TokenOptions.DefaultEmailProvider;
+        options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultEmailProvider;
     })
     .AddEntityFrameworkStores<ShopDbContext>()
     .AddErrorDescriber<RussianIdentityErrors>()
@@ -128,6 +136,23 @@ builder.Services.AddSingleton<ITelegramApi, TelegramApi>();
 builder.Services.AddSingleton<OrderAlerts>();
 builder.Services.AddSingleton<TelegramBot>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TelegramBot>());
+
+// Почта: коды подтверждения и смены пароля, письма о заказах. Без настроек SMTP письма складываются
+// файлами в App_Data/mail, чтобы при разработке их можно было открыть и посмотреть.
+var emailOptions = EmailOptions.Load(builder.Configuration);
+builder.Services.AddSingleton(emailOptions);
+if (emailOptions.IsConfigured)
+{
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+}
+else
+{
+    builder.Services.AddSingleton<IEmailSender>(sp => new PickupFolderEmailSender(
+        Path.Combine(appDataDir, "mail"), emailOptions, sp.GetRequiredService<ILogger<PickupFolderEmailSender>>()));
+}
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddHostedService<EmailWorker>();
+builder.Services.AddScoped<AccountMail>();
 builder.Services.AddScoped<TelegramLinker>();
 builder.Services.AddScoped<TelegramNotifier>();
 

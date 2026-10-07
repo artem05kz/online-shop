@@ -5,6 +5,7 @@ using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 using OnlineShop.Web.Services;
+using OnlineShop.Web.Services.Email;
 using OnlineShop.Web.Services.Telegram;
 using OnlineShop.Web.ViewModels;
 
@@ -12,7 +13,7 @@ namespace OnlineShop.Web.Controllers;
 
 [Authorize]
 [Route("/orders/checkout")]
-public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts) : Controller
+public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts, AccountMail mail) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -24,6 +25,10 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
         }
 
         var userId = UserId();
+        if (await NeedsEmail(userId) is { } redirect)
+        {
+            return redirect;
+        }
         var addresses = await UserAddresses(userId);
         var form = new CheckoutForm();
 
@@ -55,6 +60,10 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
         }
 
         var userId = UserId();
+        if (await NeedsEmail(userId) is { } redirect)
+        {
+            return redirect;
+        }
         var addresses = await UserAddresses(userId);
         if (form.SavedAddressId is { } savedId && addresses.All(a => a.Id != savedId))
         {
@@ -95,6 +104,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
         }
         await db.SaveChangesAsync();
         alerts.Enqueue(order.Id, $"{Request.Scheme}://{Request.Host}");
+        await mail.NotifyOrderPlacedAsync(order.Id, $"{Request.Scheme}://{Request.Host}");
 
         await cart.ClearAsync();
         TempData.Flash($"Заказ №{order.Id} оформлен. Оплата при получении.");
@@ -108,6 +118,20 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
     }
 
     private int UserId() => User.ShopUserId();
+
+    /// <summary>
+    /// Статусы заказа приходят на почту, поэтому без подтверждённой почты заказ не оформить:
+    /// покупатель уходит на страницу почты и возвращается сюда после подтверждения.
+    /// </summary>
+    private async Task<IActionResult?> NeedsEmail(int userId)
+    {
+        if (await db.Users.AnyAsync(u => u.Id == userId && u.Email != null && u.EmailConfirmed))
+        {
+            return null;
+        }
+        TempData.Flash("Укажите и подтвердите почту: на неё придут статусы заказа.", FlashLevel.Info);
+        return Redirect($"{OnlineShop.Web.Pages.Accounts.EmailModel.PageUrl}?returnUrl={Uri.EscapeDataString("/orders/checkout")}");
+    }
 
     private Task<bool> NeedsConsent(int userId) =>
         db.Users.AnyAsync(u => u.Id == userId && u.PersonalDataConsentAt == null);

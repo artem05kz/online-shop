@@ -27,9 +27,14 @@
             <span class="errorlist" asp-validation-for="Input.LastName"></span>
         </div>
         <div class="form-row">
-            <label asp-for="Input.Email"></label>
-            <input class="field" asp-for="Input.Email" type="email" autocomplete="email">
-            <span class="errorlist" asp-validation-for="Input.Email"></span>
+            <label for="email">Электронная почта</label>
+            <input class="field" id="email" type="text" value="@(Model.Email ?? "не указана")" disabled>
+            <span class="help">
+                @if (Model.Email is null) { <text>Нужна для заказов.</text> }
+                else if (!Model.EmailConfirmed) { <text>Не подтверждена.</text> }
+                else { <text>Подтверждена.</text> }
+                <a href="@EmailModel.PageUrl" style="color:var(--green-dark); font-weight:600;">@(Model.Email is null ? "Указать" : Model.EmailConfirmed ? "Сменить" : "Подтвердить")</a>
+            </span>
         </div>
         <div class="form-actions">
             <button class="btn" type="submit">Сохранить</button>
