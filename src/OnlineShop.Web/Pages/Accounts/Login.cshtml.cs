@@ -41,9 +41,15 @@ public class LoginModel(SignInManager<ApplicationUser> signInManager, Favorites 
             return Page();
         }
 
-        // Вход запоминается на две недели, как в Django-версии, и не блокируется после ошибок.
+        // Вход запоминается на две недели, как в Django-версии. Неверные пароли считаются:
+        // после пяти подряд аккаунт закрывается на 15 минут (настройки Lockout в Program.cs).
         var result = await signInManager.PasswordSignInAsync(
-            Input.UserName.Trim(), Input.Password, isPersistent: true, lockoutOnFailure: false);
+            Input.UserName.Trim(), Input.Password, isPersistent: true, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            Error = "Слишком много неверных паролей подряд. Вход в этот аккаунт закрыт на 15 минут.";
+            return Page();
+        }
         if (!result.Succeeded)
         {
             Error = "Неверный логин или пароль.";

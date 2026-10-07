@@ -72,6 +72,11 @@ builder.Services
         options.User.RequireUniqueEmail = false;
         // Логин может быть и кириллицей. Допустимые символы проверяет форма регистрации.
         options.User.AllowedUserNameCharacters = "";
+        // После 5 неверных паролей подряд вход в аккаунт закрыт на 15 минут: подбирать пароль
+        // менеджера с разных адресов бессмысленно. Вместе с LoginThrottle (попытки с одного адреса).
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.AllowedForNewUsers = true;
     })
     .AddEntityFrameworkStores<ShopDbContext>()
     .AddErrorDescriber<RussianIdentityErrors>()
@@ -96,6 +101,13 @@ builder.Services.AddDataProtection()
 // но исходный код страниц нечитаем и тяжелее, поэтому кириллицу и знак тенге выводим как есть.
 builder.Services.Configure<WebEncoderOptions>(options =>
     options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
+
+builder.Services.AddLoginThrottle(builder.Configuration);
+
+// Хеш пароля: PBKDF2 с HMAC-SHA512. По умолчанию в Identity 100 000 повторов, OWASP для SHA-512
+// советует от 210 000. Пароли со старым числом повторов пересчитываются сами при следующем входе.
+builder.Services.Configure<PasswordHasherOptions>(options =>
+    options.IterationCount = builder.Configuration.GetValue("Security:PasswordHashIterations", 210_000));
 
 builder.Services.AddAuthorization(options =>
     options.AddPolicy(RoleNames.Manager, policy => policy.RequireRole(RoleNames.Manager)));
@@ -183,6 +195,7 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

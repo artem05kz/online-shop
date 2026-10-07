@@ -37,6 +37,15 @@ public class TempShopFactory : WebApplicationFactory<Program>
     /// <summary>Пустая строка: бот не подключён.</summary>
     public string BotToken { get; init; } = "test-token";
 
+    /// <summary>
+    /// Попыток входа и регистрации в минуту с одного адреса. У всех запросов тестов один адрес,
+    /// поэтому по умолчанию ограничение снято, а проверяет его отдельный тест.
+    /// </summary>
+    public int AuthAttemptsPerMinute { get; init; } = 100_000;
+
+    /// <summary>Повторов в хеше пароля. В тестах меньше, чтобы сотни регистраций не шли минутами.</summary>
+    public int? PasswordHashIterations { get; init; } = 1_000;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         Directory.CreateDirectory(_dir);
@@ -53,6 +62,11 @@ public class TempShopFactory : WebApplicationFactory<Program>
         }
         builder.UseSetting("Media:Root", Path.Combine(_dir, "media"));
         builder.UseSetting(TelegramOptions.TokenKey, BotToken);
+        builder.UseSetting("Security:AuthAttemptsPerMinute", AuthAttemptsPerMinute.ToString());
+        if (PasswordHashIterations is { } iterations)
+        {
+            builder.UseSetting("Security:PasswordHashIterations", iterations.ToString());
+        }
         builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<ITelegramApi>(Telegram)));
     }
 
