@@ -8,10 +8,11 @@
         {
             var banner = Model.Banners[i];
             var srcset = BannerShape.SrcSet(MediaStorage, banner.ImagePath);
+            var link = SafeLinks.OrNull(banner.LinkUrl);
             <div class="banner-slide@(i == 0 ? " active" : "")">
-                @if (!string.IsNullOrEmpty(banner.LinkUrl))
+                @if (link is not null)
                 {
-                    <a href="@banner.LinkUrl"><img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.Sizes" alt="@banner.Title"></a>
+                    <a href="@link"><img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.Sizes" alt="@banner.Title"></a>
                 }
                 else
                 {

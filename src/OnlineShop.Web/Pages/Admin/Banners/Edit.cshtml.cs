@@ -102,6 +102,10 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         {
             ModelState.AddModelError(nameof(Image), "Выберите картинку баннера.");
         }
+        if (!SafeLinks.IsAllowed(Input.LinkUrl))
+        {
+            ModelState.AddModelError("Input.LinkUrl", "Укажите адрес на этом сайте (например, /catalog/grass/) или ссылку, которая начинается с https://.");
+        }
         if (Input.StartsAt is { } from && Input.EndsAt is { } to && to < from)
         {
             ModelState.AddModelError("Input.EndsAt", "Конец показа раньше начала.");

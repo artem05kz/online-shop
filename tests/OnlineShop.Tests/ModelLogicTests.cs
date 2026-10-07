@@ -163,4 +163,18 @@ public class ModelLogicTests
         Assert.Empty(order.ProgressSteps);
         Assert.Equal("Заказ №0 (Отменён)", order.ToString());
     }
+
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("/catalog/grass/", true)]
+    [InlineData("https://instagram.com/grass_aktau", true)]
+    [InlineData("http://example.kz", true)]
+    [InlineData("javascript:alert(1)", false)]
+    [InlineData(" JavaScript:alert(1)", false)]
+    [InlineData("data:text/html,<script>alert(1)</script>", false)]
+    [InlineData("//evil.example/", false)]
+    [InlineData("/\\evil.example/", false)]
+    [InlineData("vbscript:msgbox", false)]
+    public void Banner_links_allow_only_own_pages_and_http(string link, bool allowed) =>
+        Assert.Equal(allowed, OnlineShop.Web.Infrastructure.SafeLinks.IsAllowed(link));
 }
