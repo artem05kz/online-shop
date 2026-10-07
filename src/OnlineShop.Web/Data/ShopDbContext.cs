@@ -8,9 +8,23 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Data;
 
-public class ShopDbContext(DbContextOptions<ShopDbContext> options)
-    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>(options)
+public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
+    public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options)
+    {
+    }
+
+    // Для PostgresShopDbContext: у него свои миграции, а модель та же.
+    protected ShopDbContext(DbContextOptions options) : base(options)
+    {
+    }
+
+    /// <summary>
+    /// Не трогать ярлыки и даты при сохранении. Нужно при переносе базы: записи переезжают
+    /// как есть, с прежними датами создания и изменения.
+    /// </summary>
+    public bool KeepValuesAsIs { get; set; }
+
     public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Product> Products => Set<Product>();
@@ -185,6 +199,10 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
     /// </summary>
     private void ApplySaveRules()
     {
+        if (KeepValuesAsIs)
+        {
+            return;
+        }
         ChangeTracker.DetectChanges();
         var now = DateTime.UtcNow;
         var entries = ChangeTracker.Entries()
@@ -287,7 +305,9 @@ public class ShopDbContext(DbContextOptions<ShopDbContext> options)
         return slug;
     }
 
+    // PostgreSQL принимает в столбец с часовым поясом только время с пометкой UTC. Все даты сайта
+    // и так в UTC, поэтому время без пометки считаем UTC, а не отказываемся его сохранять.
     private sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
-        v => v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : v,
+        v => v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : DateTime.SpecifyKind(v, DateTimeKind.Utc),
         v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
 }

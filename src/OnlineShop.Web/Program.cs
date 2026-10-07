@@ -28,22 +28,35 @@ if (!builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>(optional: true);
 }
 
-// Относительный путь к файлу базы считаем от папки проекта, а не от текущей папки консоли,
-// иначе при запуске из корня репозитория и из src/ создавались бы две разные базы.
-var connection = new SqliteConnectionStringBuilder(builder.Configuration.GetConnectionString("Shop"));
-if (!Path.IsPathRooted(connection.DataSource))
+// База: SQLite для разработки и тестов (один файл, ничего не надо ставить), PostgreSQL на сервере.
+var usePostgres = string.Equals(builder.Configuration["Database:Provider"], "Postgres", StringComparison.OrdinalIgnoreCase);
+var shopConnection = builder.Configuration.GetConnectionString("Shop") ?? "";
+
+// Служебные файлы сайта (временные выгрузки 1С). С SQLite лежат рядом с файлом базы.
+var appDataDir = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["Storage:AppData"] ?? "App_Data");
+if (usePostgres)
 {
-    connection.DataSource = Path.Combine(builder.Environment.ContentRootPath, connection.DataSource);
+    builder.Services.AddDbContext<ShopDbContext, PostgresShopDbContext>(options => options.UseNpgsql(shopConnection));
 }
-Directory.CreateDirectory(Path.GetDirectoryName(connection.DataSource)!);
+else
+{
+    // Относительный путь к файлу базы считаем от папки проекта, а не от текущей папки консоли,
+    // иначе при запуске из корня репозитория и из src/ создавались бы две разные базы.
+    var connection = new SqliteConnectionStringBuilder(shopConnection);
+    if (!Path.IsPathRooted(connection.DataSource))
+    {
+        connection.DataSource = Path.Combine(builder.Environment.ContentRootPath, connection.DataSource);
+    }
+    appDataDir = Path.GetDirectoryName(connection.DataSource)!;
+    builder.Services.AddDbContext<ShopDbContext>(options => options
+        .UseSqlite(connection.ToString())
+        .AddInterceptors(new SqliteFunctions.Interceptor()));
+}
+Directory.CreateDirectory(appDataDir);
 
 // Папка загрузок: фото товаров и баннеров. Лежит вне wwwroot, чтобы не смешивать загруженное с кодом сайта.
 var mediaRoot = Path.Combine(builder.Environment.ContentRootPath, builder.Configuration["Media:Root"] ?? "media");
 Directory.CreateDirectory(mediaRoot);
-
-builder.Services.AddDbContext<ShopDbContext>(options => options
-    .UseSqlite(connection.ToString())
-    .AddInterceptors(new SqliteFunctions.Interceptor()));
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole<int>>(options =>
@@ -94,7 +107,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton(new MediaStorage(mediaRoot));
 builder.Services.AddSingleton<Thumbnails>();
-builder.Services.AddSingleton(new ImportUploads(Path.Combine(Path.GetDirectoryName(connection.DataSource)!, "imports")));
+builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<Favorites>();

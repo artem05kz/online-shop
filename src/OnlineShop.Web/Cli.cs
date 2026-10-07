@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Models;
 using OnlineShop.Web.Services;
@@ -11,7 +14,8 @@ namespace OnlineShop.Web;
 /// <list type="bullet">
 /// <item>--seed-demo: выдуманный каталог в пустую базу;</item>
 /// <item>--make-manager &lt;логин&gt;: дать покупателю доступ в панель управления (аналог createsuperuser);</item>
-/// <item>--import-1c --price-list &lt;файл&gt; --stock &lt;файл&gt; [--dry-run]: загрузка из 1С, как команда import_1c в Django.</item>
+/// <item>--import-1c --price-list &lt;файл&gt; --stock &lt;файл&gt; [--dry-run]: загрузка из 1С, как команда import_1c в Django;</item>
+/// <item>--copy-from-sqlite &lt;файл&gt;: перенести всю базу из файла SQLite в настроенную базу (PostgreSQL перед выкладкой).</item>
 /// </list>
 /// </summary>
 public static class Cli
@@ -45,6 +49,36 @@ public static class Cli
             {
                 await users.AddToRoleAsync(user, RoleNames.Manager);
                 Console.WriteLine($"«{login}» теперь менеджер: панель управления по адресу /admin. Перезайдите на сайт, чтобы доступ появился.");
+            }
+            return true;
+        }
+
+        if (Value(args, "--copy-from-sqlite") is { } sqliteFile)
+        {
+            // dotnet run запускает программу из папки проекта, поэтому относительный путь ищем
+            // и от текущей папки консоли, и от папки проекта.
+            var contentRoot = provider.GetRequiredService<IWebHostEnvironment>().ContentRootPath;
+            sqliteFile = new[] { Path.GetFullPath(sqliteFile), Path.GetFullPath(Path.Combine(contentRoot, sqliteFile)) }
+                .FirstOrDefault(File.Exists) ?? Path.GetFullPath(sqliteFile);
+            if (!File.Exists(sqliteFile))
+            {
+                Console.WriteLine($"Файл «{sqliteFile}» не найден.");
+                Environment.ExitCode = 1;
+                return true;
+            }
+            var connection = new SqliteConnectionStringBuilder { DataSource = sqliteFile, Mode = SqliteOpenMode.ReadOnly };
+            await using var source = new ShopDbContext(new DbContextOptionsBuilder<ShopDbContext>()
+                .UseSqlite(connection.ToString())
+                .AddInterceptors(new SqliteFunctions.Interceptor())
+                .Options);
+            try
+            {
+                Console.WriteLine(await DatabaseCopier.CopyAsync(source, provider.GetRequiredService<ShopDbContext>()));
+            }
+            catch (InvalidOperationException e)
+            {
+                Console.WriteLine(e.Message);
+                Environment.ExitCode = 1;
             }
             return true;
         }
