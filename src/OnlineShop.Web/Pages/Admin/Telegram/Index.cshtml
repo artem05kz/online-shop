@@ -95,7 +95,7 @@ else
                         </td>
                         <td>
                             <form method="post" asp-page-handler="Delete" asp-route-id="@row.Id"
-                                  onsubmit="return confirm('Удалить номер @PhoneNumbers.Display(row.Phone)? Заказы туда больше не будут приходить.');">
+                                  data-confirm="Удалить номер @PhoneNumbers.Display(row.Phone)? Заказы туда больше не будут приходить.">
                                 <button class="btn btn-ghost btn-sm" type="submit" title="Удалить номер">@Icons.Get("trash", 16) <span class="narrow-hide">Удалить</span></button>
                             </form>
                         </td>

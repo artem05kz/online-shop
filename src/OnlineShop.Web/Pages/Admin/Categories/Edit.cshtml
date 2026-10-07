@@ -113,13 +113,13 @@
     </div>
 
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
-          onsubmit="return confirm('Удалить эту категорию вместе с подкатегориями?');">
+          data-confirm="Удалить эту категорию вместе с подкатегориями?">
         <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить категорию</button>
     </form>
 }
 
 @section Scripts {
-    <script>
+    <script nonce="@HttpContext.CspNonce()">
     // В списке «Находится внутри» оставляем только категории выбранного бренда:
     // вложить категорию в чужой бренд нельзя, и лишние строки только путают.
     (function () {

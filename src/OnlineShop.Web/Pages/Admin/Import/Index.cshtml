@@ -62,8 +62,8 @@
         }
         <div class="admin-filters">
             <input class="field" type="search" id="price-search" placeholder="Поиск по названию, категории, артикулу">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('price', true)">Выбрать все</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('price', false)">Снять все</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-toggle-all="price" data-value="true">Выбрать все</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-toggle-all="price" data-value="false">Снять все</button>
             <span class="admin-count" id="price-count"></span>
         </div>
         <div class="import-table-wrap">
@@ -108,8 +108,8 @@
         }
         <div class="admin-filters">
             <input class="field" type="search" id="stock-search" placeholder="Поиск по артикулу">
-            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('stock', true)">Выбрать все</button>
-            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAll('stock', false)">Снять все</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-toggle-all="stock" data-value="true">Выбрать все</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-toggle-all="stock" data-value="false">Снять все</button>
             <span class="admin-count" id="stock-count"></span>
         </div>
         <div class="import-table-wrap" style="max-width:520px;">

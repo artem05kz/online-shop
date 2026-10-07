@@ -1,5 +1,11 @@
 // Предпросмотр загрузки из 1С: поиск по строкам, сортировка по клику на заголовок,
 // «выбрать все» и счётчик отмеченных строк. Перенесено из шаблона Django-версии.
+// Кнопки «Выбрать все» и «Снять все»: data-toggle-all="price" data-value="true".
+document.addEventListener('click', function (event) {
+    var button = event.target.closest && event.target.closest('[data-toggle-all]');
+    if (button) toggleAll(button.getAttribute('data-toggle-all'), button.getAttribute('data-value') === 'true');
+});
+
 function toggleAll(prefix, checked) {
     document.querySelectorAll('#' + prefix + '-table tbody input[type=checkbox]').forEach(function (cb) {
         // Затрагиваем только строки, видимые при текущем поиске.

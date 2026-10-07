@@ -11,21 +11,21 @@
 
 <form class="admin-filters" method="get">
     <input class="field" type="search" name="q" value="@Model.Q" placeholder="Адрес, город или телефон">
-    <select class="select" name="city" onchange="this.form.submit()">
+    <select class="select" name="city" data-autosubmit>
         <option value="">Все города</option>
         @foreach (var city in Model.Cities)
         {
             <option value="@city" selected="@(Model.City == city)">@city</option>
         }
     </select>
-    <select class="select" name="kind" onchange="this.form.submit()">
+    <select class="select" name="kind" data-autosubmit>
         <option value="">Все типы</option>
         @foreach (var kind in Enum.GetValues<StoreKind>())
         {
             <option value="@kind.ToCode()" selected="@(Model.Kind == kind.ToCode())">@kind.Label()</option>
         }
     </select>
-    <select class="select" name="active" onchange="this.form.submit()">
+    <select class="select" name="active" data-autosubmit>
         <option value="">Показ: все</option>
         <option value="1" selected="@(Model.Active == "1")">Показываются</option>
         <option value="0" selected="@(Model.Active == "0")">Скрыты</option>

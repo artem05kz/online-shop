@@ -79,8 +79,9 @@
     </main>
 </div>
 
+<script src="~/js/forms.js" asp-append-version="true"></script>
 <script src="~/js/admin_edit_highlight.js" asp-append-version="true"></script>
-<script>
+<script nonce="@Context.CspNonce()">
 (function () {
     var button = document.getElementById('admin-menu-btn');
     var nav = document.getElementById('admin-nav');

@@ -12,14 +12,14 @@
 
 <form class="admin-filters" method="get">
     <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название или артикул">
-    <select class="select" name="category" onchange="this.form.submit()" aria-label="Категория">
+    <select class="select" name="category" data-autosubmit aria-label="Категория">
         <option value="">Все категории</option>
         @foreach (var node in Model.Tree.Flatten())
         {
             <option value="@node.Category.Id" selected="@(Model.Category == node.Category.Id)">@Model.Tree.Path(node.Category.Id)</option>
         }
     </select>
-    <select class="select" name="o" onchange="this.form.submit()" aria-label="Порядок">
+    <select class="select" name="o" data-autosubmit aria-label="Порядок">
         @foreach (var (value, label) in OnlineShop.Web.Pages.Admin.Products.IndexModel.SortOptions)
         {
             <option value="@value" selected="@((Model.O ?? "name") == value)">@label</option>

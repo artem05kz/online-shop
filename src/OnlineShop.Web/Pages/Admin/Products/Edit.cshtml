@@ -175,14 +175,14 @@
 @if (Model.Id is not null)
 {
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
-          onsubmit="return confirm('Удалить товар вместе с фасовками и фото?');">
+          data-confirm="Удалить товар вместе с фасовками и фото?">
         <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить товар</button>
     </form>
 }
 
 @section Scripts {
     <script src="~/js/product_admin.js" asp-append-version="true"></script>
-    <script>
+    <script nonce="@HttpContext.CspNonce()">
     (function () {
         // «Ещё строка»: копия последней пустой строки фасовки со следующим номером.
         var button = document.getElementById('add-variant');

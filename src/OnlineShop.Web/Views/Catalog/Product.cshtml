@@ -117,7 +117,7 @@
 }
 
 @section Scripts {
-    <script>
+    <script nonce="@Context.CspNonce()">
     (function () {
         // Цена у кнопки «В корзину» показывает выбранную фасовку.
         var price = document.getElementById('buy-price');

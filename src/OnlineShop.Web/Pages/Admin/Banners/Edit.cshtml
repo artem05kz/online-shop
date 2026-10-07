@@ -79,7 +79,7 @@
 </form>
 
 @section Scripts {
-<script>
+<script nonce="@HttpContext.CspNonce()">
 // Превью сразу после выбора файла, до сохранения: видно, что обрежется и где лягут стрелки.
 (function () {
     var input = document.getElementById('Image');
@@ -108,7 +108,7 @@
 
 @if (Model.Id is not null)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" onsubmit="return confirm('Удалить баннер?');">
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" data-confirm="Удалить баннер?">
         <button class="btn btn-danger btn-sm" type="submit">Удалить баннер</button>
     </form>
 }

@@ -78,6 +78,6 @@
     </div>
 </form>
 
-<form method="post" asp-page-handler="Delete" asp-route-id="@Model.Address.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить адрес покупателя?');">
+<form method="post" asp-page-handler="Delete" asp-route-id="@Model.Address.Id" style="margin-top:24px;" data-confirm="Удалить адрес покупателя?">
     <button class="btn btn-danger btn-sm" type="submit">Удалить адрес</button>
 </form>

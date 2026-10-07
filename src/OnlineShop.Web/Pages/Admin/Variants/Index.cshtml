@@ -11,14 +11,14 @@
 
 <form class="admin-filters" method="get">
     <input class="field" type="search" name="q" value="@Model.Q" placeholder="Артикул или название товара">
-    <select class="select" name="brand" onchange="this.form.submit()">
+    <select class="select" name="brand" data-autosubmit>
         <option value="">Все бренды</option>
         @foreach (var brand in Model.Brands)
         {
             <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
         }
     </select>
-    <select class="select" name="active" onchange="this.form.submit()">
+    <select class="select" name="active" data-autosubmit>
         <option value="">Показ: все</option>
         <option value="1" selected="@(Model.Active == "1")">Показываются</option>
         <option value="0" selected="@(Model.Active == "0")">Скрыты</option>

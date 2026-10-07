@@ -99,7 +99,7 @@
 
 @if (Model.Id is not null)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" onsubmit="return confirm('Удалить эту точку?');">
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" data-confirm="Удалить эту точку?">
         <button class="btn btn-danger btn-sm" type="submit">Удалить точку</button>
     </form>
 }

@@ -82,7 +82,7 @@
 
 @section Scripts {
     <script type="application/json" id="saved-addresses">@Html.Raw(JsonSerializer.Serialize(addressData))</script>
-    <script>
+    <script nonce="@Context.CspNonce()">
     // Выбор сохранённого адреса заполняет поля формы, дальше их можно поправить вручную.
     (function () {
         var select = document.getElementById('Form_SavedAddressId');

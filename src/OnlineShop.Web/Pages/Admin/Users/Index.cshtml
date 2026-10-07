@@ -28,7 +28,7 @@
                     <td>@(row.IsManager ? "да" : "")</td>
                     <td>
                         <form method="post" asp-page-handler="ToggleManager" asp-route-id="@row.Id" asp-route-q="@Model.Q"
-                              onsubmit="return confirm('@(row.IsManager ? "Снять доступ в панель?" : "Дать доступ в панель управления?")');">
+                              data-confirm="@(row.IsManager ? "Снять доступ в панель?" : "Дать доступ в панель управления?")">
                             <button class="btn btn-ghost btn-sm" type="submit">@(row.IsManager ? "Снять доступ" : "Сделать менеджером")</button>
                         </form>
                     </td>

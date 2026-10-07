@@ -15,7 +15,7 @@
 {
     <form class="toolbar" method="get">
         <label class="muted" for="city-select">Выберите город</label>
-        <select class="select" name="city" id="city-select" style="width:auto; min-width:200px;" onchange="this.form.submit()">
+        <select class="select" name="city" id="city-select" style="width:auto; min-width:200px;" data-autosubmit>
             <option value="">Все города</option>
             @foreach (var city in Model.Cities)
             {
@@ -84,7 +84,7 @@ else
         <script src="https://mapgl.2gis.com/api/js/v1"></script>
         <script type="application/json" id="stores-data">@Html.Raw(System.Text.Json.JsonSerializer.Serialize(
             mapped.Select(st => new { lat = st.Latitude, lng = st.Longitude, title = st.Address })))</script>
-        <script>
+        <script nonce="@Context.CspNonce()">
         // Все точки на одной карте 2ГИС: видно, какая ближе.
         (function () {
             var points = JSON.parse(document.getElementById('stores-data').textContent);
