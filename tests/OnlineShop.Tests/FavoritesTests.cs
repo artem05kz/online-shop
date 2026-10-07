@@ -49,7 +49,7 @@ public class FavoritesTests(TempShopFactory factory) : IClassFixture<TempShopFac
         var userName = $"избранное{Interlocked.Increment(ref _counter)}";
         var token = await TokenFrom(client, "/accounts/register");
         var response = await Post(client, "/accounts/register", token, ("Input.UserName", userName), ("Input.Email", ""),
-            ("Input.Password", Password), ("Input.ConfirmPassword", Password));
+            ("Input.Password", Password), ("Input.ConfirmPassword", Password), ("Input.AcceptPrivacy", "true"));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         return userName;
     }

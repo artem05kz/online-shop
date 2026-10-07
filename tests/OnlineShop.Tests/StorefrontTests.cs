@@ -314,7 +314,8 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         var placed = await Post(client, "/orders/checkout", token,
             ("Form.SavedAddressId", _factory.AddressId.ToString()),
             ("Form.ContactName", "Иван Петров"), ("Form.ContactPhone", "+7 700 000-00-00"),
-            ("Form.City", "Актау"), ("Form.StreetAndDetails", "14 микрорайон, дом 5"), ("Form.Comment", "позвонить заранее"));
+            ("Form.City", "Актау"), ("Form.StreetAndDetails", "14 микрорайон, дом 5"), ("Form.Comment", "позвонить заранее"),
+            ("Form.AcceptPrivacy", "true"));
         Assert.Equal(HttpStatusCode.Redirect, placed.StatusCode);
         var orderUrl = placed.Headers.Location!.OriginalString;
         Assert.Matches(@"^/orders/my/\d+$", orderUrl);

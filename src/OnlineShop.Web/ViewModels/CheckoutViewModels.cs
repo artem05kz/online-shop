@@ -35,6 +35,8 @@ public class CheckoutForm
     [Display(Name = "Комментарий к заказу")]
     public string? Comment { get; set; }
 
+    public bool AcceptPrivacy { get; set; }
+
     public static string AddressLine(Address address) =>
         string.Join(", ", new[] { address.StreetLine, address.DetailsLine }.Where(p => p.Length > 0));
 }
@@ -44,4 +46,7 @@ public class CheckoutViewModel
     public required CheckoutForm Form { get; init; }
     public required CartContents Cart { get; init; }
     public required IReadOnlyList<Address> Addresses { get; init; }
+
+    /// <summary>Покупатель ещё не давал согласия на обработку данных: показать галочку.</summary>
+    public bool NeedsConsent { get; init; }
 }

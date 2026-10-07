@@ -30,6 +30,8 @@
             <input class="field" asp-for="Input.ConfirmPassword" autocomplete="new-password">
             <span class="errorlist" asp-validation-for="Input.ConfirmPassword"></span>
         </div>
+        <partial name="_PrivacyConsent" model="@("Input.AcceptPrivacy")" />
+        <span class="errorlist" asp-validation-for="Input.AcceptPrivacy"></span>
         <button class="btn btn-block" type="submit">Создать аккаунт</button>
     </form>
     <p class="muted" style="margin-top:16px; font-size:.9rem;">

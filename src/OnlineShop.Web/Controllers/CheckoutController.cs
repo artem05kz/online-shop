@@ -42,7 +42,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
             form.ContactName = user?.FullName ?? "";
         }
 
-        return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses });
+        return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId) });
     }
 
     [HttpPost("")]
@@ -60,9 +60,13 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
         {
             ModelState.AddModelError("Form.SavedAddressId", "Выберите адрес из списка.");
         }
+        if (!form.AcceptPrivacy && await NeedsConsent(userId))
+        {
+            ModelState.AddModelError("Form.AcceptPrivacy", PrivacyConsent.Required);
+        }
         if (!ModelState.IsValid)
         {
-            return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses });
+            return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId) });
         }
 
         // Название, фасовка, артикул и цена копируются в заказ: каталог потом может поменяться.
@@ -85,6 +89,10 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
             }).ToList(),
         };
         db.Orders.Add(order);
+        if (form.AcceptPrivacy && await db.Users.FindAsync(userId) is { PersonalDataConsentAt: null } user)
+        {
+            user.PersonalDataConsentAt = DateTime.UtcNow;
+        }
         await db.SaveChangesAsync();
         alerts.Enqueue(order.Id, $"{Request.Scheme}://{Request.Host}");
 
@@ -100,6 +108,9 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
     }
 
     private int UserId() => User.ShopUserId();
+
+    private Task<bool> NeedsConsent(int userId) =>
+        db.Users.AnyAsync(u => u.Id == userId && u.PersonalDataConsentAt == null);
 
     private Task<List<Address>> UserAddresses(int userId) =>
         db.Addresses.Where(a => a.UserId == userId).Ordered().AsNoTracking().ToListAsync();

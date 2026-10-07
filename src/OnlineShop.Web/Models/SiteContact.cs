@@ -47,6 +47,21 @@ public class SiteContact
     [StringLength(200)]
     public string WorkingHours { get; set; } = "Пн-Сб, 9:00-18:00";
 
+    // Реквизиты продавца для политики конфиденциальности: по закону покупатель должен знать,
+    // кто обрабатывает его данные.
+
+    [Display(Name = "Продавец", Description = "Как в документах. Например: ИП Иванов Иван Иванович или ТОО «Грасс Актау»")]
+    [StringLength(200)]
+    public string LegalName { get; set; } = "";
+
+    [Display(Name = "БИН или ИИН")]
+    [StringLength(12)]
+    public string Bin { get; set; } = "";
+
+    [Display(Name = "Юридический адрес")]
+    [StringLength(300)]
+    public string LegalAddress { get; set; } = "";
+
     [Display(Name = "Использовать на сайте",
         Description = "Показывается тот набор, у которого стоит эта галочка.")]
     public bool IsActive { get; set; } = true;

@@ -35,6 +35,14 @@ public class EditModel(ShopDbContext db) : PageModel
         public string City { get; set; } = "Актау";
 
         [Display(Name = "Часы работы")] [StringLength(200, ErrorMessage = TooLong)] public string? WorkingHours { get; set; } = "Пн-Сб, 9:00-18:00";
+
+        [Display(Name = "Продавец")] [StringLength(200, ErrorMessage = TooLong)] public string? LegalName { get; set; }
+
+        [Display(Name = "БИН или ИИН")]
+        [RegularExpression(@"^\s*\d{12}\s*$", ErrorMessage = "12 цифр.")]
+        public string? Bin { get; set; }
+
+        [Display(Name = "Юридический адрес")] [StringLength(300, ErrorMessage = TooLong)] public string? LegalAddress { get; set; }
     }
 
     [BindProperty] public InputModel Input { get; set; } = new();
@@ -56,6 +64,7 @@ public class EditModel(ShopDbContext db) : PageModel
         {
             Title = c.Title, IsActive = c.IsActive, Phone = c.Phone, PhoneExtra = c.PhoneExtra, Email = c.Email,
             Whatsapp = c.Whatsapp, Telegram = c.Telegram, Instagram = c.Instagram, City = c.City, WorkingHours = c.WorkingHours,
+            LegalName = c.LegalName, Bin = c.Bin, LegalAddress = c.LegalAddress,
         };
         return Page();
     }
@@ -83,6 +92,9 @@ public class EditModel(ShopDbContext db) : PageModel
         contact.Instagram = Clean(Input.Instagram);
         contact.City = Clean(Input.City);
         contact.WorkingHours = Clean(Input.WorkingHours);
+        contact.LegalName = Clean(Input.LegalName);
+        contact.Bin = Clean(Input.Bin);
+        contact.LegalAddress = Clean(Input.LegalAddress);
         if (contact.Id == 0)
         {
             db.SiteContacts.Add(contact);

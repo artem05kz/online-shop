@@ -1,3 +1,4 @@
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Services;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
@@ -32,6 +33,8 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         [DataType(DataType.Password)]
         [Compare(nameof(Password), ErrorMessage = "Пароли не совпадают.")]
         public string ConfirmPassword { get; set; } = "";
+
+        public bool AcceptPrivacy { get; set; }
     }
 
     [BindProperty]
@@ -52,7 +55,7 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         }
 
         var email = string.IsNullOrWhiteSpace(Input.Email) ? null : Input.Email.Trim();
-        var user = new ApplicationUser { UserName = Input.UserName.Trim(), Email = email };
+        var user = new ApplicationUser { UserName = Input.UserName.Trim(), Email = email, PersonalDataConsentAt = DateTime.UtcNow };
 
         // Identity при создании останавливается на первой неудаче: при плохом пароле про занятый
         // логин покупатель узнал бы только со второй попытки. Проверяем всё заранее и показываем разом.
@@ -65,11 +68,16 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         {
             errors.AddRange((await validator.ValidateAsync(userManager, user, Input.Password)).Errors);
         }
-        if (errors.Count == 0)
+        // Галочку проверяем вместе с логином и паролем, чтобы все ошибки были видны разом.
+        if (!Input.AcceptPrivacy)
+        {
+            ModelState.AddModelError("Input.AcceptPrivacy", PrivacyConsent.Required);
+        }
+        if (errors.Count == 0 && Input.AcceptPrivacy)
         {
             errors.AddRange((await userManager.CreateAsync(user, Input.Password)).Errors);
         }
-        if (errors.Count > 0)
+        if (errors.Count > 0 || !Input.AcceptPrivacy)
         {
             foreach (var error in errors)
             {

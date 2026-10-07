@@ -84,6 +84,28 @@
         </div>
     </div>
 
+    <div class="admin-box">
+        <h3>Реквизиты продавца</h3>
+        <p class="hint">Показываются на странице «Политика конфиденциальности»: по закону покупатель должен знать, кто хранит его данные.</p>
+        <div class="form-row">
+            <label asp-for="Input.LegalName"></label>
+            <input class="field" asp-for="Input.LegalName" placeholder="ИП Иванов Иван Иванович">
+            <span class="errorlist" asp-validation-for="Input.LegalName"></span>
+        </div>
+        <div class="form-grid">
+            <div class="form-row">
+                <label asp-for="Input.Bin"></label>
+                <input class="field" asp-for="Input.Bin" inputmode="numeric" maxlength="12">
+                <span class="errorlist" asp-validation-for="Input.Bin"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.LegalAddress"></label>
+                <input class="field" asp-for="Input.LegalAddress">
+                <span class="errorlist" asp-validation-for="Input.LegalAddress"></span>
+            </div>
+        </div>
+    </div>
+
     <div class="savebar">
         <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
         <a class="btn btn-ghost" href="/admin/contacts">Отмена</a>

@@ -19,6 +19,10 @@ public class ApplicationUser : IdentityUser<int>
     [StringLength(150)]
     public string LastName { get; set; } = "";
 
+    // Когда покупатель согласился на обработку персональных данных (галочка при регистрации или при
+    // первом заказе). По закону согласие нужно уметь подтвердить.
+    public DateTime? PersonalDataConsentAt { get; set; }
+
     public List<Address> Addresses { get; set; } = [];
     public List<Order> Orders { get; set; } = [];
 

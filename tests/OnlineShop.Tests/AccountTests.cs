@@ -21,7 +21,7 @@ public class AccountTests(TempShopFactory factory) : IClassFixture<TempShopFacto
         var token = await TokenFrom(client, "/accounts/register");
         var response = await Post(client, "/accounts/register" + (returnUrl is null ? "" : $"?returnUrl={Uri.EscapeDataString(returnUrl)}"), token,
             ("Input.UserName", userName), ("Input.Email", ""),
-            ("Input.Password", "зелёный-шампунь"), ("Input.ConfirmPassword", "зелёный-шампунь"));
+            ("Input.Password", "зелёный-шампунь"), ("Input.ConfirmPassword", "зелёный-шампунь"), ("Input.AcceptPrivacy", "true"));
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         return (client, userName);
     }

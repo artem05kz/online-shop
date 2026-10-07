@@ -75,6 +75,11 @@
             <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
                 Оплата наличными или картой при получении. После оформления с вами свяжется менеджер.
             </p>
+            @if (Model.NeedsConsent)
+            {
+                <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
+                <span class="errorlist" asp-validation-for="Form.AcceptPrivacy"></span>
+            }
             <button class="btn btn-block" type="submit">Подтвердить заказ</button>
         </div>
     </div>

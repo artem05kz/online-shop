@@ -1,0 +1,7 @@
+@model string
+@* Галочка согласия на обработку персональных данных. Модель: имя поля формы. *@
+<label class="check consent">
+    <input type="checkbox" name="@Model" value="true">
+    <span>Даю согласие на сбор и обработку моих персональных данных на условиях
+        <a href="@OnlineShop.Web.Controllers.InfoController.PrivacyUrl" target="_blank" rel="noopener">политики конфиденциальности</a></span>
+</label>
