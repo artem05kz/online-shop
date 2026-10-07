@@ -4,7 +4,8 @@
 корзина, оформление заказа с оплатой при получении, личный кабинет с адресами доставки на карте
 и панель управления для менеджера с загрузкой товаров, цен и остатков из 1С.
 
-Стек: .NET 10, ASP.NET Core MVC и Razor Pages, EF Core, SQLite, ASP.NET Core Identity, ClosedXML.
+Стек: .NET 10, ASP.NET Core MVC и Razor Pages, EF Core, SQLite для разработки и PostgreSQL на сервере,
+ASP.NET Core Identity, ClosedXML, Docker. Выкладка в интернет: [docs/deploy.md](docs/deploy.md).
 Первая версия была на Django, история переноса и все отличия описаны в
 [docs/rewrite-plan.md](docs/rewrite-plan.md).
 
@@ -81,13 +82,16 @@ Telegram не даёт боту писать человеку по одному 
 
 | Параметр | Что задаёт | По умолчанию |
 |----------|------------|--------------|
-| `ConnectionStrings:Shop` | файл базы SQLite | `App_Data/shop.db` |
+| `Database:Provider` | `Sqlite` или `Postgres` | `Sqlite` |
+| `ConnectionStrings:Shop` | файл базы SQLite или строка подключения PostgreSQL | `App_Data/shop.db` |
+| `Storage:AppData` | папка временных выгрузок 1С (с PostgreSQL; у SQLite рядом с базой) | `App_Data` |
 | `Media:Root` | папка загруженных фото | `media` |
 | `TWOGIS_API_KEY` | ключ 2ГИС: карта и поиск адреса по точке в форме адреса, карта магазинов | не задан, тогда OpenStreetMap |
 | `Telegram:BotToken` | токен бота для уведомлений о заказах | не задан, тогда бот выключен |
 
 Параметры задаются в `appsettings.json` или переменными окружения
-(`ConnectionStrings__Shop`, `Media__Root`, `TWOGIS_API_KEY`, `Telegram__BotToken`).
+(`Database__Provider`, `ConnectionStrings__Shop`, `Media__Root`, `TWOGIS_API_KEY`, `Telegram__BotToken`).
+В Docker их задаёт `docker-compose.yml` из файла `.env`, см. [docs/deploy.md](docs/deploy.md).
 Токен бота на своей машине удобнее хранить вне репозитория в user-secrets:
 `dotnet user-secrets set Telegram:BotToken "<токен>" --project src/OnlineShop.Web`. Ключ 2ГИС создаётся в
 [кабинете разработчика 2ГИС](https://platform.2gis.ru): бесплатный демо-ключ действует месяц,
@@ -114,5 +118,13 @@ docs/rewrite-plan.md     перенос с Django: список функций, 
 dotnet test OnlineShop.sln
 ```
 
-Тесты работают на настоящей SQLite в памяти и поднимают приложение целиком. Файлы в формате
+Тесты работают на настоящей SQLite и поднимают приложение целиком. Файлы в формате
 отчётов 1С для тестов импорта собираются прямо в тестах.
+
+Те же тесты на PostgreSQL, как на сервере: поднять базу в Docker и указать её в переменной
+`SHOP_TEST_POSTGRES`. Каждый набор тестов создаёт на сервере свою базу и удаляет её после себя.
+
+```bash
+docker run -d --name shop-test-pg -e POSTGRES_USER=shop -e POSTGRES_PASSWORD=shop-dev -p 55432:5432 postgres:17
+SHOP_TEST_POSTGRES="Host=localhost;Port=55432;Username=shop;Password=shop-dev" dotnet test OnlineShop.sln
+```

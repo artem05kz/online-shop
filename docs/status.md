@@ -6,11 +6,11 @@
 ## Где что лежит
 
 - Код: `C:\Проекты\Интернет магазин`, GitHub `artem05kz/online-shop` (раньше `grass-aktau-shop`), ветка `master`.
-- На GitHub отправлено всё до `bf00cb8` (Telegram-бот). Избранное, сжатие фото и баннеры закоммичены локально.
+- На GitHub отправлено всё до `c1b5829` (избранное, фото, баннеры). Подготовка к выкладке закоммичена локально.
 - Образцы выгрузок 1С: `C:\Проекты\Пример таблиц для интернет магазина` (прайс Ifoam и складская
   ведомость Grass, артикулы не пересекаются). В репозиторий их не класть.
 - Документы: [README](../README.md), [перенос с Django](rewrite-plan.md) (список всех функций,
-  решения и отличия), [план развития](roadmap.md), этот файл.
+  решения и отличия), [план развития](roadmap.md), [выкладка](deploy.md), этот файл.
 
 ## Что сделано
 
@@ -40,23 +40,28 @@
    `favorites.js`; `Services/ImageShrinker.cs` (уменьшение, поворот по EXIF, WebP),
    `MediaStorage.SaveImageAsync`; `Services/BannerShape.cs` (пропорция 3:1, srcset, предупреждения).
    Проверял Артём: бот с настоящим токеном работает.
+6. **Подготовка к выкладке** (пункты 5, 7, 14 плана, подробно в `deploy.md`):
+   - PostgreSQL: `Database:Provider=Postgres`, класс `PostgresShopDbContext` и свои миграции
+     в `Data/PostgresMigrations`. Новую миграцию добавлять в оба набора (команды ниже).
+   - Перенос базы: `--copy-from-sqlite` (`Data/DatabaseCopier.cs`), проверен на настоящей локальной базе.
+   - Корзина в таблице `CartItems`, ключи входа в `DataProtectionKeys`, сессий больше нет.
+   - Docker: `Dockerfile`, `docker-compose.yml` (db, app, caddy, backup), `deploy/Caddyfile`,
+     `deploy/backup.sh`, `.env.example`. Проверено в Docker: перенос данных, миниатюры на Linux,
+     сжатие баннера, вход и корзина после перезапуска, копия и восстановление после порчи данных.
+   - Страницы ошибок `/error/{код}` (раньше любая ошибка показывалась как «не найдено»), `/health`,
+     `/sitemap.xml`, `/robots.txt`.
 
-Тестов 152, все проходят (`dotnet test OnlineShop.sln`). В тестах Telegram всегда подменён
-заглушкой `FakeTelegramApi`, даже если на машине задан настоящий токен.
+Тестов 160, все проходят и на SQLite, и на PostgreSQL (`SHOP_TEST_POSTGRES`, см. README).
+В тестах Telegram всегда подменён заглушкой `FakeTelegramApi`, даже если на машине задан настоящий токен.
 
 ## Что дальше
 
-По [плану развития](roadmap.md), всё отложено по решению Артёма:
+По [плану развития](roadmap.md):
 
-- **Кнопки в сообщении бота** («Подтвердить», «Отменить»): после выкладки в интернет.
-- Артём предлагает подготовить выкладку локально, а хостинг искать потом: корзина в базе,
-  PostgreSQL в Docker, сборка в контейнер, резервные копии. Это следующий кандидат.
+- **Сервер и домен**: всё готово к выкладке, хостинг Артём ищет позже. Шаги в `deploy.md`.
+- После выкладки: кнопки «Подтвердить» и «Отменить» в сообщениях бота, автоматическая выгрузка
+  из 1С (CommerceML), оплата Kaspi.
 - Уведомления покупателю не делаем: если будет мобильное приложение, они уйдут туда.
-- **5 и 7 вместе:** корзина и сессии в базе вместо памяти, выкладка в интернет (PostgreSQL, сервер,
-  HTTPS, постоянная папка для фото и ключей входа, резервные копии, пакет `SkiaSharp.NativeAssets.Linux`).
-
-Идеи, которые всплывали и тоже можно предложить: автоматическая выгрузка из 1С по расписанию
-(CommerceML), избранное, оплата Kaspi, карта сайта для поисковиков, сжатие фото при загрузке.
 
 ## Как запускать
 
@@ -66,6 +71,16 @@ dotnet test OnlineShop.sln
 dotnet run --project src/OnlineShop.Web -- --make-manager <логин>
 dotnet run --project src/OnlineShop.Web -- --import-1c --price-list "<файл>" --stock "<файл>" --dry-run
 ```
+
+Миграции: у SQLite и PostgreSQL свои наборы, `--context` указывать обязательно:
+
+```bash
+dotnet ef migrations add <Имя> --context ShopDbContext --project src/OnlineShop.Web --output-dir Data/Migrations
+dotnet ef migrations add <Имя> --context PostgresShopDbContext --project src/OnlineShop.Web --output-dir Data/PostgresMigrations --namespace OnlineShop.Web.Data.PostgresMigrations
+```
+
+Docker на этой машине: `docker compose up -d --build`, сайт на `http://localhost:8088` (порт в `.env`),
+в нём копия локальной базы. Отдельно для тестов: контейнер `shop-test-pg` на порту 55432.
 
 В Claude Code сайт запускается конфигурацией `online-shop-dotnet` из `.claude/launch.json` (порт 5080).
 Она запускает сайт без профиля, то есть в Production, поэтому `Program.cs` подключает user-secrets
@@ -81,7 +96,8 @@ dotnet run --project src/OnlineShop.Web -- --import-1c --price-list "<файл>"
 
 ## Снимки экрана
 
-`tools/screenshots.cs` снимает страницы headless-Chrome с входом под менеджером:
+`tools/screenshots.cs` снимает страницы headless-Chrome с входом под менеджером (логин `-` без входа,
+адрес сайта в переменной `SHOT_BASE`, по умолчанию `http://localhost:5080`):
 
 ```bash
 MSYS_NO_PATHCONV=1 dotnet run tools/screenshots.cs -- <папка> 1366 <логин> <пароль> /admin/products "/|<js перед снимком>"
@@ -106,5 +122,13 @@ MSYS_NO_PATHCONV=1 dotnet run tools/screenshots.cs -- <папка> 1366 <лог�
   ставилось отдельное окружение с openpyxl и Pillow во временной папке.
 - Telegram: два запущенных сайта с одним токеном мешают друг другу (ошибка 409, панель пишет
   «бот уже запущен в другом месте»). Тестам это не грозит, у них заглушка.
+- Без `SqliteDesignTimeFactory` команда `dotnet ef ... --context ShopDbContext` брала фабрику PostgreSQL
+  (наследник подходит под тип) и клала миграцию PostgreSQL в набор SQLite.
+- Без `--namespace` dotnet ef кладёт снимок модели PostgreSQL в папку `OnlineShop/Web/Data/...`.
+- Compose берёт имя проекта из названия папки, у кириллицы оно пустое: поэтому `name: online-shop`.
+- Docker в PowerShell этой сессии виден только после обновления PATH из реестра, в Git Bash
+  вызывать по полному пути `/c/Program Files/Docker/Docker/resources/bin/docker.exe`.
+- В PowerShell SQL со словом `delete` защитная проверка принимает за удаление файла: SQL отправлять
+  файлом через Git Bash.
 - 2ГИС: карта и поиск адреса требуют ключа, демо-ключ на месяц, дальше подписка. Ссылки на маршрут
   работают без ключа.
