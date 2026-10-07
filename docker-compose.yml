@@ -64,6 +64,7 @@ services:
       PGUSER: shop
       PGDATABASE: shop
       PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_PASSWORD: "${BACKUP_PASSWORD:?Задайте BACKUP_PASSWORD в файле .env, им шифруются резервные копии}"
       BACKUP_HOUR: ${BACKUP_HOUR:-3}
       KEEP_DAYS: ${KEEP_DAYS:-14}
       TZ: Asia/Aqtau
