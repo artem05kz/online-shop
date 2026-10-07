@@ -66,19 +66,34 @@ public static class Cli
                 Environment.ExitCode = 1;
                 return true;
             }
-            var connection = new SqliteConnectionStringBuilder { DataSource = sqliteFile, Mode = SqliteOpenMode.ReadOnly };
-            await using var source = new ShopDbContext(new DbContextOptionsBuilder<ShopDbContext>()
-                .UseSqlite(connection.ToString())
-                .AddInterceptors(new SqliteFunctions.Interceptor())
-                .Options);
+            // Читаем копию: SQLite в режиме WAL даже для чтения создаёт служебный файл рядом с базой,
+            // а исходная папка может быть только для чтения (например, подключена в контейнер).
+            // Заодно исходная база гарантированно не меняется.
+            var copyDir = Directory.CreateTempSubdirectory("shop-copy-").FullName;
             try
             {
+                var copy = Path.Combine(copyDir, "shop.db");
+                File.Copy(sqliteFile, copy);
+                if (File.Exists(sqliteFile + "-wal"))
+                {
+                    File.Copy(sqliteFile + "-wal", copy + "-wal");
+                }
+                await using var source = new ShopDbContext(new DbContextOptionsBuilder<ShopDbContext>()
+                    .UseSqlite(new SqliteConnectionStringBuilder { DataSource = copy, Pooling = false }.ToString())
+                    .AddInterceptors(new SqliteFunctions.Interceptor())
+                    .Options);
+                // Старая база могла отстать на несколько миграций: доводим копию до текущей схемы.
+                await source.Database.MigrateAsync();
                 Console.WriteLine(await DatabaseCopier.CopyAsync(source, provider.GetRequiredService<ShopDbContext>()));
             }
             catch (InvalidOperationException e)
             {
                 Console.WriteLine(e.Message);
                 Environment.ExitCode = 1;
+            }
+            finally
+            {
+                Directory.Delete(copyDir, recursive: true);
             }
             return true;
         }

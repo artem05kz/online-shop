@@ -169,10 +169,15 @@ public class CatalogController(ShopDbContext db) : Controller
         return View(new ProductPageViewModel { Product = product, Related = related });
     }
 
-    [Route("/not-found")]
-    public IActionResult PageNotFound()
+    /// <summary>
+    /// Страница ошибки вместо пустого ответа. Сюда же попадают и формы (POST), поэтому проверку
+    /// токена формы здесь не делаем: иначе ошибка «форма устарела» сама вызвала бы ошибку.
+    /// </summary>
+    [Route("/error/{code:int}")]
+    [IgnoreAntiforgeryToken]
+    public IActionResult Error(int code)
     {
-        Response.StatusCode = StatusCodes.Status404NotFound;
-        return View("NotFound");
+        Response.StatusCode = code is >= 400 and <= 599 ? code : StatusCodes.Status500InternalServerError;
+        return code == StatusCodes.Status404NotFound ? View("NotFound") : View("Error", Response.StatusCode);
     }
 }

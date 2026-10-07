@@ -168,7 +168,13 @@ app.UseRequestLocalization(new RequestLocalizationOptions
     SupportedUICultures = [russian],
 });
 
-app.UseStatusCodePagesWithReExecute("/not-found");
+// Покупатель видит страницу сайта, а не пустой ответ или технический текст ошибки.
+// Подробности ошибки остаются в журнале сервера.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/error/500");
+}
+app.UseStatusCodePagesWithReExecute("/error/{0}");
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {
@@ -182,6 +188,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapRazorPages();
+
+// Проверка «сайт жив и видит базу» для Docker и мониторинга.
+app.MapGet("/health", async (ShopDbContext db) =>
+    await db.Database.CanConnectAsync() ? Results.Text("ok") : Results.Text("database unavailable", statusCode: 503));
 
 app.Run();
 

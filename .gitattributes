@@ -1,0 +1,3 @@
+# Скрипты и настройки для Linux-контейнеров: с переводами строк Windows bash их не выполнит.
+*.sh text eol=lf
+deploy/Caddyfile text eol=lf

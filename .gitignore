@@ -24,3 +24,6 @@ src/OnlineShop.Web/media/
 *.csv
 
 *.log
+
+# Резервные копии базы и фото (docker compose, сервис backup)
+backups/

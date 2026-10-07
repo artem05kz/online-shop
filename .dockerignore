@@ -1,0 +1,15 @@
+# В образ попадает только код сайта: без локальной базы, фото, секретов и сборок с этой машины.
+**/bin/
+**/obj/
+**/.vs/
+src/OnlineShop.Web/App_Data/
+src/OnlineShop.Web/media/
+tests/
+tools/
+docs/
+backups/
+.git/
+.claude/
+.env
+*.db
+*.xlsx

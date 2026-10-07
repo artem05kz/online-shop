@@ -1,0 +1,82 @@
+# Весь магазин одной командой: docker compose up -d --build
+# Секреты и адрес сайта берутся из файла .env рядом (образец: .env.example). Подробно: docs/deploy.md.
+
+# Имя явно: по умолчанию compose берёт его из названия папки, а из кириллицы получается пустая строка.
+name: online-shop
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: shop
+      POSTGRES_USER: shop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в файле .env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "shop", "-d", "shop"]
+      interval: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # GssEncryptionMode=Disable: без него клиент ищет библиотеку Kerberos, которой в образе нет, и шумит в журнале.
+      ConnectionStrings__Shop: Host=db;Database=shop;Username=shop;Password=${POSTGRES_PASSWORD};GssEncryptionMode=Disable
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      TWOGIS_API_KEY: ${TWOGIS_API_KEY:-}
+      # Сайт стоит за Caddy: адрес покупателя и HTTPS берём из заголовков, которые ставит Caddy.
+      # Наружу открыт только Caddy, поэтому подделать эти заголовки снаружи нельзя.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+    volumes:
+      - media:/data/media
+      - app-data:/data/app
+    # Порт сайта наружу не открыт: все запросы идут через Caddy.
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  backup:
+    image: postgres:17
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: shop
+      PGDATABASE: shop
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      KEEP_DAYS: ${KEEP_DAYS:-14}
+      TZ: Asia/Aqtau
+    volumes:
+      - media:/data/media
+      # Копии в обычной папке рядом с проектом: их легко скачать с сервера к себе.
+      - ./backups:/backups
+      - ./deploy/backup.sh:/backup.sh:ro
+    entrypoint: ["bash", "/backup.sh"]
+
+volumes:
+  db-data:
+  media:
+  app-data:
+  caddy-data:
+  caddy-config:

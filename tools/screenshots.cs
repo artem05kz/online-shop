@@ -12,7 +12,8 @@ var outDir = args[0];
 var width = int.Parse(args[1]);
 var (login, password) = (args[2], args[3]);
 var paths = args[4..];
-const string Base = "http://localhost:5080";
+// Адрес сайта: по умолчанию запущенный локально, SHOT_BASE=http://localhost:8088 для сайта в Docker.
+var Base = Environment.GetEnvironmentVariable("SHOT_BASE") ?? "http://localhost:5080";
 Directory.CreateDirectory(outDir);
 
 var chrome = Process.Start(new ProcessStartInfo(@"C:\Program Files\Google\Chrome\Application\chrome.exe",
