@@ -9,6 +9,16 @@ namespace OnlineShop.Web.Data;
 /// </summary>
 public sealed class PostgresShopDbContext(DbContextOptions<PostgresShopDbContext> options) : ShopDbContext(options);
 
+/// <summary>
+/// Для команды dotnet ef с --context ShopDbContext. Без неё dotnet ef брал фабрику PostgreSQL
+/// (PostgresShopDbContext тоже ShopDbContext) и клал миграцию PostgreSQL в набор SQLite.
+/// </summary>
+public sealed class SqliteDesignTimeFactory : IDesignTimeDbContextFactory<ShopDbContext>
+{
+    public ShopDbContext CreateDbContext(string[] args) => new(
+        new DbContextOptionsBuilder<ShopDbContext>().UseSqlite("Data Source=App_Data/shop.db").Options);
+}
+
 /// <summary>Для команды dotnet ef: создать миграцию можно и без запущенного PostgreSQL.</summary>
 public sealed class PostgresDesignTimeFactory : IDesignTimeDbContextFactory<PostgresShopDbContext>
 {

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Models;
@@ -62,6 +63,9 @@ public static class DatabaseCopier
         await Copy<OrderItem>("");
         await Copy<TelegramRecipient>("номеров Telegram");
         await Copy<Favorite>("");
+        await Copy<CartItem>("позиций в корзинах");
+        // Ключи входа: после переноса покупатели и менеджеры остаются в аккаунтах.
+        await Copy<DataProtectionKey>("");
 
         // Таблица, которую здесь забыли, означала бы молча потерянные данные.
         var missed = target.Model.GetEntityTypes().Select(e => e.ClrType).Where(t => !copied.Contains(t)).ToList();

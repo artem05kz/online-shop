@@ -17,6 +17,23 @@ namespace OnlineShop.Web.Data.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
 
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
@@ -375,6 +392,38 @@ namespace OnlineShop.Web.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Brands");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.CartItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OwnerKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("VariantId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("VariantId");
+
+                    b.HasIndex("OwnerKey", "VariantId")
+                        .IsUnique();
+
+                    b.ToTable("CartItems");
                 });
 
             modelBuilder.Entity("OnlineShop.Web.Models.Category", b =>
@@ -895,6 +944,17 @@ namespace OnlineShop.Web.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.CartItem", b =>
+                {
+                    b.HasOne("OnlineShop.Web.Models.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Variant");
                 });
 
             modelBuilder.Entity("OnlineShop.Web.Models.Category", b =>

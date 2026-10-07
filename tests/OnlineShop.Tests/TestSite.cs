@@ -20,9 +20,16 @@ public class TempShopFactory : WebApplicationFactory<Program>
 {
     public const string PostgresVariable = "SHOP_TEST_POSTGRES";
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "online-shop-tests", Guid.NewGuid().ToString("N"));
     private readonly string? _postgresServer = Environment.GetEnvironmentVariable(PostgresVariable);
-    private readonly string _postgresDatabase = "shop_test_" + Guid.NewGuid().ToString("N")[..12];
+
+    /// <summary>Имя базы и папки. Две фабрики с одним именем работают с одной базой: так проверяется перезапуск сайта.</summary>
+    public string DataName { get; init; } = Guid.NewGuid().ToString("N")[..12];
+
+    /// <summary>Не удалять базу и папку при остановке: их подхватит следующая фабрика с тем же DataName.</summary>
+    public bool KeepData { get; init; }
+
+    private string _dir => Path.Combine(Path.GetTempPath(), "online-shop-tests", DataName);
+    private string _postgresDatabase => "shop_test_" + DataName;
 
     /// <summary>Заглушка Telegram: тесты никогда не ходят в настоящий Telegram, даже если на машине задан токен.</summary>
     public FakeTelegramApi Telegram { get; } = new();
@@ -55,6 +62,10 @@ public class TempShopFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
+        if (KeepData)
+        {
+            return;
+        }
         if (!string.IsNullOrEmpty(_postgresServer))
         {
             NpgsqlConnection.ClearAllPools();

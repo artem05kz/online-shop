@@ -22,6 +22,25 @@ namespace OnlineShop.Web.Data.PostgresMigrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("FriendlyName")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Xml")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DataProtectionKeys");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
@@ -394,6 +413,40 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                         .IsUnique();
 
                     b.ToTable("Brands");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.CartItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("OwnerKey")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("VariantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UpdatedAt");
+
+                    b.HasIndex("VariantId");
+
+                    b.HasIndex("OwnerKey", "VariantId")
+                        .IsUnique();
+
+                    b.ToTable("CartItems");
                 });
 
             modelBuilder.Entity("OnlineShop.Web.Models.Category", b =>
@@ -939,6 +992,17 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.CartItem", b =>
+                {
+                    b.HasOne("OnlineShop.Web.Models.ProductVariant", "Variant")
+                        .WithMany()
+                        .HasForeignKey("VariantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Variant");
                 });
 
             modelBuilder.Entity("OnlineShop.Web.Models.Category", b =>

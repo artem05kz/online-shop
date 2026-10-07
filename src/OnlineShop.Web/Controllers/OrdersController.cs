@@ -49,7 +49,7 @@ public class OrdersController(ShopDbContext db, Cart cart) : Controller
             var v = item.Variant;
             if (v.IsActive && v.Price is not null && v.Product.IsActive)
             {
-                cart.Add(v.Id, item.Quantity);
+                await cart.AddAsync(v.Id, item.Quantity);
                 added++;
             }
             else

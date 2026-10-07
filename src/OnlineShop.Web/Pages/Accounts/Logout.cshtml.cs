@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using OnlineShop.Web.Models;
+using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
@@ -9,16 +10,16 @@ namespace OnlineShop.Web.Pages.Accounts;
 /// Выход только POST-запросом с токеном формы: иначе выйти «за покупателя» можно было бы
 /// чужой ссылкой или картинкой на любом сайте.
 /// </summary>
-public class LogoutModel(SignInManager<ApplicationUser> signInManager) : PageModel
+public class LogoutModel(SignInManager<ApplicationUser> signInManager, Cart cart) : PageModel
 {
     public IActionResult OnGet() => RedirectToAction("Home", "Catalog");
 
     public async Task<IActionResult> OnPostAsync()
     {
         await signInManager.SignOutAsync();
-        // Как в Django: при выходе сессия очищается вместе с корзиной, чтобы на общем компьютере
-        // следующий человек не увидел чужие товары.
-        HttpContext.Session.Clear();
+        // Корзина покупателя остаётся в базе до следующего входа, а браузер начинает с пустой:
+        // на общем компьютере следующий человек не увидит чужие товары.
+        cart.ForgetGuest();
         return RedirectToAction("Home", "Catalog");
     }
 }

@@ -88,7 +88,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts)
         await db.SaveChangesAsync();
         alerts.Enqueue(order.Id, $"{Request.Scheme}://{Request.Host}");
 
-        cart.Clear();
+        await cart.ClearAsync();
         TempData.Flash($"Заказ №{order.Id} оформлен. Оплата при получении.");
         return RedirectToAction(nameof(OrdersController.Detail), "Orders", new { id = order.Id });
     }

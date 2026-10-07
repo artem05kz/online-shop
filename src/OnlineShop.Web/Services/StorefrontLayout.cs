@@ -41,6 +41,6 @@ public class StorefrontLayout(ShopDbContext db, Cart cart, Favorites favorites)
         var favoritesCount = favoriteIds.Count == 0 ? 0
             : await db.Products.CountAsync(p => favoriteIds.Contains(p.Id) && p.IsActive);
 
-        return _data = new LayoutData(brands, contact, cart.Count, favoritesCount);
+        return _data = new LayoutData(brands, contact, await cart.CountAsync(), favoritesCount);
     }
 }

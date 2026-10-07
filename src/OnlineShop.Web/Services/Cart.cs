@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Models;
@@ -19,48 +19,143 @@ public record CartContents(IReadOnlyList<CartLine> Lines)
 }
 
 /// <summary>
-/// Корзина в сессии: смотреть каталог и складывать товары можно без входа, вход нужен только
-/// при оформлении. В сессии лежат только пары «артикул и количество», цены всегда берутся из базы.
+/// Корзина: смотреть каталог и складывать товары можно без входа, вход нужен только при оформлении.
+/// В базе лежат только пары «фасовка и количество», цены всегда берутся из каталога.
+/// У гостя корзина привязана к метке в куке, после входа переходит к покупателю.
 /// </summary>
 public class Cart(IHttpContextAccessor httpContextAccessor, ShopDbContext db)
 {
-    private const string SessionKey = "cart";
+    public const string CookieName = "shop.cart";
 
-    private ISession Session => httpContextAccessor.HttpContext!.Session;
+    // Корзину гостя, к которой не возвращались два месяца, удаляет CartCleanup.
+    public static readonly TimeSpan GuestLifetime = TimeSpan.FromDays(60);
 
-    /// <summary>Сколько штук товаров в корзине, для счётчика в шапке. В базу не ходит.</summary>
-    public int Count => Read().Values.Sum();
+    private HttpContext Context => httpContextAccessor.HttpContext!;
 
-    public void Add(int variantId, int quantity)
+    private int? _count;
+
+    /// <summary>Чья корзина: покупателя, если он вошёл, иначе гостя. null, если у гостя ещё нет корзины.</summary>
+    private string? Owner(bool create = false)
     {
-        var items = Read();
-        items[variantId] = items.GetValueOrDefault(variantId) + quantity;
-        Write(items);
+        if (Context.User.Identity?.IsAuthenticated == true
+            && int.TryParse(Context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            return UserKey(userId);
+        }
+        if (Guid.TryParse(Context.Request.Cookies[CookieName], out var guest))
+        {
+            return GuestKey(guest);
+        }
+        if (!create)
+        {
+            return null;
+        }
+        var id = Guid.NewGuid();
+        WriteCookie(id);
+        return GuestKey(id);
+    }
+
+    private static string UserKey(int userId) => $"u:{userId}";
+
+    private static string GuestKey(Guid guest) => $"g:{guest:N}";
+
+    /// <summary>Сколько штук товаров в корзине, для счётчика в шапке.</summary>
+    public async Task<int> CountAsync()
+    {
+        if (_count is { } count)
+        {
+            return count;
+        }
+        var owner = Owner();
+        return (_count = owner is null ? 0 : await db.CartItems.Where(i => i.OwnerKey == owner).SumAsync(i => i.Quantity)).Value;
+    }
+
+    public async Task AddAsync(int variantId, int quantity)
+    {
+        var owner = Owner(create: true)!;
+        var item = await db.CartItems.FirstOrDefaultAsync(i => i.OwnerKey == owner && i.VariantId == variantId);
+        if (item is null)
+        {
+            db.CartItems.Add(new CartItem { OwnerKey = owner, VariantId = variantId, Quantity = quantity, UpdatedAt = DateTime.UtcNow });
+        }
+        else
+        {
+            item.Quantity += quantity;
+            item.UpdatedAt = DateTime.UtcNow;
+        }
+        await SaveAsync(owner);
     }
 
     /// <summary>Новое количество с цифрой 0 или меньше убирает позицию из корзины.</summary>
-    public void SetQuantity(int variantId, int quantity)
+    public async Task SetQuantityAsync(int variantId, int quantity)
     {
-        var items = Read();
+        if (Owner() is not { } owner)
+        {
+            return;
+        }
+        var item = await db.CartItems.FirstOrDefaultAsync(i => i.OwnerKey == owner && i.VariantId == variantId);
+        if (item is null)
+        {
+            return;
+        }
         if (quantity <= 0)
         {
-            items.Remove(variantId);
+            db.CartItems.Remove(item);
         }
-        else if (items.ContainsKey(variantId))
+        else
         {
-            items[variantId] = quantity;
+            item.Quantity = quantity;
+            item.UpdatedAt = DateTime.UtcNow;
         }
-        Write(items);
+        await SaveAsync(owner);
     }
 
-    public void Remove(int variantId)
+    public Task RemoveAsync(int variantId) => SetQuantityAsync(variantId, 0);
+
+    public async Task ClearAsync()
     {
-        var items = Read();
-        items.Remove(variantId);
-        Write(items);
+        if (Owner() is { } owner)
+        {
+            await db.CartItems.Where(i => i.OwnerKey == owner).ExecuteDeleteAsync();
+        }
+        _count = 0;
     }
 
-    public void Clear() => Write([]);
+    /// <summary>После входа: товары из корзины гостя добавляются в корзину покупателя, кука удаляется.</summary>
+    public async Task MergeGuestAsync(int userId)
+    {
+        if (!Guid.TryParse(Context.Request.Cookies[CookieName], out var guest))
+        {
+            return;
+        }
+        var guestKey = GuestKey(guest);
+        var userKey = UserKey(userId);
+        var guestItems = await db.CartItems.Where(i => i.OwnerKey == guestKey).ToListAsync();
+        var userItems = await db.CartItems.Where(i => i.OwnerKey == userKey).ToDictionaryAsync(i => i.VariantId);
+        foreach (var item in guestItems)
+        {
+            if (userItems.TryGetValue(item.VariantId, out var existing))
+            {
+                existing.Quantity += item.Quantity;
+                existing.UpdatedAt = DateTime.UtcNow;
+                db.CartItems.Remove(item);
+            }
+            else
+            {
+                item.OwnerKey = userKey;
+                item.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+        await db.SaveChangesAsync();
+        ForgetGuest();
+    }
+
+    /// <summary>Убрать куку гостя: при выходе следующий человек за этим компьютером начнёт с пустой корзины.</summary>
+    public void ForgetGuest()
+    {
+        Context.Response.Cookies.Delete(CookieName);
+        _count = null;
+    }
 
     /// <summary>
     /// Позиции корзины с актуальными ценами в порядке добавления. Если фасовку с тех пор скрыли
@@ -68,36 +163,43 @@ public class Cart(IHttpContextAccessor httpContextAccessor, ShopDbContext db)
     /// </summary>
     public async Task<CartContents> LoadAsync()
     {
-        var items = Read();
-        if (items.Count == 0)
+        if (Owner() is not { } owner)
         {
             return new CartContents([]);
         }
+        var items = await db.CartItems
+            .Where(i => i.OwnerKey == owner)
+            .Include(i => i.Variant).ThenInclude(v => v.Product).ThenInclude(p => p.Images)
+            .OrderBy(i => i.Id)
+            .ToListAsync();
 
-        var ids = items.Keys.ToList();
-        var variants = await db.ProductVariants
-            .Where(v => ids.Contains(v.Id) && v.IsActive && v.Price != null)
-            .Include(v => v.Product).ThenInclude(p => p.Images)
-            .ToDictionaryAsync(v => v.Id);
-
-        var lines = items
-            .Where(pair => variants.ContainsKey(pair.Key))
-            .Select(pair => new CartLine(variants[pair.Key], pair.Value))
-            .ToList();
-
-        if (lines.Count != items.Count)
+        var gone = items.Where(i => !i.Variant.IsActive || i.Variant.Price is null).ToList();
+        if (gone.Count > 0)
         {
-            Write(lines.ToDictionary(l => l.Variant.Id, l => l.Quantity));
+            db.CartItems.RemoveRange(gone);
+            await SaveAsync(owner);
         }
-        return new CartContents(lines);
+        return new CartContents(items.Except(gone).Select(i => new CartLine(i.Variant, i.Quantity)).ToList());
     }
 
-    private Dictionary<int, int> Read()
+    private async Task SaveAsync(string owner)
     {
-        var json = Session.GetString(SessionKey);
-        return json is null ? [] : JsonSerializer.Deserialize<Dictionary<int, int>>(json) ?? [];
+        await db.SaveChangesAsync();
+        _count = null;
+        if (owner.StartsWith("g:"))
+        {
+            // Продлеваем куку при каждом изменении: корзина живёт, пока ею пользуются.
+            WriteCookie(Guid.Parse(owner[2..]));
+        }
     }
 
-    private void Write(Dictionary<int, int> items) =>
-        Session.SetString(SessionKey, JsonSerializer.Serialize(items));
+    private void WriteCookie(Guid id) =>
+        Context.Response.Cookies.Append(CookieName, id.ToString("N"), new CookieOptions
+        {
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            // Без неё не работает корзина: кука нужна сайту для работы, а не для слежки.
+            IsEssential = true,
+            Expires = DateTimeOffset.UtcNow.Add(GuestLifetime),
+        });
 }

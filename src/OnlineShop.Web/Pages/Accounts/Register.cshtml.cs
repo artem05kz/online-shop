@@ -7,7 +7,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites) : PageModel
+public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart) : PageModel
 {
     public class InputModel
     {
@@ -85,6 +85,7 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         // Сразу после регистрации покупатель уже вошёл: ещё раз вводить пароль не нужно.
         await signInManager.SignInAsync(user, isPersistent: true);
         await favorites.MergeGuestAsync(user.Id);
+        await cart.MergeGuestAsync(user.Id);
         return Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToAction("Home", "Catalog");
     }
 }

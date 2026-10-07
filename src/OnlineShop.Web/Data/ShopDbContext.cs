@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Data;
 
-public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
+public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>, IDataProtectionKeyContext
 {
     public ShopDbContext(DbContextOptions<ShopDbContext> options) : base(options)
     {
@@ -38,6 +39,11 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<TelegramRecipient> TelegramRecipients => Set<TelegramRecipient>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+
+    // Ключи, которыми подписаны куки входа. В базе, а не в памяти: иначе после перезапуска сайта
+    // всех покупателей и менеджеров выкидывало бы из аккаунта.
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {
@@ -110,6 +116,14 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
         {
             e.HasOne(i => i.Order).WithMany(o => o.Items).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Variant).WithMany(v => v.OrderItems).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CartItem>(e =>
+        {
+            e.Property(i => i.OwnerKey).HasMaxLength(40);
+            e.HasOne(i => i.Variant).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(i => new { i.OwnerKey, i.VariantId }).IsUnique();
+            e.HasIndex(i => i.UpdatedAt);
         });
 
         builder.Entity<Favorite>(e =>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
@@ -86,15 +87,10 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.ExpireTimeSpan = TimeSpan.FromDays(14);
 });
 
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
-{
-    options.Cookie.Name = "shop.session";
-    options.Cookie.HttpOnly = true;
-    // Без сессии не работает корзина, поэтому кука нужна сайту для работы, а не для аналитики.
-    options.Cookie.IsEssential = true;
-    options.IdleTimeout = TimeSpan.FromDays(14);
-});
+// Ключи подписи кук в базе: вход переживает перезапуск и обновление сайта.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ShopDbContext>()
+    .SetApplicationName("online-shop");
 
 // По умолчанию Razor выводит всё, кроме латиницы, кодами вида &#x428;. Браузер это показывает,
 // но исходный код страниц нечитаем и тяжелее, поэтому кириллицу и знак тенге выводим как есть.
@@ -111,6 +107,7 @@ builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "import
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<Favorites>();
+builder.Services.AddHostedService<CartCleanup>();
 builder.Services.AddScoped<StorefrontLayout>();
 
 // Уведомления о заказах в Telegram. Без токена бот не запускается, остальной сайт работает как обычно.
@@ -180,7 +177,6 @@ app.UseStaticFiles(new StaticFileOptions
 });
 
 app.UseRouting();
-app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 

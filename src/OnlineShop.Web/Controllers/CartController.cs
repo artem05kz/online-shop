@@ -24,7 +24,7 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
             return NotFound();
         }
 
-        cart.Add(variant.Id, Math.Max(1, quantity));
+        await cart.AddAsync(variant.Id, Math.Max(1, quantity));
         TempData.Flash($"«{variant.Product.Name}» в корзине.");
 
         // Возвращаем только на страницы своего сайта, чтобы ссылкой нельзя было увести покупателя на чужой.
@@ -37,16 +37,16 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
         Add(variantId, quantity, next);
 
     [HttpPost("update/{variantId:int}")]
-    public IActionResult Update(int variantId, int quantity = 1)
+    public async Task<IActionResult> Update(int variantId, int quantity = 1)
     {
-        cart.SetQuantity(variantId, quantity);
+        await cart.SetQuantityAsync(variantId, quantity);
         return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("remove/{variantId:int}")]
-    public IActionResult Remove(int variantId)
+    public async Task<IActionResult> Remove(int variantId)
     {
-        cart.Remove(variantId);
+        await cart.RemoveAsync(variantId);
         return RedirectToAction(nameof(Index));
     }
 }
