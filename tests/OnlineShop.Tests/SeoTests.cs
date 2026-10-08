@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using OnlineShop.Web.Data;
@@ -41,5 +43,69 @@ public class SeoTests(TempShopFactory factory) : IClassFixture<TempShopFactory>
         Assert.Contains("Disallow: /admin", robots);
         Assert.Contains("Disallow: /accounts", robots);
         Assert.Contains("Sitemap: http://localhost/sitemap.xml", robots);
+    }
+
+    private string SeedRichProduct()
+    {
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+        var existing = db.Products.FirstOrDefault(p => p.Name == "Полироль </script> для шин");
+        if (existing is not null)
+        {
+            return existing.Slug;
+        }
+        var user = new ApplicationUser { UserName = "автор-отзыва", FirstName = "Ержан" };
+        var product = new Product
+        {
+            Category = new Category { Brand = new Brand { Name = "Ifoam" }, Name = "Полироли" },
+            Name = "Полироль </script> для шин", Description = "Чернит & блестит",
+            Variants =
+            [
+                new ProductVariant { Article = "SEO1", PackLabel = "1 л", Price = 1890m, StockQty = 3 },
+                new ProductVariant { Article = "SEO5", PackLabel = "5 л", Price = 7900m, StockQty = 0 },
+            ],
+        };
+        db.Products.Add(product);
+        db.Users.Add(user);
+        db.SaveChanges();
+        db.Reviews.Add(new Review { ProductId = product.Id, UserId = user.Id, Rating = 5, Text = "Отлично", Status = ReviewStatus.Approved, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+        db.SaveChanges();
+        return product.Slug;
+    }
+
+    [Fact]
+    public async Task Product_page_has_schema_org_markup_with_prices_stock_and_rating()
+    {
+        var slug = SeedRichProduct();
+        var html = await factory.Browser().GetStringAsync($"/product/{Uri.EscapeDataString(slug)}");
+        var json = Regex.Match(html, @"<script type=""application/ld\+json"">(.*?)</script>", RegexOptions.Singleline).Groups[1].Value;
+        // Название с </script> не закрыло тег раньше времени: JSON целиком разбирается.
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        Assert.Equal("Product", root.GetProperty("@type").GetString());
+        Assert.Equal("Полироль </script> для шин", root.GetProperty("name").GetString());
+        Assert.Equal("Ifoam", root.GetProperty("brand").GetProperty("name").GetString());
+        var offers = root.GetProperty("offers").EnumerateArray().ToList();
+        Assert.Equal(("1890.00", "KZT", "https://schema.org/InStock"),
+            (offers[0].GetProperty("price").GetString(), offers[0].GetProperty("priceCurrency").GetString(), offers[0].GetProperty("availability").GetString()));
+        Assert.Equal("https://schema.org/OutOfStock", offers[1].GetProperty("availability").GetString());
+        Assert.Equal("5.0", root.GetProperty("aggregateRating").GetProperty("ratingValue").GetString());
+        Assert.Contains("<link rel=\"canonical\" href=\"http://localhost/product/", html);
+        Assert.Contains("<meta property=\"og:title\"", html);
+    }
+
+    [Fact]
+    public async Task Google_feed_lists_each_pack_with_price_and_availability()
+    {
+        SeedRichProduct();
+        var xml = XDocument.Parse(await factory.Browser().GetStringAsync("/feed/google.xml"));
+        XNamespace g = "http://base.google.com/ns/1.0";
+        var items = xml.Descendants("item").ToList();
+        var first = items.Single(i => i.Element(g + "id")!.Value == "SEO1");
+        Assert.Equal("1890.00 KZT", first.Element(g + "price")!.Value);
+        Assert.Equal("in_stock", first.Element(g + "availability")!.Value);
+        Assert.Equal("Полироль </script> для шин, 1 л", first.Element(g + "title")!.Value);
+        Assert.Equal("out_of_stock", items.Single(i => i.Element(g + "id")!.Value == "SEO5").Element(g + "availability")!.Value);
+        Assert.Equal(first.Element(g + "item_group_id")!.Value, items.Single(i => i.Element(g + "id")!.Value == "SEO5").Element(g + "item_group_id")!.Value);
     }
 }

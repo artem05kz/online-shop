@@ -15,6 +15,25 @@
     var chosen = product.DefaultVariant;
     var canBuy = chosen is { InStock: true };
 }
+@section Head {
+    @{
+        var siteUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+        var productUrl = siteUrl + Url.Product(product);
+        var ogImage = product.PrimaryImage is { } primary ? siteUrl + Media.Thumb(primary.ImagePath, Media.Large) : null;
+    }
+    @* Один адрес у страницы товара для поисковиков, даже если её открыли с параметрами. *@
+    <link rel="canonical" href="@productUrl">
+    @* Превью ссылки в WhatsApp, Telegram и соцсетях: название, фото и описание товара. *@
+    <meta property="og:type" content="product">
+    <meta property="og:title" content="@product.Name">
+    <meta property="og:description" content="@ViewData["Description"]">
+    <meta property="og:url" content="@productUrl">
+    @if (ogImage is not null)
+    {
+        <meta property="og:image" content="@ogImage">
+    }
+    @Html.Raw(ProductMarkup.ScriptTag(product, productUrl, siteUrl, Model.Reviews))
+}
 <nav class="breadcrumbs">
     <a asp-action="Home">Главная</a>
     <span class="sep">/</span>
