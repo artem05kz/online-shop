@@ -436,3 +436,10 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
 /* Где надпись не закроют стрелки по бокам и точки внизу, в том числе на телефоне. */
 .banner-safe { position: absolute; inset: 5% 10% 14% 10%; border: 2px dashed rgba(255, 255, 255, .9); outline: 1px dashed rgba(0, 0, 0, .45); border-radius: 4px; pointer-events: none; }
 .banner-preview-note { margin: 0 0 8px; font-size: .95rem; color: #3c434a; }
+
+/* Столбики выручки в отчётах. Высота задаётся в процентах от самого высокого дня. */
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 240px; padding: 12px 12px 30px; background: #fff; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 26px; }
+.bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; min-width: 4px; }
+.bar-fill { background: #62b22c; border-radius: 4px 4px 0 0; min-height: 2px; }
+.bar:hover .bar-fill { background: #3d7a1a; }
+.bar-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); font-size: .8rem; color: #555; white-space: nowrap; }

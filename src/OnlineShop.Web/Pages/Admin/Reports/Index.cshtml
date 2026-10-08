@@ -1,0 +1,79 @@
+@page "/admin/reports"
+@model OnlineShop.Web.Pages.Admin.Reports.IndexModel
+@{
+    ViewData["Title"] = "Отчёты";
+    ViewData["AdminSection"] = "reports";
+    var maxRevenue = Model.Bars.Count == 0 ? 0 : Model.Bars.Max(b => b.Revenue);
+    var everyNth = Math.Max(1, (int)Math.Ceiling(Model.Bars.Count / 15.0));
+}
+<div class="admin-head">
+    <h1>Отчёты</h1>
+    <a class="btn btn-ghost" href="/admin/reports?handler=Excel&from=@Model.Start.ToString("yyyy-MM-dd")&to=@Model.End.ToString("yyyy-MM-dd")">@Icons.Get("upload", 18) Скачать в Excel</a>
+</div>
+
+<div class="chips" style="margin-bottom:10px;">
+    @foreach (var (code, label) in OnlineShop.Web.Pages.Admin.Reports.IndexModel.Periods)
+    {
+        <a class="chip-link @(Model.Period == code ? "on" : "")" href="/admin/reports?period=@code">@label</a>
+    }
+</div>
+<form method="get" class="admin-filters" style="margin-bottom:18px;">
+    <label>с <input class="field" type="date" name="from" value="@Model.Start.ToString("yyyy-MM-dd")"></label>
+    <label>по <input class="field" type="date" name="to" value="@Model.End.ToString("yyyy-MM-dd")"></label>
+    <button class="btn btn-ghost" type="submit">Показать</button>
+</form>
+<p class="admin-count">Период: @Model.Start.ToString("dd.MM.yyyy") - @Model.End.ToString("dd.MM.yyyy"). Отменённые заказы в выручку не входят.</p>
+
+<div class="stats">
+    <div class="stat"><div class="v">@Model.OrderCount</div><div class="l">заказов</div></div>
+    <div class="stat"><div class="v">@Format.Money(Model.Revenue)</div><div class="l">выручка</div></div>
+    <div class="stat"><div class="v">@Format.Money(Math.Round(Model.AverageCheck))</div><div class="l">средний чек</div></div>
+    <div class="stat"><div class="v">@Model.ItemsSold</div><div class="l">продано, шт.</div></div>
+    <div class="stat"><div class="v">@Model.CanceledCount</div><div class="l">отменено</div></div>
+</div>
+
+<h2>Выручка по @(Model.ByMonth ? "месяцам" : "дням")</h2>
+@if (maxRevenue == 0)
+{
+    <p class="admin-count">За этот период продаж нет.</p>
+}
+else
+{
+    <div class="bars" role="img" aria-label="Выручка за период">
+        @for (var i = 0; i < Model.Bars.Count; i++)
+        {
+            var bar = Model.Bars[i];
+            var height = (int)Math.Round(bar.Revenue / maxRevenue * 100);
+            <div class="bar" title="@bar.Hint: @Format.Money(bar.Revenue), заказов @bar.Orders">
+                <div class="bar-fill" style="height:@(height)%"></div>
+                <div class="bar-label">@(i % everyNth == 0 ? bar.Label : "")</div>
+            </div>
+        }
+    </div>
+}
+
+<h2>Что покупают</h2>
+@if (Model.Top.Count == 0)
+{
+    <p class="admin-count">Продаж нет.</p>
+}
+else
+{
+    <div class="admin-table-wrap">
+        <table class="admin-table">
+            <thead><tr><th>Товар</th><th>Фасовка</th><th>Артикул</th><th class="num">Продано, шт.</th><th class="num">Выручка</th></tr></thead>
+            <tbody>
+                @foreach (var row in Model.Top)
+                {
+                    <tr>
+                        <td>@row.Name</td>
+                        <td>@row.Pack</td>
+                        <td>@row.Article</td>
+                        <td class="num">@row.Quantity</td>
+                        <td class="num">@Format.Money(row.Revenue)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
