@@ -6,7 +6,7 @@
 ## Где что лежит
 
 - Код: `C:\Проекты\Интернет магазин`, GitHub `artem05kz/online-shop` (раньше `grass-aktau-shop`), ветка `master`.
-- На GitHub отправлено всё до `7914540` (план). Пункты 21-29 плана (08.10.2026) закоммичены локально.
+- На GitHub отправлено всё до `2e464f7` (пункты 21-29 плана), автопроверка на GitHub проходит.
 - Образцы выгрузок 1С: `C:\Проекты\Пример таблиц для интернет магазина` (прайс Ifoam и складская
   ведомость Grass, артикулы не пересекаются). В репозиторий их не класть.
 - Документы: [README](../README.md), [перенос с Django](rewrite-plan.md) (список всех функций,
@@ -82,8 +82,8 @@
    - отзывы (`Models/Review.cs`, `ReviewsController`, раздел панели «Отзывы»);
    - отчёты `/admin/reports` с выгрузкой в Excel;
    - разметка schema.org и og: на странице товара (`Services/ProductMarkup.cs`), лента `/feed/google.xml`;
-   - автопроверка `.github/workflows/ci.yml` (тесты на SQLite и PostgreSQL, сборка образа). На GitHub
-     ещё не запускалась: запустится после push. Те же тесты прогнаны в контейнере Linux с .NET SDK.
+   - автопроверка `.github/workflows/ci.yml` (тесты на SQLite и PostgreSQL, сборка образа), первый
+     запуск на GitHub 08.10.2026 прошёл.
 
 Тестов 217, все проходят и на SQLite, и на PostgreSQL (`SHOP_TEST_POSTGRES`, см. README).
 В тестах Telegram всегда подменён заглушкой `FakeTelegramApi`, даже если на машине задан настоящий токен.
