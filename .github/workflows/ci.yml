@@ -1,0 +1,61 @@
+# Автопроверка на каждый push и Pull Request: сборка, все тесты на SQLite и на PostgreSQL,
+# сборка образа Docker. Сломанный код видно сразу, до выкладки на сервер.
+name: Проверка
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Тесты
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      # PostgreSQL как на сервере: те же тесты гоняются и на нём (переменная SHOP_TEST_POSTGRES).
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: shop
+          POSTGRES_PASSWORD: shop-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shop"
+          --health-interval 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Сборка
+        run: dotnet build OnlineShop.sln -c Release
+
+      - name: Тесты на SQLite
+        run: dotnet test OnlineShop.sln -c Release --no-build --logger "trx;LogFileName=sqlite.trx"
+
+      - name: Тесты на PostgreSQL
+        env:
+          SHOP_TEST_POSTGRES: Host=localhost;Port=5432;Username=shop;Password=shop-ci
+        run: dotnet test OnlineShop.sln -c Release --no-build --logger "trx;LogFileName=postgres.trx"
+
+      - name: Отчёты тестов
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/**/TestResults/*.trx
+
+  docker:
+    name: Образ Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Сборка образа
+        run: docker build -t online-shop:ci .

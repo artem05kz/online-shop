@@ -60,6 +60,8 @@ body.admin :focus-visible { outline: 3px solid #2f6fd6; outline-offset: 2px; }
 }
 .admin-nav a:hover { background: #fff; }
 .admin-nav a.active { background: var(--a-primary); color: #fff !important; font-weight: 600; }
+/* Значок в меню стоит в строке. Общий .badge витрины прижат к углу карточки товара, это отменяем. */
+.admin-nav .badge, .admin-menu-btn .badge { position: static; text-transform: none; letter-spacing: normal; }
 .admin-nav .badge {
     margin-left: auto;
     background: #e8590c;

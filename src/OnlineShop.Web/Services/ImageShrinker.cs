@@ -112,7 +112,8 @@ public static class ImageShrinker
             _ => SKMatrix.Identity,
         };
         canvas.SetMatrix(matrix);
-        canvas.DrawBitmap(source, 0, 0);
+        using var image = SKImage.FromBitmap(source);
+        canvas.DrawImage(image, 0, 0, SKSamplingOptions.Default);
         return target;
     }
 }
