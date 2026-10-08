@@ -48,6 +48,11 @@ public class ProductVariant
     [Display(Name = "Остаток на складе")]
     public int StockQty { get; set; }
 
+    // Сколько штук лежит в незакрытых заказах с сайта (см. Services/StockReservations).
+    // Пересчитывается сайтом, руками и из 1С не меняется.
+    [Display(Name = "В резерве")]
+    public int ReservedQty { get; set; }
+
     [Display(Name = "Показывать на сайте")]
     public bool IsActive { get; set; } = true;
 
@@ -59,8 +64,12 @@ public class ProductVariant
 
     public List<OrderItem> OrderItems { get; set; } = [];
 
+    /// <summary>Сколько ещё можно заказать: остаток из 1С без того, что уже заказано на сайте.</summary>
     [NotMapped]
-    public bool InStock => StockQty > 0;
+    public int AvailableQty => Math.Max(0, StockQty - ReservedQty);
+
+    [NotMapped]
+    public bool InStock => AvailableQty > 0;
 
     /// <summary>
     /// Объём для сортировки фасовок: миллилитры и граммы в литрах и килограммах, иначе

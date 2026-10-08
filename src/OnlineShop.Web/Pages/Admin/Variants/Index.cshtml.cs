@@ -24,6 +24,7 @@ public class IndexModel(ShopDbContext db) : PageModel
         public string PackLabel { get; set; } = "";
         public string? Price { get; set; }
         public string? StockQty { get; set; }
+        public int ReservedQty { get; set; }
         public bool IsActive { get; set; }
     }
 
@@ -75,7 +76,7 @@ public class IndexModel(ShopDbContext db) : PageModel
         {
             Id = v.Id, Article = v.Article, ProductId = v.ProductId, ProductName = v.Product.Name, PackLabel = v.PackLabel,
             ImagePath = v.Product.PrimaryImage?.ImagePath,
-            Price = AdminNumbers.Text(v.Price), StockQty = v.StockQty.ToString(), IsActive = v.IsActive,
+            Price = AdminNumbers.Text(v.Price), StockQty = v.StockQty.ToString(), ReservedQty = v.ReservedQty, IsActive = v.IsActive,
         }).ToList();
     }
 

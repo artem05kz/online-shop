@@ -101,7 +101,7 @@ public static class CatalogQuery
         }
         if (filter.InStockOnly)
         {
-            products = products.Where(p => p.Variants.Any(v => v.IsActive && v.StockQty > 0));
+            products = products.Where(p => p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));
         }
 
         // Обе границы цены проверяются на одной и той же видимой фасовке. В Django-версии они

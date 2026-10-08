@@ -350,6 +350,11 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         Assert.Equal(HttpStatusCode.Redirect, posted.StatusCode);
         Assert.Equal(OrderStatus.Delivering, Db(db => db.Orders.Single(o => o.Id == orderId).Status));
         Assert.Contains("Статус изменён у заказов: 1.", await Page(client, "/admin/orders"));
+        // Заказ ещё не выполнен: фасовка в резерве. Выполнен: резерв снят.
+        Assert.Equal(1, Db(db => db.ProductVariants.Single(v => v.Id == variantId).ReservedQty));
+        token = await TokenFrom(client, "/admin/orders");
+        await Post(client, "/admin/orders?handler=SaveList", token, ("Rows[0].Id", orderId.ToString()), ("Rows[0].Status", "Completed"));
+        Assert.Equal(0, Db(db => db.ProductVariants.Single(v => v.Id == variantId).ReservedQty));
     }
 
     [Fact]

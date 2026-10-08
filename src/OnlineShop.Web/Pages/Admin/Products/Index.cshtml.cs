@@ -18,7 +18,7 @@ public class IndexModel(ShopDbContext db) : PageModel
         public IReadOnlyList<ProductVariant> Packs => Product.Variants.OrderBy(v => v.SortVolume).ThenBy(v => v.Id).ToList();
         public decimal? MinPrice => Product.Variants.Where(v => v.IsActive && v.Price != null).Select(v => v.Price).Min();
         public decimal? MaxPrice => Product.Variants.Where(v => v.IsActive && v.Price != null).Select(v => v.Price).Max();
-        public bool InStock => Product.Variants.Any(v => v.IsActive && v.StockQty > 0);
+        public bool InStock => Product.Variants.Any(v => v.IsActive && v.InStock);
         public bool HasUnpriced => Product.Variants.Any(v => v.IsActive && v.Price == null);
     }
 
@@ -102,5 +102,5 @@ public class IndexModel(ShopDbContext db) : PageModel
         q.Where(x => x.Variants.Any(v => v.IsActive && v.Price == null));
 
     private static IQueryable<Product> NoStock(IQueryable<Product> q) =>
-        q.Where(x => !x.Variants.Any(v => v.IsActive && v.StockQty > 0));
+        q.Where(x => !x.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));
 }

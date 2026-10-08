@@ -13,7 +13,7 @@ namespace OnlineShop.Web.Controllers;
 
 [Authorize]
 [Route("/orders/checkout")]
-public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts, AccountMail mail) : Controller
+public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts, AccountMail mail, StockReservations reservations) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -89,6 +89,14 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
                 ModelState.AddModelError("Form.StreetAndDetails", "Обязательное поле.");
             }
         }
+        // Пока покупатель смотрел корзину, остаток могли заказать другие: больше доступного не продаём.
+        foreach (var line in contents.Lines.Where(l => l.Quantity > l.Variant.AvailableQty))
+        {
+            var name = line.Variant.PackLabel.Length > 0 ? $"{line.Variant.Product.Name}, {line.Variant.PackLabel}" : line.Variant.Product.Name;
+            ModelState.AddModelError("", line.Variant.AvailableQty == 0
+                ? $"«{name}» закончился. Уберите его из корзины."
+                : $"«{name}»: осталось {line.Variant.AvailableQty} шт. Уменьшите количество в корзине.");
+        }
         if (!form.AcceptPrivacy && await NeedsConsent(userId))
         {
             ModelState.AddModelError("Form.AcceptPrivacy", PrivacyConsent.Required);
@@ -125,6 +133,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
             user.PersonalDataConsentAt = DateTime.UtcNow;
         }
         await db.SaveChangesAsync();
+        await reservations.RecalculateForOrdersAsync([order.Id]);
         alerts.Enqueue(order.Id, $"{Request.Scheme}://{Request.Host}");
         await mail.NotifyOrderPlacedAsync(order.Id, $"{Request.Scheme}://{Request.Host}");
 

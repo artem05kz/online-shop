@@ -719,6 +719,9 @@ namespace OnlineShop.Web.Data.Migrations
                     b.Property<int>("ProductId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("ReservedQty")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("StockQty")
                         .HasColumnType("INTEGER");
 

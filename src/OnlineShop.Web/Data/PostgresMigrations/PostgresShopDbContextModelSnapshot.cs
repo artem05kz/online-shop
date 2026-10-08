@@ -759,6 +759,9 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("ReservedQty")
+                        .HasColumnType("integer");
+
                     b.Property<int>("StockQty")
                         .HasColumnType("integer");
 

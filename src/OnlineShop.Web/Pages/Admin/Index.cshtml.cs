@@ -23,6 +23,6 @@ public class IndexModel(ShopDbContext db) : PageModel
         Products = await db.Products.CountAsync();
         NoPhoto = await db.Products.CountAsync(p => !p.Images.Any());
         NoPrice = await db.Products.CountAsync(p => p.Variants.Any(v => v.IsActive && v.Price == null));
-        NoStock = await db.Products.CountAsync(p => !p.Variants.Any(v => v.IsActive && v.StockQty > 0));
+        NoStock = await db.Products.CountAsync(p => !p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));
     }
 }

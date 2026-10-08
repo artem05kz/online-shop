@@ -9,7 +9,7 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Orders;
 
-public class IndexModel(ShopDbContext db, AccountMail mail) : PageModel
+public class IndexModel(ShopDbContext db, AccountMail mail, StockReservations reservations) : PageModel
 {
     public class Row
     {
@@ -75,6 +75,7 @@ public class IndexModel(ShopDbContext db, AccountMail mail) : PageModel
             changed.Add(order.Id);
         }
         await db.SaveChangesAsync();
+        await reservations.RecalculateForOrdersAsync(changed);
         // Покупатель узнаёт о новом статусе из письма.
         await mail.NotifyStatusChangedAsync(changed, $"{Request.Scheme}://{Request.Host}");
         TempData.Flash(changed.Count == 0 ? "Изменений не было." : $"Статус изменён у заказов: {changed.Count}. Покупателям с подтверждённой почтой ушли письма.");

@@ -33,7 +33,8 @@
 <form id="changelist-form" method="post" asp-page-handler="SaveList"
       asp-route-q="@Model.Q" asp-route-brand="@Model.Brand" asp-route-active="@Model.Active" asp-route-o="@Model.O" asp-route-p="@Request.Query["p"]">
     <div class="admin-table-wrap">
-        <table class="admin-table" id="result_list">
+        <p class="hint" style="margin:0 0 10px;">«В резерве»: сколько штук заказано на сайте в заказах, которые ещё не выполнены. На сайте можно заказать остаток минус резерв. Когда заказ выполнен или отменён, резерв снимается сам: выполненный заказ к этому времени проведите в 1С.</p>
+    <table class="admin-table" id="result_list">
             <thead>
                 <tr>
                     <th>@AdminList.SortHeader(Request, "product", "Товар")</th>
@@ -41,6 +42,7 @@
                     <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
                     <th>@AdminList.SortHeader(Request, "price", "Розничная цена")</th>
                     <th>@AdminList.SortHeader(Request, "stock", "Остаток")</th>
+                    <th title="Заказано на сайте, заказ ещё не выполнен">В резерве</th>
                     <th>На сайте</th>
                 </tr>
             </thead>
@@ -64,6 +66,7 @@
                         <td><a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a></td>
                         <td><input class="field small" asp-for="Rows[i].Price" inputmode="decimal"></td>
                         <td><input class="field tiny" asp-for="Rows[i].StockQty" inputmode="numeric"></td>
+                        <td class="num">@(Model.Rows[i].ReservedQty > 0 ? Model.Rows[i].ReservedQty.ToString() : "")</td>
                         <td><input asp-for="Rows[i].IsActive"></td>
                     </tr>
                 }

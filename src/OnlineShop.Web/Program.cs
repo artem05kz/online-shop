@@ -126,6 +126,7 @@ builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
+builder.Services.AddScoped<StockReservations>();
 builder.Services.AddScoped<Favorites>();
 builder.Services.AddHostedService<CartCleanup>();
 builder.Services.AddScoped<StorefrontLayout>();
@@ -189,6 +190,9 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     scope.ServiceProvider.GetRequiredService<ShopDbContext>().Database.Migrate();
+    // Резерв по незакрытым заказам пересчитываем при каждом запуске: он верен и после переноса базы,
+    // и для заказов, оформленных до появления резерва. Это один запрос, даже на тысячах фасовок.
+    await scope.ServiceProvider.GetRequiredService<StockReservations>().RecalculateAllAsync();
 }
 
 // Консольные команды (демо-данные, выдача доступа, импорт из 1С) вместо запуска сайта, см. Cli.cs.

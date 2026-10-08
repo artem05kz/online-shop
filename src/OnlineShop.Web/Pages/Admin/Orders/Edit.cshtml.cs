@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Services;
 using OnlineShop.Web.Services.Email;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
@@ -13,7 +14,7 @@ namespace OnlineShop.Web.Pages.Admin.Orders;
 /// Заказ: статус, данные доставки, количество по позициям. Название, фасовка и цена позиции
 /// только для чтения: это снимок на момент заказа, и покупатель видит именно его.
 /// </summary>
-public class EditModel(ShopDbContext db, AccountMail mail) : PageModel
+public class EditModel(ShopDbContext db, AccountMail mail, StockReservations reservations) : PageModel
 {
     private const string Required = "Обязательное поле.";
     private const string TooLong = "Не длиннее {1} символов.";
@@ -111,7 +112,10 @@ public class EditModel(ShopDbContext db, AccountMail mail) : PageModel
                 item.Quantity = row.Quantity;
             }
         }
+        // Фасовки до правки тоже: удалённая позиция больше не держит резерв.
+        var variantIds = order.Items.Select(i => i.VariantId).Distinct().ToList();
         await db.SaveChangesAsync();
+        await reservations.RecalculateAsync(variantIds);
         if (statusChanged)
         {
             await mail.NotifyStatusChangedAsync([order.Id], $"{Request.Scheme}://{Request.Host}");

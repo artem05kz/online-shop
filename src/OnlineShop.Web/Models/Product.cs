@@ -90,13 +90,13 @@ public class Product
             {
                 return null;
             }
-            var inStock = priced.Where(v => v.StockQty > 0).ToList();
+            var inStock = priced.Where(v => v.InStock).ToList();
             return (inStock.Count > 0 ? inStock : priced).MinBy(v => v.Price);
         }
     }
 
     [NotMapped]
-    public bool InStock => ActiveVariants.Any(v => v.StockQty > 0);
+    public bool InStock => ActiveVariants.Any(v => v.InStock);
 
     public override string ToString() => Name;
 }

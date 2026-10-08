@@ -48,7 +48,7 @@ public class CatalogController(ShopDbContext db) : Controller
             .ToList();
 
         var featured = await db.Products.ForListing()
-            .Where(p => p.Variants.Any(v => v.IsActive && v.StockQty > 0))
+            .Where(p => p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty))
             .OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Name)
             .Take(FeaturedCount)
             .AsNoTracking()
