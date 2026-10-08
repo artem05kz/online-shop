@@ -55,7 +55,7 @@
                         <td>@row.UserName</td>
                         <td>@row.ContactName</td>
                         <td><a href="tel:@row.ContactPhone">@row.ContactPhone</a></td>
-                        <td>@row.City</td>
+                        <td>@row.City @if (row.IsPickup) { <span class="pill off">самовывоз</span> }</td>
                         <td class="muted">@Format.DateTimeText(row.CreatedAt)</td>
                         <td>
                             <select class="select" asp-for="Rows[i].Status">

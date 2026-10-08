@@ -28,14 +28,21 @@ public static class MailTemplates
     public static EmailMessage OrderPlaced(string to, Order order, string orderUrl)
     {
         var html = new StringBuilder();
-        html.Append(P($"Спасибо! Ваш заказ №{order.Id} принят. Менеджер позвонит, чтобы уточнить время доставки."));
+        var intro = order.IsPickup
+            ? $"Спасибо! Ваш заказ №{order.Id} принят. Мы позвоним, когда он будет готов к выдаче."
+            : $"Спасибо! Ваш заказ №{order.Id} принят. Менеджер позвонит, чтобы уточнить время доставки.";
+        var where = order.IsPickup
+            ? $"Самовывоз из магазина: {order.City}, {order.StreetAndDetails}"
+            : $"Доставка: {order.City}, {order.StreetAndDetails}";
+        var payment = order.IsPickup ? "Оплата наличными или картой в магазине." : "Оплата наличными или картой курьеру при получении.";
+        html.Append(P(intro));
         html.Append(ItemsTable(order));
-        html.Append(P($"Доставка: {order.City}, {order.StreetAndDetails}"));
-        html.Append(P("Оплата наличными или картой курьеру при получении."));
+        html.Append(P(where));
+        html.Append(P(payment));
         html.Append(Button("Открыть заказ", orderUrl));
 
         var text = new StringBuilder();
-        text.AppendLine($"Спасибо! Ваш заказ №{order.Id} принят. Менеджер позвонит, чтобы уточнить время доставки.");
+        text.AppendLine(intro);
         text.AppendLine();
         foreach (var item in order.Items)
         {
@@ -43,8 +50,8 @@ public static class MailTemplates
         }
         text.AppendLine($"Итого: {Format.Money(order.Total)}");
         text.AppendLine();
-        text.AppendLine($"Доставка: {order.City}, {order.StreetAndDetails}");
-        text.AppendLine("Оплата наличными или картой курьеру при получении.");
+        text.AppendLine(where);
+        text.AppendLine(payment);
         text.AppendLine($"Заказ на сайте: {orderUrl}");
         return Wrap(to, $"Заказ №{order.Id} принят", html.ToString(), text.ToString());
     }
@@ -55,6 +62,7 @@ public static class MailTemplates
         var line = order.Status switch
         {
             OrderStatus.Confirmed => "Менеджер подтвердил ваш заказ. Скоро он будет передан в доставку.",
+            OrderStatus.Delivering when order.IsPickup => $"Заказ собран и ждёт вас в магазине: {order.City}, {order.StreetAndDetails}.",
             OrderStatus.Delivering => "Заказ передан курьеру и едет к вам. Оплатить можно наличными или картой курьеру.",
             OrderStatus.Completed => "Заказ выполнен. Спасибо за покупку!",
             OrderStatus.Canceled => "Заказ отменён. Если это ошибка, позвоните нам, и мы всё исправим.",
@@ -64,7 +72,7 @@ public static class MailTemplates
         {
             return null;
         }
-        var subject = $"Заказ №{order.Id}: {order.Status.Label().ToLowerInvariant()}";
+        var subject = $"Заказ №{order.Id}: {order.StatusText(order.Status).ToLowerInvariant()}";
         var html = P(line) + ItemsTable(order) + Button("Открыть заказ", orderUrl);
         var text = $"{line}\n\nИтого: {Format.Money(order.Total)}\nЗаказ на сайте: {orderUrl}\n";
         return Wrap(to, subject, html, text);

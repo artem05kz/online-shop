@@ -8,7 +8,8 @@
     var items = order.Items.OrderBy(i => i.Id).ToDictionary(i => i.Id);
 }
 <div class="admin-head">
-    <h1>Заказ №@order.Id</h1>
+    <h1>Заказ №@order.Id @if (order.IsPickup) { <span class="pill off">самовывоз</span> }</h1>
+    <a class="btn btn-ghost" href="/admin/orders/@order.Id/print" target="_blank" rel="noopener">@Icons.Get("orders", 18) Лист для печати</a>
     <a class="btn btn-ghost" asp-page="Index">К списку</a>
 </div>
 

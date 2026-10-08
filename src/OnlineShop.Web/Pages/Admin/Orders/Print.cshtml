@@ -1,0 +1,95 @@
+@page "/admin/orders/{id:int}/print"
+@model OnlineShop.Web.Pages.Admin.Orders.PrintModel
+@{
+    Layout = null;
+    var order = Model.Order;
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Заказ №@order.Id</title>
+    @* Отдельная простая страница без меню панели: на бумаге только сам заказ. *@
+    <style nonce="@HttpContext.CspNonce()">
+        body { font-family: Arial, sans-serif; font-size: 15px; color: #000; background: #fff; margin: 24px auto; max-width: 760px; padding: 0 16px; }
+        h1 { font-size: 24px; margin: 0 0 4px; }
+        .muted { color: #555; }
+        .row { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 12px; margin: 18px 0; }
+        dt { color: #555; }
+        dd { margin: 0; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { border: 1px solid #999; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #eee; }
+        .num { text-align: right; white-space: nowrap; }
+        .total td { font-weight: bold; font-size: 17px; }
+        .actions { margin: 0 0 18px; }
+        .actions button, .actions a { font-size: 16px; padding: 8px 16px; margin-right: 8px; }
+        @@media print { .actions { display: none; } body { margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="actions">
+        <button type="button" id="print">Печать</button>
+        <a href="/admin/orders/@order.Id">Назад к заказу</a>
+    </div>
+
+    <div class="row">
+        <div>
+            <h1>Заказ №@order.Id</h1>
+            <div class="muted">от @Format.DateTimeText(order.CreatedAt), статус: @order.StatusText(order.Status)</div>
+        </div>
+        <div class="muted" style="text-align:right;">
+            GRASS Актау
+            @if (Model.Contact is { Phone.Length: > 0 } contact)
+            {
+                <br>@contact.Phone
+            }
+        </div>
+    </div>
+
+    <dl>
+        <dt>Получатель</dt><dd>@order.ContactName</dd>
+        <dt>Телефон</dt><dd>@order.ContactPhone</dd>
+        <dt>@(order.IsPickup ? "Самовывоз" : "Адрес доставки")</dt><dd>@order.City, @order.StreetAndDetails</dd>
+        @if (order.Comment.Length > 0)
+        {
+            <dt>Комментарий</dt><dd>@order.Comment</dd>
+        }
+        <dt>Оплата</dt><dd>при получении, наличными или картой</dd>
+    </dl>
+
+    <table>
+        <thead>
+            <tr><th>№</th><th>Артикул</th><th>Товар</th><th>Фасовка</th><th class="num">Кол-во</th><th class="num">Цена</th><th class="num">Сумма</th></tr>
+        </thead>
+        <tbody>
+            @{ var n = 0; }
+            @foreach (var item in order.Items.OrderBy(i => i.Id))
+            {
+                <tr>
+                    <td>@(++n)</td>
+                    <td>@item.Article</td>
+                    <td>@item.ProductName</td>
+                    <td>@item.PackLabel</td>
+                    <td class="num">@item.Quantity</td>
+                    <td class="num">@Format.Money(item.Price)</td>
+                    <td class="num">@Format.Money(item.Subtotal)</td>
+                </tr>
+            }
+            <tr class="total">
+                <td colspan="4">Итого</td>
+                <td class="num">@order.TotalQuantity</td>
+                <td></td>
+                <td class="num">@Format.Money(order.Total)</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script nonce="@HttpContext.CspNonce()">
+        document.getElementById('print').addEventListener('click', function () { window.print(); });
+    </script>
+</body>
+</html>

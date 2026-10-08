@@ -469,4 +469,37 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         return await users.IsInRoleAsync((await users.FindByNameAsync(login))!, RoleNames.Manager);
     }
+
+    [Fact]
+    public async Task Order_print_sheet_has_everything_for_the_courier()
+    {
+        var client = await Manager();
+        var (_, variantId) = SeedProduct($"P{Guid.NewGuid():N}"[..12]);
+        var orderId = Db(db =>
+        {
+            var order = new Order
+            {
+                User = new ApplicationUser { UserName = $"печать{Guid.NewGuid():N}"[..20] },
+                ContactName = "Айгерим", ContactPhone = "+7 701 111-22-33", City = "Актау",
+                StreetAndDetails = "14 мкр, дом 5, кв. 12", Comment = "домофон 12",
+                Items = [new OrderItem { VariantId = variantId, ProductName = "Шампунь", PackLabel = "1 л", Article = "100", Price = 1890m, Quantity = 3 }],
+            };
+            db.Orders.Add(order);
+            db.SaveChanges();
+            return order.Id;
+        });
+
+        Assert.Contains($"/admin/orders/{orderId}/print", await Page(client, $"/admin/orders/{orderId}"));
+        var page = await Page(client, $"/admin/orders/{orderId}/print");
+        Assert.Contains($"Заказ №{orderId}", page);
+        Assert.Contains("+7 701 111-22-33", page);
+        Assert.Contains("Актау, 14 мкр, дом 5, кв. 12", page);
+        Assert.Contains("домофон 12", page);
+        Assert.Contains("5\u00a0670 ₸", page);
+        // Без меню панели: на бумаге только заказ.
+        Assert.DoesNotContain("admin-nav", page);
+
+        var guest = await factory.Browser().GetAsync($"/admin/orders/{orderId}/print");
+        Assert.Equal(HttpStatusCode.Redirect, guest.StatusCode);
+    }
 }

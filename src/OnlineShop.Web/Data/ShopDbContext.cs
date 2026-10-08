@@ -110,6 +110,8 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
                 .HasConversion(s => s.ToCode(), c => OrderStatusInfo.FromCode(c))
                 .HasMaxLength(20);
             e.HasIndex(o => o.CreatedAt);
+            // Точку самовывоза можно удалить: заказ хранит её адрес у себя.
+            e.HasOne(o => o.PickupStore).WithMany().OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<OrderItem>(e =>

@@ -25,7 +25,7 @@
                 <div class="o-num">Заказ №@order.Id</div>
                 <div class="o-date">от @Format.DateTimeText(order.CreatedAt)</div>
             </div>
-            <span class="status status-@order.Status.ToCode()">@order.Status.Label()</span>
+            <span class="status status-@order.Status.ToCode()">@order.StatusText(order.Status)</span>
         </div>
         @if (order.ProgressSteps.Count > 0)
         {

@@ -16,7 +16,7 @@
             <div class="o-num">Заказ №@Model.Id</div>
             <div class="o-date">оформлен @Format.DateTimeText(Model.CreatedAt)</div>
         </div>
-        <span class="status status-@Model.Status.ToCode()">@Model.Status.Label()</span>
+        <span class="status status-@Model.Status.ToCode()">@Model.StatusText(Model.Status)</span>
     </div>
     @if (Model.ProgressSteps.Count > 0)
     {

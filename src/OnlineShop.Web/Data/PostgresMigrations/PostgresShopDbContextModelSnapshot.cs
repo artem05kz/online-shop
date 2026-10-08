@@ -552,6 +552,12 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("IsPickup")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("PickupStoreId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -571,6 +577,8 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PickupStoreId");
 
                     b.HasIndex("UserId");
 
@@ -1062,11 +1070,18 @@ namespace OnlineShop.Web.Data.PostgresMigrations
 
             modelBuilder.Entity("OnlineShop.Web.Models.Order", b =>
                 {
+                    b.HasOne("OnlineShop.Web.Models.Store", "PickupStore")
+                        .WithMany()
+                        .HasForeignKey("PickupStoreId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("OnlineShop.Web.Models.ApplicationUser", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("PickupStore");
 
                     b.Navigation("User");
                 });

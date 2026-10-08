@@ -47,7 +47,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
             form.ContactName = user?.FullName ?? "";
         }
 
-        return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId) });
+        return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId), PickupStores = await PickupStores() });
     }
 
     [HttpPost("")]
@@ -69,13 +69,33 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         {
             ModelState.AddModelError("Form.SavedAddressId", "Выберите адрес из списка.");
         }
+        Store? pickupStore = null;
+        if (form.IsPickup)
+        {
+            pickupStore = form.PickupStoreId is { } storeId ? (await PickupStores()).FirstOrDefault(s => s.Id == storeId) : null;
+            if (pickupStore is null)
+            {
+                ModelState.AddModelError("Form.PickupStoreId", "Выберите магазин, где заберёте заказ.");
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(form.City))
+            {
+                ModelState.AddModelError("Form.City", "Обязательное поле.");
+            }
+            if (string.IsNullOrWhiteSpace(form.StreetAndDetails))
+            {
+                ModelState.AddModelError("Form.StreetAndDetails", "Обязательное поле.");
+            }
+        }
         if (!form.AcceptPrivacy && await NeedsConsent(userId))
         {
             ModelState.AddModelError("Form.AcceptPrivacy", PrivacyConsent.Required);
         }
         if (!ModelState.IsValid)
         {
-            return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId) });
+            return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId), PickupStores = await PickupStores() });
         }
 
         // Название, фасовка, артикул и цена копируются в заказ: каталог потом может поменяться.
@@ -84,8 +104,10 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
             UserId = userId,
             ContactName = form.ContactName.Trim(),
             ContactPhone = form.ContactPhone.Trim(),
-            City = form.City.Trim(),
-            StreetAndDetails = form.StreetAndDetails.Trim(),
+            City = pickupStore?.City ?? form.City!.Trim(),
+            StreetAndDetails = pickupStore?.Address ?? form.StreetAndDetails!.Trim(),
+            IsPickup = pickupStore is not null,
+            PickupStoreId = pickupStore?.Id,
             Comment = form.Comment?.Trim() ?? "",
             Items = contents.Lines.Select(line => new OrderItem
             {
@@ -132,6 +154,9 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         TempData.Flash("Укажите и подтвердите почту: на неё придут статусы заказа.", FlashLevel.Info);
         return Redirect($"{OnlineShop.Web.Pages.Accounts.EmailModel.PageUrl}?returnUrl={Uri.EscapeDataString("/orders/checkout")}");
     }
+
+    private Task<List<Store>> PickupStores() =>
+        db.Stores.Where(s => s.Kind != StoreKind.Warehouse).OrderBy(s => s.SortOrder).ThenBy(s => s.Id).AsNoTracking().ToListAsync();
 
     private Task<bool> NeedsConsent(int userId) =>
         db.Users.AnyAsync(u => u.Id == userId && u.PersonalDataConsentAt == null);

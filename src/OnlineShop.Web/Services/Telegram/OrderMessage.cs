@@ -32,7 +32,8 @@ public static class OrderMessage
 
         text.Append("Получатель: ").Append(H(order.ContactName)).Append('\n');
         text.Append("Телефон: ").Append(H(order.ContactPhone)).Append('\n');
-        text.Append("Адрес: ").Append(H($"{order.City}, {order.StreetAndDetails}")).Append('\n');
+        text.Append(order.IsPickup ? "<b>Самовывоз</b> из магазина: " : "Адрес: ")
+            .Append(H($"{order.City}, {order.StreetAndDetails}")).Append('\n');
         if (order.Comment.Length > 0)
         {
             text.Append("Комментарий: ").Append(H(order.Comment)).Append('\n');

@@ -83,6 +83,14 @@ public class Order
     [Display(Name = "Комментарий")]
     public string Comment { get; set; } = "";
 
+    // Самовывоз: покупатель забирает заказ в магазине. Адрес магазина копируется в City и
+    // StreetAndDetails, как адрес доставки, поэтому заказ читается так же, даже если точку потом удалят.
+    [Display(Name = "Самовывоз")]
+    public bool IsPickup { get; set; }
+
+    public int? PickupStoreId { get; set; }
+    public Store? PickupStore { get; set; }
+
     [Display(Name = "Дата создания")]
     public DateTime CreatedAt { get; set; }
 
@@ -100,6 +108,13 @@ public class Order
     [NotMapped]
     public bool IsCanceled => Status == OrderStatus.Canceled;
 
+    /// <summary>
+    /// Статус так, как его понимает покупатель: для самовывоза «Доставляется» значит, что заказ собран
+    /// и ждёт в магазине.
+    /// </summary>
+    public string StatusText(OrderStatus status) =>
+        IsPickup && status == OrderStatus.Delivering ? "Готов к выдаче" : status.Label();
+
     [NotMapped]
     public IReadOnlyList<OrderProgressStep> ProgressSteps
     {
@@ -111,7 +126,7 @@ public class Order
             }
             var currentIndex = Math.Max(0, StatusFlow.ToList().IndexOf(Status));
             return StatusFlow
-                .Select((status, i) => new OrderProgressStep(status.Label(), i < currentIndex, i == currentIndex))
+                .Select((status, i) => new OrderProgressStep(StatusText(status), i < currentIndex, i == currentIndex))
                 .ToList();
         }
     }

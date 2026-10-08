@@ -18,6 +18,7 @@ public class IndexModel(ShopDbContext db, AccountMail mail) : PageModel
         public string ContactName { get; set; } = "";
         public string ContactPhone { get; set; } = "";
         public string City { get; set; } = "";
+        public bool IsPickup { get; set; }
         public DateTime CreatedAt { get; set; }
         public OrderStatus Status { get; set; }
     }
@@ -55,7 +56,7 @@ public class IndexModel(ShopDbContext db, AccountMail mail) : PageModel
         var rows = query.Select(o => new Row
         {
             Id = o.Id, UserName = o.User.UserName ?? "", ContactName = o.ContactName, ContactPhone = o.ContactPhone,
-            City = o.City, CreatedAt = o.CreatedAt, Status = o.Status,
+            City = o.City, IsPickup = o.IsPickup, CreatedAt = o.CreatedAt, Status = o.Status,
         });
         var list = await PagedList<Row>.CreateAsync(rows, p, AdminList.PageSize);
         Pager = PagerInfo.From(list);

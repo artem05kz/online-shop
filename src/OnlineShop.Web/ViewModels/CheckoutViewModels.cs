@@ -24,13 +24,20 @@ public class CheckoutForm
     [Required(ErrorMessage = Required), StringLength(30, ErrorMessage = TooLong)]
     public string ContactPhone { get; set; } = "";
 
+    // Город и адрес обязательны только для доставки, это проверяет CheckoutController.
     [Display(Name = "Город")]
-    [Required(ErrorMessage = Required), StringLength(100, ErrorMessage = TooLong)]
-    public string City { get; set; } = "";
+    [StringLength(100, ErrorMessage = TooLong)]
+    public string? City { get; set; }
 
     [Display(Name = "Адрес доставки")]
-    [Required(ErrorMessage = Required), StringLength(300, ErrorMessage = TooLong)]
-    public string StreetAndDetails { get; set; } = "";
+    [StringLength(300, ErrorMessage = TooLong)]
+    public string? StreetAndDetails { get; set; }
+
+    /// <summary>Забрать в магазине вместо доставки.</summary>
+    public bool IsPickup { get; set; }
+
+    [Display(Name = "Магазин")]
+    public int? PickupStoreId { get; set; }
 
     [Display(Name = "Комментарий к заказу")]
     public string? Comment { get; set; }
@@ -46,6 +53,9 @@ public class CheckoutViewModel
     public required CheckoutForm Form { get; init; }
     public required CartContents Cart { get; init; }
     public required IReadOnlyList<Address> Addresses { get; init; }
+
+    /// <summary>Откуда можно забрать заказ: магазины и пункты самовывоза, без складов.</summary>
+    public IReadOnlyList<Store> PickupStores { get; init; } = [];
 
     /// <summary>Покупатель ещё не давал согласия на обработку данных: показать галочку.</summary>
     public bool NeedsConsent { get; init; }

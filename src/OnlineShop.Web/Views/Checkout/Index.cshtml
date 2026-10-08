@@ -12,10 +12,27 @@
 <form asp-action="Index" method="post">
     <div class="two-col">
         <div>
-            @if (Model.Addresses.Count > 0)
-            {
-                <div class="panel">
-                    <h3>Адрес доставки</h3>
+            <div class="panel">
+                <h3>Как получить заказ</h3>
+                <div class="delivery-choice">
+                    <label class="choice-tile">
+                        <input type="radio" name="Form.IsPickup" value="false" checked="@(!Model.Form.IsPickup)">
+                        <span><b>Доставка</b><br><span class="muted">Курьер привезёт по адресу</span></span>
+                    </label>
+                    @if (Model.PickupStores.Count > 0)
+                    {
+                        <label class="choice-tile">
+                            <input type="radio" name="Form.IsPickup" value="true" checked="@Model.Form.IsPickup">
+                            <span><b>Самовывоз</b><br><span class="muted">Заберу в магазине</span></span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="panel" id="delivery-block">
+                <h3>Адрес доставки</h3>
+                @if (Model.Addresses.Count > 0)
+                {
                     <div class="form-row">
                         <label asp-for="Form.SavedAddressId"></label>
                         <select class="select" asp-for="Form.SavedAddressId">
@@ -28,8 +45,45 @@
                         <span class="errorlist" asp-validation-for="Form.SavedAddressId"></span>
                         <span class="help">Выберите сохранённый адрес или заполните поля ниже вручную.</span>
                     </div>
+                }
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label asp-for="Form.City"></label>
+                        <input class="field" asp-for="Form.City">
+                        <span class="errorlist" asp-validation-for="Form.City"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.StreetAndDetails"></label>
+                        <input class="field" asp-for="Form.StreetAndDetails" placeholder="Улица, дом, квартира">
+                        <span class="errorlist" asp-validation-for="Form.StreetAndDetails"></span>
+                    </div>
+                </div>
+            </div>
+
+            @if (Model.PickupStores.Count > 0)
+            {
+                <div class="panel" id="pickup-block">
+                    <h3>Где забрать</h3>
+                    <div class="pickup-list">
+                        @foreach (var store in Model.PickupStores)
+                        {
+                            <label class="choice-tile">
+                                <input type="radio" name="Form.PickupStoreId" value="@store.Id" checked="@(Model.Form.PickupStoreId == store.Id || Model.PickupStores.Count == 1)">
+                                <span>
+                                    <b>@store.Address</b>
+                                    @if (store.WorkingHours.Length > 0)
+                                    {
+                                        <br><span class="muted">@store.WorkingHours@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span>
+                                    }
+                                </span>
+                            </label>
+                        }
+                    </div>
+                    <span class="errorlist" asp-validation-for="Form.PickupStoreId"></span>
+                    <p class="muted" style="font-size:.88rem; margin:10px 0 0;">Мы позвоним, когда заказ будет собран. Оплата в магазине наличными или картой.</p>
                 </div>
             }
+
             <div class="panel">
                 <h3>Получатель</h3>
                 <div class="form-grid">
@@ -42,16 +96,6 @@
                         <label asp-for="Form.ContactPhone"></label>
                         <input class="field" asp-for="Form.ContactPhone" type="tel">
                         <span class="errorlist" asp-validation-for="Form.ContactPhone"></span>
-                    </div>
-                    <div class="form-row">
-                        <label asp-for="Form.City"></label>
-                        <input class="field" asp-for="Form.City">
-                        <span class="errorlist" asp-validation-for="Form.City"></span>
-                    </div>
-                    <div class="form-row">
-                        <label asp-for="Form.StreetAndDetails"></label>
-                        <input class="field" asp-for="Form.StreetAndDetails" placeholder="Улица, дом, квартира">
-                        <span class="errorlist" asp-validation-for="Form.StreetAndDetails"></span>
                     </div>
                 </div>
                 <div class="form-row">
@@ -88,6 +132,20 @@
 @section Scripts {
     <script type="application/json" id="saved-addresses">@Html.Raw(JsonSerializer.Serialize(addressData))</script>
     <script nonce="@Context.CspNonce()">
+    // Доставка или самовывоз: показываем только нужный блок. Без скрипта видны оба, форма всё равно работает.
+    (function () {
+        var delivery = document.getElementById('delivery-block');
+        var pickup = document.getElementById('pickup-block');
+        var radios = document.querySelectorAll('input[name="Form.IsPickup"]');
+        function update() {
+            var isPickup = document.querySelector('input[name="Form.IsPickup"]:checked').value === 'true';
+            delivery.hidden = isPickup;
+            if (pickup) pickup.hidden = !isPickup;
+        }
+        radios.forEach(function (r) { r.addEventListener('change', update); });
+        update();
+    })();
+
     // Выбор сохранённого адреса заполняет поля формы, дальше их можно поправить вручную.
     (function () {
         var select = document.getElementById('Form_SavedAddressId');

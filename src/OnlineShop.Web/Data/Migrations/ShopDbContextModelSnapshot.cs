@@ -523,6 +523,12 @@ namespace OnlineShop.Web.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsPickup")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PickupStoreId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -542,6 +548,8 @@ namespace OnlineShop.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("PickupStoreId");
 
                     b.HasIndex("UserId");
 
@@ -1014,11 +1022,18 @@ namespace OnlineShop.Web.Data.Migrations
 
             modelBuilder.Entity("OnlineShop.Web.Models.Order", b =>
                 {
+                    b.HasOne("OnlineShop.Web.Models.Store", "PickupStore")
+                        .WithMany()
+                        .HasForeignKey("PickupStoreId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("OnlineShop.Web.Models.ApplicationUser", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("PickupStore");
 
                     b.Navigation("User");
                 });
