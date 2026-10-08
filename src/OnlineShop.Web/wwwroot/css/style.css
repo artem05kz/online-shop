@@ -1126,3 +1126,5 @@ textarea.field { resize: vertical; }
 .choice-tile:has(input:checked) { border-color: var(--green); background: var(--green-soft); }
 .choice-tile input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: var(--green); }
 [hidden] { display: none !important; }
+
+.search-fixed { margin: -6px 0 16px; padding: 10px 14px; background: var(--green-soft); border-radius: var(--radius); }

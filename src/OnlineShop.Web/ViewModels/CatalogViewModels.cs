@@ -23,6 +23,9 @@ public class ProductListViewModel
 
     // Для поиска: строка запроса и списки брендов и категорий для фильтра.
     public string? Query { get; init; }
+
+    /// <summary>Запрос, исправленный из-за опечатки или раскладки, если по исходному ничего не нашлось.</summary>
+    public string? CorrectedQuery { get; init; }
     public IReadOnlyList<Brand> AllBrands { get; init; } = [];
     public IReadOnlyList<Category> AllCategories { get; init; } = [];
 

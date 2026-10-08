@@ -127,6 +127,7 @@ builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "import
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<StockReservations>();
+builder.Services.AddSingleton<SearchSpelling>();
 builder.Services.AddSingleton<SiteAddress>();
 builder.Services.AddScoped<RestockNotifier>();
 builder.Services.AddHostedService<RestockWatcher>();

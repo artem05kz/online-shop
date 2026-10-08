@@ -77,14 +77,22 @@ public static class CatalogQuery
             .Include(p => p.Images)
             .AsSplitQuery();
 
-    /// <summary>Поиск по названию, описанию и артикулу без учёта регистра, в том числе для кириллицы.</summary>
+    /// <summary>
+    /// Поиск по названию, описанию и артикулу без учёта регистра, в том числе для кириллицы.
+    /// Каждое слово ищется отдельно и должно найтись: «шампунь для мойки» найдёт
+    /// «Шампунь для бесконтактной мойки», хотя такой фразы подряд в названии нет.
+    /// </summary>
     public static IQueryable<Product> Search(this IQueryable<Product> products, string query)
     {
-        var needle = query.Trim().ToLowerInvariant();
-        return products.Where(p =>
-            SqliteFunctions.Lower(p.Name).Contains(needle)
-            || SqliteFunctions.Lower(p.Description).Contains(needle)
-            || p.Variants.Any(v => SqliteFunctions.Lower(v.Article).Contains(needle)));
+        foreach (var word in query.ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var needle = word;
+            products = products.Where(p =>
+                SqliteFunctions.Lower(p.Name).Contains(needle)
+                || SqliteFunctions.Lower(p.Description).Contains(needle)
+                || p.Variants.Any(v => SqliteFunctions.Lower(v.Article).Contains(needle)));
+        }
+        return products;
     }
 
     public static IQueryable<Product> ApplyFilter(this IQueryable<Product> products, CatalogFilter filter)

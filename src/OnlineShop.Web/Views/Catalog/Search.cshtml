@@ -10,6 +10,10 @@
 </nav>
 
 <h1>@(query.Length > 0 ? $"Поиск: «{query}»" : "Поиск по каталогу")</h1>
+@if (Model.CorrectedQuery is { } corrected)
+{
+    <p class="search-fixed">По запросу «@query» ничего не нашлось. Показаны результаты по запросу <b>«@corrected»</b>.</p>
+}
 
 @if (query.Length == 0)
 {

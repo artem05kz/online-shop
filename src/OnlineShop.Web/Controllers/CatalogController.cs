@@ -7,7 +7,7 @@ using OnlineShop.Web.ViewModels;
 
 namespace OnlineShop.Web.Controllers;
 
-public class CatalogController(ShopDbContext db) : Controller
+public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Controller
 {
     private const int FeaturedCount = 8;
     private const int RelatedCount = 4;
@@ -100,14 +100,23 @@ public class CatalogController(ShopDbContext db) : Controller
         var text = (q ?? "").Trim();
         var filter = CatalogFilter.FromQuery(Request.Query);
 
-        var query = text.Length == 0
-            ? db.Products.Where(_ => false)
-            : db.Products.ForListing().Search(text).ApplyFilter(filter).ApplySort(filter.Sort);
+        IQueryable<Models.Product> Find(string what) =>
+            db.Products.ForListing().Search(what).ApplyFilter(filter).ApplySort(filter.Sort);
+
+        var query = text.Length == 0 ? db.Products.Where(_ => false) : Find(text);
+        string? corrected = null;
+        // Ничего не нашлось: возможно, опечатка или не та раскладка. Ищем по исправленному запросу.
+        if (text.Length > 0 && !await query.AnyAsync() && await spelling.CorrectAsync(text) is { } fixedText)
+        {
+            corrected = fixedText;
+            query = Find(fixedText);
+        }
 
         return View(new ProductListViewModel
         {
             Filter = filter,
             Query = text,
+            CorrectedQuery = corrected,
             Page = await PagedList<Models.Product>.CreateAsync(query.AsNoTracking(), page, CatalogQuery.PageSize),
             AllBrands = await db.Brands.Where(b => b.IsActive).Ordered().AsNoTracking().ToListAsync(),
             AllCategories = await db.Categories
@@ -131,14 +140,22 @@ public class CatalogController(ShopDbContext db) : Controller
         {
             return Json(Array.Empty<object>());
         }
-        var needle = text.ToLowerInvariant();
-        var products = await db.Products.ForListing()
-            .Search(text)
-            .OrderBy(p => SqliteFunctions.Lower(p.Name).StartsWith(needle) ? 0 : 1)
-            .ThenBy(p => p.Name)
-            .Take(6)
-            .AsNoTracking()
-            .ToListAsync();
+        async Task<List<Models.Product>> Find(string what)
+        {
+            var needle = what.ToLowerInvariant();
+            return await db.Products.ForListing()
+                .Search(what)
+                .OrderBy(p => SqliteFunctions.Lower(p.Name).StartsWith(needle) ? 0 : 1)
+                .ThenBy(p => p.Name)
+                .Take(6)
+                .AsNoTracking()
+                .ToListAsync();
+        }
+        var products = await Find(text);
+        if (products.Count == 0 && await spelling.CorrectAsync(text) is { } fixedText)
+        {
+            products = await Find(fixedText);
+        }
 
         return Json(products.Select(p => new
         {
