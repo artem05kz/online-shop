@@ -75,6 +75,7 @@ docker compose restart app
    | `POSTGRES_PASSWORD` | новый длинный пароль базы |
    | `BACKUP_PASSWORD` | пароль шифрования копий; сохранить ещё и в менеджере паролей |
    | `SITE_ADDRESS` | домен, например `grass-aktau.kz` |
+   | `SITE_URL` | полный адрес, например `https://grass-aktau.kz` (для ссылок в письмах) |
    | `HTTP_PORT`, `HTTPS_PORT` | `80` и `443` |
    | `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather |
    | `TWOGIS_API_KEY` | ключ 2ГИС, если есть |

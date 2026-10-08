@@ -17,7 +17,7 @@ else
 {
     @if (!(User.Identity?.IsAuthenticated ?? false))
     {
-        <p class="muted">Избранное сохранено в этом браузере. <a href="@ShopUrls.Login?ReturnUrl=/favorites">Войдите</a>, чтобы оно было видно и с телефона, и с компьютера.</p>
+        <p class="muted">Избранное сохранено в этом браузере. <a href="@ShopUrls.Login?ReturnUrl=/favorites">Войдите</a>, чтобы оно было видно и с телефона, и с компьютера, а о поступлении товаров, которых сейчас нет, приходило письмо.</p>
     }
     <div class="product-grid">
         @foreach (var product in Model)

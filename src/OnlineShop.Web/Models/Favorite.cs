@@ -12,4 +12,7 @@ public class Favorite
     public Product Product { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
+
+    // Был ли товар в наличии при прошлой проверке (Services/RestockNotifier). null: ещё не проверяли.
+    public bool? WasInStock { get; set; }
 }

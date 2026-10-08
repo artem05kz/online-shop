@@ -127,6 +127,9 @@ builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "import
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
 builder.Services.AddScoped<StockReservations>();
+builder.Services.AddSingleton<SiteAddress>();
+builder.Services.AddScoped<RestockNotifier>();
+builder.Services.AddHostedService<RestockWatcher>();
 builder.Services.AddScoped<Favorites>();
 builder.Services.AddHostedService<CartCleanup>();
 builder.Services.AddScoped<StorefrontLayout>();
@@ -217,6 +220,7 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/error/{0}");
 app.UseSecurityHeaders();
+app.UseSiteAddress();
 app.UseStaticFiles();
 app.UseStaticFiles(new StaticFileOptions
 {

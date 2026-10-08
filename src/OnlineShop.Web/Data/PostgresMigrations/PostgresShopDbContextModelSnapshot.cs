@@ -512,6 +512,9 @@ namespace OnlineShop.Web.Data.PostgresMigrations
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
+                    b.Property<bool?>("WasInStock")
+                        .HasColumnType("boolean");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");

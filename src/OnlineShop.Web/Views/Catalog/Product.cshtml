@@ -40,6 +40,10 @@
     <div>
         <h1>@product.Name</h1>
         <partial name="_FavoriteButton" model="new FavoriteButtonModel(product.Id, (await Favorites.IdsAsync()).Contains(product.Id), WithLabel: true)" />
+        @if (!product.InStock && product.ActiveVariants.Count > 0)
+        {
+            <p class="muted" style="margin:-8px 0 16px; font-size:.9rem;">Добавьте товар в избранное, и мы напишем на почту, когда он появится.</p>
+        }
 
         @if (packs.Count == 0)
         {

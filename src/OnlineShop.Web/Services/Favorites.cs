@@ -51,7 +51,10 @@ public class Favorites(IHttpContextAccessor httpContextAccessor, ShopDbContext d
         {
             if (added)
             {
-                db.Favorites.Add(new Favorite { UserId = userId, ProductId = productId, CreatedAt = DateTime.UtcNow });
+                // Запоминаем наличие сразу: если товара нет, письмо придёт, как только он появится.
+                var inStock = await db.Products.AnyAsync(p => p.Id == productId
+                    && p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));
+                db.Favorites.Add(new Favorite { UserId = userId, ProductId = productId, CreatedAt = DateTime.UtcNow, WasInStock = inStock });
             }
             else
             {

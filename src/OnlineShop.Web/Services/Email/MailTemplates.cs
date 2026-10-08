@@ -78,6 +78,23 @@ public static class MailTemplates
         return Wrap(to, subject, html, text);
     }
 
+    public static EmailMessage BackInStock(string to, IReadOnlyList<(string Name, string Url)> products)
+    {
+        var intro = products.Count == 1
+            ? "Товар из вашего избранного снова в наличии:"
+            : "Товары из вашего избранного снова в наличии:";
+        var html = new StringBuilder(P(intro));
+        html.Append("<ul style=\"padding-left:20px;margin:0 0 12px;\">");
+        foreach (var (name, url) in products)
+        {
+            html.Append($"<li style=\"margin-bottom:6px;\"><a href=\"{H(url)}\" style=\"color:#4d8f21;\">{H(name)}</a></li>");
+        }
+        html.Append("</ul>");
+        html.Append(P("Остатки меняются быстро, заказывайте, пока есть."));
+        var text = intro + "\n" + string.Join("\n", products.Select(p => $"{p.Name}: {p.Url}")) + "\n";
+        return Wrap(to, products.Count == 1 ? $"Снова в наличии: {products[0].Name}" : "Товары из избранного снова в наличии", html.ToString(), text);
+    }
+
     private static EmailMessage Code(string to, string subject, string intro, string code, string footer)
     {
         var html = P(intro)

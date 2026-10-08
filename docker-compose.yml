@@ -36,6 +36,8 @@ services:
       Email__User: ${SMTP_USER:-}
       Email__Password: ${SMTP_PASSWORD:-}
       Email__From: ${MAIL_FROM:-GRASS Актау <Grassaktau@mail.ru>}
+      # Адрес сайта для ссылок в письмах «снова в наличии», например https://grass-aktau.kz
+      Site__Url: ${SITE_URL:-}
       # Сайт стоит за Caddy: адрес покупателя и HTTPS берём из заголовков, которые ставит Caddy.
       # Наружу открыт только Caddy, поэтому подделать эти заголовки снаружи нельзя.
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
