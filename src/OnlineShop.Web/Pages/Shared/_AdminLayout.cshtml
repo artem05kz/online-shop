@@ -5,6 +5,7 @@
     var section = ViewData["AdminSection"] as string;
     var flash = TempData.TakeFlash();
     var newOrders = await Db.Orders.CountAsync(o => o.Status == OrderStatus.New);
+    var pendingReviews = await Db.Reviews.CountAsync(r => r.Status == ReviewStatus.Pending);
     string Active(string name) => section == name ? "active" : "";
 }
 <!DOCTYPE html>
@@ -54,6 +55,12 @@
         <a class="@Active("variants")" href="/admin/variants">@Icons.Get("tag") Цены и остатки</a>
         <a class="@Active("categories")" href="/admin/categories">@Icons.Get("layers") Бренды и категории</a>
         <a class="@Active("banners")" href="/admin/banners">@Icons.Get("image") Баннеры</a>
+        <a class="@Active("reviews")" href="/admin/reviews">@Icons.Get("star") Отзывы
+            @if (pendingReviews > 0)
+            {
+                <span class="badge" title="Ждут проверки">@pendingReviews</span>
+            }
+        </a>
         <h4>Из 1С</h4>
         <a class="@Active("import")" href="/admin/import">@Icons.Get("upload") Загрузить товары</a>
         <a class="@Active("import-stock")" href="/admin/import/stock">@Icons.Get("refresh") Обновить остатки</a>

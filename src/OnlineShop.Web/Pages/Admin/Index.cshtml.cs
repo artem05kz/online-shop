@@ -12,6 +12,7 @@ namespace OnlineShop.Web.Pages.Admin;
 public class IndexModel(ShopDbContext db) : PageModel
 {
     public int NewOrders { get; private set; }
+    public int PendingReviews { get; private set; }
     public int Products { get; private set; }
     public int NoPhoto { get; private set; }
     public int NoPrice { get; private set; }
@@ -20,6 +21,7 @@ public class IndexModel(ShopDbContext db) : PageModel
     public async Task OnGetAsync()
     {
         NewOrders = await db.Orders.CountAsync(o => o.Status == OrderStatus.New);
+        PendingReviews = await db.Reviews.CountAsync(r => r.Status == ReviewStatus.Pending);
         Products = await db.Products.CountAsync();
         NoPhoto = await db.Products.CountAsync(p => !p.Images.Any());
         NoPrice = await db.Products.CountAsync(p => p.Variants.Any(v => v.IsActive && v.Price == null));

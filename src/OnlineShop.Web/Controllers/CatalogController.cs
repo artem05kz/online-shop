@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Models;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Services;
 using OnlineShop.Web.ViewModels;
@@ -183,7 +184,16 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             .AsNoTracking()
             .ToListAsync();
 
-        return View(new ProductPageViewModel { Product = product, Related = related });
+        var reviews = await db.Reviews.Where(r => r.ProductId == product.Id && r.Status == ReviewStatus.Approved)
+            .Include(r => r.User).OrderByDescending(r => r.CreatedAt).AsNoTracking().ToListAsync();
+        var userId = User.Identity?.IsAuthenticated == true ? User.ShopUserId() : (int?)null;
+        var canReview = userId is { } uid && await ReviewsController.CanReviewAsync(db, uid, product.Id);
+        var myReview = userId is { } me ? await db.Reviews.AsNoTracking().FirstOrDefaultAsync(r => r.ProductId == product.Id && r.UserId == me) : null;
+
+        return View(new ProductPageViewModel
+        {
+            Product = product, Related = related, Reviews = reviews, CanReview = canReview, MyReview = myReview,
+        });
     }
 
     /// <summary>

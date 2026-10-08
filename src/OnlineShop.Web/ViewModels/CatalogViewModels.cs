@@ -39,6 +39,17 @@ public class ProductPageViewModel
 {
     public required Product Product { get; init; }
     public required IReadOnlyList<Product> Related { get; init; }
+
+    /// <summary>Опубликованные отзывы, новые сверху.</summary>
+    public IReadOnlyList<Review> Reviews { get; init; } = [];
+
+    /// <summary>Получал ли товар вошедший покупатель: тогда ему показывается форма отзыва.</summary>
+    public bool CanReview { get; init; }
+
+    /// <summary>Отзыв этого покупателя, если он уже писал (в том числе ещё не проверенный).</summary>
+    public Review? MyReview { get; init; }
+
+    public double? AverageRating => Reviews.Count == 0 ? null : Reviews.Average(r => r.Rating);
 }
 
 public class StoreListViewModel

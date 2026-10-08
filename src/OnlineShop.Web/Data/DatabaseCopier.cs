@@ -64,6 +64,7 @@ public static class DatabaseCopier
         await Copy<TelegramRecipient>("номеров Telegram");
         await Copy<Favorite>("");
         await Copy<CartItem>("позиций в корзинах");
+        await Copy<Review>("отзывов");
         // Ключи входа: после переноса покупатели и менеджеры остаются в аккаунтах.
         await Copy<DataProtectionKey>("");
 

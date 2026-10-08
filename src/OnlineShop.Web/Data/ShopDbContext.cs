@@ -40,6 +40,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     public DbSet<TelegramRecipient> TelegramRecipients => Set<TelegramRecipient>();
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Review> Reviews => Set<Review>();
 
     // Ключи, которыми подписаны куки входа. В базе, а не в памяти: иначе после перезапуска сайта
     // всех покупателей и менеджеров выкидывало бы из аккаунта.
@@ -118,6 +119,17 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
         {
             e.HasOne(i => i.Order).WithMany(o => o.Items).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Variant).WithMany(v => v.OrderItems).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<Review>(e =>
+        {
+            e.HasOne(r => r.Product).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(r => r.User).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(r => new { r.ProductId, r.UserId }).IsUnique();
+            e.HasIndex(r => r.Status);
+            e.Property(r => r.Status)
+                .HasConversion(s => s.ToCode(), c => ReviewStatusInfo.FromCode(c))
+                .HasMaxLength(20);
         });
 
         builder.Entity<CartItem>(e =>

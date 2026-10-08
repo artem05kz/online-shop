@@ -1,0 +1,65 @@
+@page "/admin/reviews"
+@model OnlineShop.Web.Pages.Admin.Reviews.IndexModel
+@{
+    ViewData["Title"] = "Отзывы";
+    ViewData["AdminSection"] = "reviews";
+    var tabs = new[] { ReviewStatus.Pending, ReviewStatus.Approved, ReviewStatus.Rejected };
+}
+<div class="admin-head">
+    <h1>Отзывы</h1>
+</div>
+<p class="admin-count">Отзывы оставляют покупатели, получившие товар. На сайте видны только опубликованные.</p>
+
+<div class="chips" style="margin-bottom:16px;">
+    @foreach (var tab in tabs)
+    {
+        <a class="chip-link @(Model.Status == tab.ToCode() ? "on" : "")" href="/admin/reviews?status=@tab.ToCode()">
+            @tab.Label() <span class="n">@Model.Counts.GetValueOrDefault(tab)</span>
+        </a>
+    }
+</div>
+
+@if (Model.List.Items.Count == 0)
+{
+    <p class="admin-count">Здесь пусто.</p>
+}
+<div class="item-list">
+    @foreach (var review in Model.List.Items)
+    {
+        <div class="item">
+            <img class="thumb" src="@Media.PhotoUrl(review.Product, Media.Small)" alt="">
+            <div style="flex:1; min-width:0;">
+                <div>
+                    <a href="@Url.Product(review.Product)" target="_blank" rel="noopener"><b>@review.Product.Name</b></a>
+                </div>
+                <div style="margin:4px 0;"><partial name="_Stars" model="review.Rating" /> <span class="muted">@review.User.UserName, @Format.DateTimeText(review.UpdatedAt)</span></div>
+                @if (review.Text.Length > 0)
+                {
+                    <p style="margin:6px 0 0; white-space:pre-line;">@review.Text</p>
+                }
+                else
+                {
+                    <p class="muted" style="margin:6px 0 0;">Только оценка, без текста.</p>
+                }
+            </div>
+            <div class="side" style="display:flex; flex-direction:column; gap:8px;">
+                @if (review.Status != ReviewStatus.Approved)
+                {
+                    <form method="post" asp-page-handler="Approve" asp-route-id="@review.Id" asp-route-status="@Model.Status">
+                        <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Опубликовать</button>
+                    </form>
+                }
+                @if (review.Status != ReviewStatus.Rejected)
+                {
+                    <form method="post" asp-page-handler="Reject" asp-route-id="@review.Id" asp-route-status="@Model.Status">
+                        <button class="btn btn-ghost btn-sm" type="submit">@Icons.Get("x", 16) Отклонить</button>
+                    </form>
+                }
+                <form method="post" asp-page-handler="Delete" asp-route-id="@review.Id" asp-route-status="@Model.Status" data-confirm="Удалить отзыв насовсем?">
+                    <button class="btn btn-ghost btn-sm" type="submit">@Icons.Get("trash", 16) Удалить</button>
+                </form>
+            </div>
+        </div>
+    }
+</div>
+<partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

@@ -107,6 +107,62 @@
     </div>
 </div>
 
+<section class="section reviews" id="reviews">
+    <div class="section-head">
+        <h2>Отзывы</h2>
+        @if (Model.AverageRating is { } average)
+        {
+            <span class="rating-sum"><partial name="_Stars" model="(int)Math.Round(average)" /> @average.ToString("0.0") из 5, @Model.Reviews.Count @Plural.Choose(Model.Reviews.Count, "отзыв", "отзыва", "отзывов")</span>
+        }
+    </div>
+    @if (Model.Reviews.Count == 0)
+    {
+        <p class="muted">Отзывов пока нет.</p>
+    }
+    @foreach (var review in Model.Reviews)
+    {
+        <article class="review">
+            <div class="review-head">
+                <partial name="_Stars" model="review.Rating" />
+                <b>@(review.User.FirstName.Length > 0 ? review.User.FirstName : "Покупатель")</b>
+                <span class="muted">@Format.ToLocal(review.CreatedAt).ToString("dd.MM.yyyy")</span>
+            </div>
+            @if (review.Text.Length > 0)
+            {
+                <p class="review-text">@review.Text</p>
+            }
+        </article>
+    }
+
+    @if (Model.CanReview)
+    {
+        <form class="panel review-form" method="post" action="/product/@product.Id/review">
+            <h3>@(Model.MyReview is null ? "Ваш отзыв" : "Изменить ваш отзыв")</h3>
+            @if (Model.MyReview is { Status: ReviewStatus.Pending })
+            {
+                <p class="muted">Ваш отзыв на проверке у менеджера и скоро появится.</p>
+            }
+            <fieldset class="star-input">
+                <legend>Оценка</legend>
+                @for (var star = 5; star >= 1; star--)
+                {
+                    <input type="radio" id="star-@star" name="rating" value="@star" checked="@(Model.MyReview?.Rating == star)" required>
+                    <label for="star-@star" title="@star из 5">@Icons.Get("star", 30)</label>
+                }
+            </fieldset>
+            <div class="form-row">
+                <label for="review-text">Что понравилось или нет</label>
+                <textarea class="field" id="review-text" name="text" rows="4" maxlength="@Review.MaxTextLength">@Model.MyReview?.Text</textarea>
+            </div>
+            <button class="btn" type="submit">Отправить</button>
+        </form>
+    }
+    else if (!(User.Identity?.IsAuthenticated ?? false))
+    {
+        <p class="muted">Купили этот товар? <a href="@ShopUrls.Login?ReturnUrl=@Uri.EscapeDataString(Context.Request.Path + "#reviews")">Войдите</a>, чтобы оставить отзыв.</p>
+    }
+</section>
+
 @if (Model.Related.Count > 0)
 {
     <section class="section">
