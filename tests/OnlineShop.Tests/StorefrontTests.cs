@@ -146,8 +146,34 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     }
 
     [Fact]
+    public async Task Product_page_and_card_show_article_and_stock()
+    {
+        ResetStock();
+        var page = await Page(Client(), "/product/шампунь-тест");
+        Assert.Contains("арт. <span id=\"buy-article\">100</span>", page);
+        Assert.Contains("В наличии: 5 шт.", page);
+        Assert.Contains("max=\"5\" id=\"buy-qty\"", page);
+        // Карточка в каталоге: артикул под названием, только видимые фасовки.
+        var catalog = await Page(Client(), "/search?q=" + Uri.EscapeDataString("Шампунь Тест"));
+        Assert.Contains("<p class=\"card-article\">арт. 100</p>", catalog);
+    }
+
+    /// <summary>
+    /// Другие тесты оформляют заказы на ту же фасовку, и резерв уменьшает остаток. Тестам, где важно
+    /// точное число в наличии, возвращаем исходные 5 шт. без резерва.
+    /// </summary>
+    private void ResetStock()
+    {
+        using var scope = _factory.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<ShopDbContext>().ProductVariants
+            .Where(v => v.Id == _factory.InStockVariantId)
+            .ExecuteUpdate(u => u.SetProperty(v => v.StockQty, 5).SetProperty(v => v.ReservedQty, 0));
+    }
+
+    [Fact]
     public async Task Cart_add_update_and_remove()
     {
+        ResetStock();
         var client = Client();
         var token = await TokenFrom(client, "/product/шампунь-тест");
 
@@ -158,10 +184,21 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
 
         var cart = await Page(client, "/orders/cart");
         Assert.Contains("3 780 ₸", cart);
-        Assert.Contains("«Шампунь Тест» в корзине.", cart);
+        Assert.Contains("«Шампунь Тест, 1 л» в корзине.", cart);
+        Assert.Contains("В наличии: 5 шт.", cart);
 
         await Post(client, $"/orders/cart/update/{_factory.InStockVariantId}", token, ("quantity", "3"));
         Assert.Contains("5 670 ₸", await Page(client, "/orders/cart"));
+
+        // Больше остатка (5 шт.) не ставится ни изменением количества, ни повторным добавлением.
+        await Post(client, $"/orders/cart/update/{_factory.InStockVariantId}", token, ("quantity", "9"));
+        cart = await Page(client, "/orders/cart");
+        Assert.Contains("9 450 ₸", cart);
+        Assert.Contains("В наличии только 5 шт., больше заказать нельзя.", cart);
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token, ("quantity", "4"));
+        cart = await Page(client, "/orders/cart");
+        Assert.Contains("9 450 ₸", cart);
+        Assert.Contains("В наличии только 5 шт. «Шампунь Тест, 1 л», в корзине 5 шт.", cart);
 
         await Post(client, $"/orders/cart/remove/{_factory.InStockVariantId}", token);
         Assert.Contains("Корзина пуста", await Page(client, "/orders/cart"));
@@ -265,7 +302,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         // Цена сегодняшняя (1890), а не из заказа (1500); скрытая фасовка пропущена с объяснением.
         Assert.Contains("3 780 ₸", cart);
         Assert.Contains("добавлено позиций из заказа", cart);
-        Assert.Contains("Сейчас нет в продаже: Шампунь Тест (20 л).", cart);
+        Assert.Contains("Сейчас нет в наличии или сняты с продажи: Шампунь Тест (20 л).", cart);
 
         // Чужой заказ повторить нельзя.
         var stranger = Client(_factory.OtherBuyerId);

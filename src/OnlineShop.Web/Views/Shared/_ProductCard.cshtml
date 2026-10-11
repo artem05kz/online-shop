@@ -24,6 +24,8 @@
         <p class="brand">@Model.Category.Brand.Name</p>
     }
     <a class="name" href="@url">@Model.Name</a>
+    @* Артикул главный ориентир и для магазина, и для постоянных покупателей. *@
+    <p class="card-article">арт. @string.Join(", ", Model.ActiveVariants.Select(v => v.Article))</p>
     @if (packs.Count > 1)
     {
         <p class="packs">@string.Join(" · ", packs)</p>

@@ -445,3 +445,7 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
 .bar-fill { background: #62b22c; border-radius: 4px 4px 0 0; min-height: 2px; }
 .bar:hover .bar-fill { background: #3d7a1a; }
 .bar-label { position: absolute; bottom: -24px; left: 50%; transform: translateX(-50%); font-size: .8rem; color: #555; white-space: nowrap; }
+
+/* Артикул под названием товара: хозяйка магазина ищет и помнит товары по артикулу. */
+.item .article { display: block; font-size: .92rem; color: var(--a-ink-soft); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.h1-article { display: block; font-size: 1rem; font-weight: 500; color: var(--a-ink-soft); margin-top: 4px; font-variant-numeric: tabular-nums; }

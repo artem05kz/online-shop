@@ -38,7 +38,10 @@ public class IndexModel(ShopDbContext db, AccountMail mail, StockReservations re
             var needle = Q.Trim().ToLowerInvariant();
             query = query.Where(o => SqliteFunctions.Lower(o.ContactPhone).Contains(needle)
                 || SqliteFunctions.Lower(o.ContactName).Contains(needle)
-                || SqliteFunctions.Lower(o.User.UserName!).Contains(needle));
+                || SqliteFunctions.Lower(o.User.UserName!).Contains(needle)
+                // По артикулу: найти, кто заказывал конкретную фасовку.
+                || o.Items.Any(i => SqliteFunctions.Lower(i.Article).Contains(needle))
+                || o.Id.ToString() == needle);
         }
         if (!string.IsNullOrEmpty(Status))
         {

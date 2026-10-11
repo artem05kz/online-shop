@@ -9,7 +9,7 @@
 </div>
 
 <form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Телефон, имя или логин">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Телефон, имя, артикул или номер заказа">
     <select class="select" name="status" data-autosubmit>
         <option value="">Все статусы</option>
         @foreach (var status in Enum.GetValues<OrderStatus>())

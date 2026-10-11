@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 ﻿using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,14 @@ public class ReviewTests(TempShopFactory factory) : IClassFixture<TempShopFactor
 
     private static async Task<HttpResponseMessage> Send(HttpClient client, string slug, int productId, int rating, string text)
     {
-        var token = await TokenFrom(client, $"/product/{slug}");
+        // Токен берётся из самой формы отзыва: на показе у неё токена не было, а токен
+        // соседней формы это скрывал. Формы нет (отзыв оставить нельзя), берём любой.
+        var html = await client.GetStringAsync($"/product/{slug}");
+        var form = Regex.Match(html, "<form[^>]*review-form[^>]*>(.*?)</form>", RegexOptions.Singleline);
+        var token = form.Success
+            ? Regex.Match(form.Groups[1].Value, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"([^\"]+)\"").Groups[1].Value
+            : await TokenFrom(client, $"/product/{slug}");
+        Assert.True(!form.Success || token.Length > 0, "В форме отзыва нет защитного токена");
         return await Post(client, $"/product/{productId}/review", token, ("rating", rating.ToString()), ("text", text));
     }
 

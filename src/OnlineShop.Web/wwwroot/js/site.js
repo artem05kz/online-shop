@@ -86,10 +86,14 @@
         var input = wrap ? wrap.querySelector('input') : null;
         if (!input) return;
         var min = parseInt(input.getAttribute('min') || '1', 10);
+        // max: сколько штук есть в наличии, больше заказать нельзя.
+        var max = parseInt(input.getAttribute('max') || '0', 10) || Infinity;
         var value = parseInt(input.value || '1', 10);
         if (isNaN(value)) value = min;
         value += (button.getAttribute('data-qty') === 'plus' ? 1 : -1);
-        input.value = Math.max(min, value);
+        var clamped = Math.min(max, Math.max(min, value));
+        if (clamped === parseInt(input.value, 10)) return;
+        input.value = clamped;
         input.dispatchEvent(new Event('change', { bubbles: true }));
     });
 })();

@@ -31,12 +31,20 @@ else
                             Фасовка: @(string.IsNullOrEmpty(line.Variant.PackLabel) ? "не указана" : line.Variant.PackLabel) · Артикул: @line.Variant.Article
                         </div>
                         <div class="li-meta">@Format.Money(line.Price) за штуку</div>
+                        @if (line.Quantity > line.Variant.AvailableQty)
+                        {
+                            <div class="li-warn">@(line.Variant.AvailableQty == 0 ? "Закончился, уберите из корзины." : $"В наличии только {line.Variant.AvailableQty} шт., уменьшите количество.")</div>
+                        }
+                        else
+                        {
+                            <div class="li-meta">В наличии: @line.Variant.AvailableQty шт.</div>
+                        }
                     </div>
                     <div class="li-right">
                         <form asp-action="Update" asp-route-variantId="@line.Variant.Id" method="post" data-autosubmit>
                             <span class="qty">
                                 <button type="button" data-qty="minus" aria-label="Меньше">−</button>
-                                <input type="number" name="quantity" value="@line.Quantity" min="1" aria-label="Количество">
+                                <input type="number" name="quantity" value="@line.Quantity" min="1" max="@Math.Max(1, line.Variant.AvailableQty)" aria-label="Количество">
                                 <button type="button" data-qty="plus" aria-label="Больше">+</button>
                             </span>
                             @* Запасной вариант, если в браузере отключены скрипты. *@

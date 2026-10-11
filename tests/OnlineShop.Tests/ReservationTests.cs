@@ -71,9 +71,8 @@ public class ReservationTests : IClassFixture<StorefrontTests.ShopFactory>
         // Из 1С пришёл прежний остаток 2: продажа там ещё не проведена. Товар всё равно не продаётся второй раз.
         Db(db => db.ProductVariants.Where(v => v.Id == variantId).ExecuteUpdate(s => s.SetProperty(v => v.StockQty, 2)));
         await Post(client, $"/orders/cart/add/{variantId}", token);
-        var second = await Checkout(client, token);
-        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
-        Assert.Contains("закончился", await Text(second));
+        Assert.Contains("закончился, положить в корзину нельзя", await Page(client, "/orders/cart"));
+        await Checkout(client, token);
         Assert.Equal(1, Db(db => db.Orders.Count(o => o.Items.Any(i => i.VariantId == variantId))));
 
         // Заказ выполнен: резерв снят, на сайте снова остаток из 1С.
@@ -87,14 +86,20 @@ public class ReservationTests : IClassFixture<StorefrontTests.ShopFactory>
         var variantId = SeedVariant(stock: 3);
         var client = Buyer();
         var token = await TokenFrom(client, "/");
+        // Корзина сама не даёт положить больше остатка.
         await Post(client, $"/orders/cart/add/{variantId}", token, ("quantity", "5"));
-        var tooMany = await Checkout(client, token);
-        Assert.Contains("осталось 3 шт.", await Text(tooMany));
+        Assert.Contains("в корзине 3 шт.", await Page(client, "/orders/cart"));
 
-        await Post(client, $"/orders/cart/update/{variantId}", token, ("quantity", "3"));
+        // Пока товар лежал в корзине, остаток уменьшился: оформление не пропускает и говорит, сколько осталось.
+        Db(db => db.ProductVariants.Where(v => v.Id == variantId).ExecuteUpdate(s => s.SetProperty(v => v.StockQty, 2)));
+        Assert.Contains("В наличии только 2 шт., уменьшите количество.", await Page(client, "/orders/cart"));
+        var tooMany = await Checkout(client, token);
+        Assert.Contains("осталось 2 шт.", await Text(tooMany));
+
+        await Post(client, $"/orders/cart/update/{variantId}", token, ("quantity", "2"));
         var placed = await Checkout(client, token);
         var orderId = int.Parse(placed.Headers.Location!.OriginalString.Split('/').Last());
-        Assert.Equal(3, Db(db => db.ProductVariants.Single(v => v.Id == variantId).ReservedQty));
+        Assert.Equal(2, Db(db => db.ProductVariants.Single(v => v.Id == variantId).ReservedQty));
         Assert.Contains("Нет в наличии", await Page(_factory.Browser(), "/search?q=" + Uri.EscapeDataString(Db(db => db.Products.Single(p => p.Variants.Any(v => v.Id == variantId)).Name))));
 
         await SetStatus(orderId, OrderStatus.Canceled);

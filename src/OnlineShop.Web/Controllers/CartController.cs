@@ -24,8 +24,21 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
             return NotFound();
         }
 
-        await cart.AddAsync(variant.Id, Math.Max(1, quantity));
-        TempData.Flash($"«{variant.Product.Name}» в корзине.");
+        var name = variant.PackLabel.Length > 0 ? $"{variant.Product.Name}, {variant.PackLabel}" : variant.Product.Name;
+        var inCart = await cart.AddAsync(variant, quantity);
+        if (inCart == 0)
+        {
+            TempData.Flash($"«{name}» закончился, положить в корзину нельзя.", FlashLevel.Error);
+        }
+        else if (inCart < quantity || inCart == variant.AvailableQty)
+        {
+            // Попросили больше, чем есть, или упёрлись в остаток вместе с тем, что уже лежало в корзине.
+            TempData.Flash($"В наличии только {variant.AvailableQty} шт. «{name}», в корзине {inCart} шт.", FlashLevel.Info);
+        }
+        else
+        {
+            TempData.Flash($"«{name}» в корзине.");
+        }
 
         // Возвращаем только на страницы своего сайта, чтобы ссылкой нельзя было увести покупателя на чужой.
         return Url.IsLocalUrl(next) ? LocalRedirect(next) : RedirectToAction(nameof(Index));
@@ -39,7 +52,13 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
     [HttpPost("update/{variantId:int}")]
     public async Task<IActionResult> Update(int variantId, int quantity = 1)
     {
-        await cart.SetQuantityAsync(variantId, quantity);
+        var variant = await db.ProductVariants.AsNoTracking().FirstOrDefaultAsync(v => v.Id == variantId);
+        var available = variant?.AvailableQty ?? 0;
+        if (quantity > available && available > 0)
+        {
+            TempData.Flash($"В наличии только {available} шт., больше заказать нельзя.", FlashLevel.Info);
+        }
+        await cart.SetQuantityAsync(variantId, quantity, available > 0 ? available : null);
         return RedirectToAction(nameof(Index));
     }
 

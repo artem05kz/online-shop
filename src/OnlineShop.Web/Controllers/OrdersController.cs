@@ -47,9 +47,8 @@ public class OrdersController(ShopDbContext db, Cart cart) : Controller
         foreach (var item in order.Items.OrderBy(i => i.Id))
         {
             var v = item.Variant;
-            if (v.IsActive && v.Price is not null && v.Product.IsActive)
+            if (v.IsActive && v.Price is not null && v.Product.IsActive && await cart.AddAsync(v, item.Quantity) > 0)
             {
-                await cart.AddAsync(v.Id, item.Quantity);
                 added++;
             }
             else
@@ -64,7 +63,7 @@ public class OrdersController(ShopDbContext db, Cart cart) : Controller
         }
         if (skipped.Count > 0)
         {
-            TempData.Flash("Сейчас нет в продаже: " + string.Join(", ", skipped) + ".", added > 0 ? FlashLevel.Info : FlashLevel.Error);
+            TempData.Flash("Сейчас нет в наличии или сняты с продажи: " + string.Join(", ", skipped) + ".", added > 0 ? FlashLevel.Info : FlashLevel.Error);
         }
         return RedirectToAction("Index", "Cart");
     }

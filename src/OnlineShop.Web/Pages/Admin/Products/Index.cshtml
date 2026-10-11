@@ -61,6 +61,7 @@
             }
             <span>
                 <span class="name">@product.Name</span>
+                <span class="article">арт. @string.Join(", ", row.Packs.Select(v => string.IsNullOrEmpty(v.PackLabel) ? v.Article : $"{v.Article} ({v.PackLabel})"))</span>
                 <span class="path">@row.Path</span>
                 <span class="facts">
                     <span>Фасовки: @string.Join(", ", row.Packs.Select(v => string.IsNullOrEmpty(v.PackLabel) ? v.Article : v.PackLabel))</span>

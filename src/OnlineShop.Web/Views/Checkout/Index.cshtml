@@ -10,6 +10,7 @@
 <h1>Оформление заказа</h1>
 
 <form asp-action="Index" method="post">
+    <div asp-validation-summary="ModelOnly" class="checkout-errors"></div>
     <div class="two-col">
         <div>
             <div class="panel">
@@ -124,7 +125,6 @@
                 <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
                 <span class="errorlist" asp-validation-for="Form.AcceptPrivacy"></span>
             }
-            <div asp-validation-summary="ModelOnly" class="errorlist" style="margin-bottom:12px;"></div>
             <button class="btn btn-block" type="submit">Подтвердить заказ</button>
         </div>
     </div>

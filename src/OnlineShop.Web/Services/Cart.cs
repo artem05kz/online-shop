@@ -70,25 +70,39 @@ public class Cart(IHttpContextAccessor httpContextAccessor, ShopDbContext db)
         return (_count = owner is null ? 0 : await db.CartItems.Where(i => i.OwnerKey == owner).SumAsync(i => i.Quantity)).Value;
     }
 
-    public async Task AddAsync(int variantId, int quantity)
+    /// <summary>
+    /// Добавляет фасовку, но не больше, чем её можно заказать (остаток минус резерв).
+    /// Возвращает, сколько штук этой фасовки теперь в корзине: 0, если товар закончился.
+    /// </summary>
+    public async Task<int> AddAsync(ProductVariant variant, int quantity)
     {
+        var available = variant.AvailableQty;
+        if (available <= 0)
+        {
+            return 0;
+        }
         var owner = Owner(create: true)!;
-        var item = await db.CartItems.FirstOrDefaultAsync(i => i.OwnerKey == owner && i.VariantId == variantId);
+        var item = await db.CartItems.FirstOrDefaultAsync(i => i.OwnerKey == owner && i.VariantId == variant.Id);
         if (item is null)
         {
-            db.CartItems.Add(new CartItem { OwnerKey = owner, VariantId = variantId, Quantity = quantity, UpdatedAt = DateTime.UtcNow });
+            db.CartItems.Add(item = new CartItem { OwnerKey = owner, VariantId = variant.Id, Quantity = 0 });
         }
-        else
-        {
-            item.Quantity += quantity;
-            item.UpdatedAt = DateTime.UtcNow;
-        }
+        item.Quantity = Math.Min(item.Quantity + Math.Max(1, quantity), available);
+        item.UpdatedAt = DateTime.UtcNow;
         await SaveAsync(owner);
+        return item.Quantity;
     }
 
-    /// <summary>Новое количество с цифрой 0 или меньше убирает позицию из корзины.</summary>
-    public async Task SetQuantityAsync(int variantId, int quantity)
+    /// <summary>
+    /// Новое количество с цифрой 0 или меньше убирает позицию из корзины. available: сколько можно
+    /// заказать, больше этого в корзину не попадёт.
+    /// </summary>
+    public async Task SetQuantityAsync(int variantId, int quantity, int? available = null)
     {
+        if (available is { } limit && quantity > limit)
+        {
+            quantity = limit;
+        }
         if (Owner() is not { } owner)
         {
             return;

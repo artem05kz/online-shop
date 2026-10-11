@@ -337,7 +337,7 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
             {
                 User = new ApplicationUser { UserName = $"статус{Guid.NewGuid():N}"[..20] },
                 ContactName = "Иван", ContactPhone = "+7 700 111", City = "Актау", StreetAndDetails = "1",
-                Items = [new OrderItem { VariantId = variantId, ProductName = "Товар", Price = 1000m, Quantity = 1 }],
+                Items = [new OrderItem { VariantId = variantId, ProductName = "Товар", Article = "АРТ-77", Price = 1000m, Quantity = 1 }],
             };
             db.Orders.Add(order);
             db.SaveChanges();
@@ -345,6 +345,9 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         });
         var token = await TokenFrom(client, "/admin/orders?status=new");
         Assert.Contains($"№{orderId}", await Page(client, "/admin/orders?q=700+111"));
+        // Поиск по артикулу без учёта регистра и по номеру заказа.
+        Assert.Contains($"№{orderId}", await Page(client, "/admin/orders?q=" + Uri.EscapeDataString("арт-77")));
+        Assert.Contains($"№{orderId}", await Page(client, $"/admin/orders?q={orderId}"));
 
         var posted = await Post(client, "/admin/orders?handler=SaveList", token, ("Rows[0].Id", orderId.ToString()), ("Rows[0].Status", "Delivering"));
         Assert.Equal(HttpStatusCode.Redirect, posted.StatusCode);

@@ -58,6 +58,10 @@
 
     <div>
         <h1>@product.Name</h1>
+        @if (chosen is not null || packs.Count > 0)
+        {
+            <p class="article-line">арт. <span id="buy-article">@((chosen ?? packs[0]).Article)</span></p>
+        }
         <partial name="_FavoriteButton" model="new FavoriteButtonModel(product.Id, (await Favorites.IdsAsync()).Contains(product.Id), WithLabel: true)" />
         @if (!product.InStock && product.ActiveVariants.Count > 0)
         {
@@ -79,10 +83,11 @@
                         var available = pack.InStock && pack.Price is not null;
                         <label class="pack-option@(available ? "" : " is-off")">
                             <input type="radio" name="variantId" value="@pack.Id" checked="@(pack == chosen)" disabled="@(!available)"
-                                   data-price="@(pack.Price is { } p ? Format.Money(p) : "")">
+                                   data-price="@(pack.Price is { } p ? Format.Money(p) : "")"
+                                   data-available="@pack.AvailableQty" data-article="@pack.Article">
                             <span class="pack-name">@(string.IsNullOrEmpty(pack.PackLabel) ? pack.Article : pack.PackLabel)</span>
                             <span class="pack-price">@(pack.Price is { } price ? Format.Money(price) : "цена уточняется")</span>
-                            <span class="pack-stock">@(pack.InStock ? "в наличии" : "нет в наличии")</span>
+                            <span class="pack-stock">@(pack.InStock ? $"в наличии: {pack.AvailableQty} шт." : "нет в наличии")</span>
                         </label>
                     }
                 </div>
@@ -93,11 +98,12 @@
                         <span class="price" id="buy-price">@Format.Money(chosen!.Price!.Value)</span>
                         <span class="qty">
                             <button type="button" data-qty="minus" aria-label="Меньше">−</button>
-                            <input type="number" name="quantity" value="1" min="1" aria-label="Количество">
+                            <input type="number" name="quantity" value="1" min="1" max="@chosen!.AvailableQty" id="buy-qty" aria-label="Количество">
                             <button type="button" data-qty="plus" aria-label="Больше">+</button>
                         </span>
                         <button class="btn" type="submit">@Icons.Get("cart", 18) В корзину</button>
                     </div>
+                    <p class="buy-stock" id="buy-stock">В наличии: @chosen!.AvailableQty шт.</p>
                     <p class="buy-note">Оплата наличными или картой при получении. Доставку и время уточнит менеджер.</p>
                 }
                 else
@@ -155,7 +161,8 @@
 
     @if (Model.CanReview)
     {
-        <form class="panel review-form" method="post" action="/product/@product.Id/review">
+        @* asp-controller и asp-action, а не action="...": только так форма получает защитный токен. *@
+        <form class="panel review-form" method="post" asp-controller="Reviews" asp-action="Save" asp-route-productId="@product.Id">
             <h3>@(Model.MyReview is null ? "Ваш отзыв" : "Изменить ваш отзыв")</h3>
             @if (Model.MyReview is { Status: ReviewStatus.Pending })
             {
@@ -199,10 +206,21 @@
     <script nonce="@Context.CspNonce()">
     (function () {
         // Цена у кнопки «В корзину» показывает выбранную фасовку.
+        // При выборе фасовки меняются цена, артикул, остаток и наибольшее количество.
         var price = document.getElementById('buy-price');
+        var article = document.getElementById('buy-article');
+        var stock = document.getElementById('buy-stock');
+        var qty = document.getElementById('buy-qty');
         document.querySelectorAll('#buy-box input[name=variantId]').forEach(function (radio) {
             radio.addEventListener('change', function () {
                 if (price && radio.getAttribute('data-price')) price.textContent = radio.getAttribute('data-price');
+                if (article) article.textContent = radio.getAttribute('data-article');
+                var available = parseInt(radio.getAttribute('data-available'), 10);
+                if (stock) stock.textContent = 'В наличии: ' + available + ' шт.';
+                if (qty) {
+                    qty.max = available;
+                    if (parseInt(qty.value, 10) > available) qty.value = available;
+                }
             });
         });
         // Миниатюры фото меняют большое фото.

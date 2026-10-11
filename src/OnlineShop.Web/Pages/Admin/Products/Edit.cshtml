@@ -8,7 +8,12 @@
     var primary = Model.Images.FirstOrDefault(i => i.IsPrimary) ?? Model.Images.FirstOrDefault();
 }
 <div class="admin-head">
-    <h1>@(Model.Id is null ? "Новый товар" : Model.Input.Name)</h1>
+    <h1>@(Model.Id is null ? "Новый товар" : Model.Input.Name)
+        @if (Model.Variants.Any(v => !string.IsNullOrWhiteSpace(v.Article)))
+        {
+            <span class="h1-article">арт. @string.Join(", ", Model.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Article)).Select(v => v.Article))</span>
+        }
+    </h1>
     @if (existing is { IsActive: true })
     {
         <a class="btn btn-ghost" href="@Url.Product(existing)" target="_blank" rel="noopener">@Icons.Get("external") Как на сайте</a>
