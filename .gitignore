@@ -27,3 +27,7 @@ src/OnlineShop.Web/media/
 
 # Резервные копии базы и фото (docker compose, сервис backup)
 backups/
+
+# Настройки Claude Code и его инструкции: только на этой машине, в репозиторий не кладём
+.claude/
+CLAUDE.md
