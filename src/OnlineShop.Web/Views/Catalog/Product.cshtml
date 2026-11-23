@@ -40,9 +40,24 @@
     <a href="@Url.Category(product.Category)">@product.Category.Name</a>
 </nav>
 
-<div class="product-page">
-    <div class="gallery">
-        <img id="gallery-main" src="@Media.PhotoUrl(product, Media.Large)" alt="@product.Name">
+@{
+    // Цена за 1 кг / 1 л у каждой фасовки. «Выгоднее» — самая низкая цена за единицу среди фасовок в наличии
+    // с той же единицей, если сравнивать есть с чем (хотя бы две такие фасовки).
+    var perUnit = packs.ToDictionary(v => v.Id, v => PackSize.PerUnit(v.PackLabel, v.Price));
+    var bestId = packs.Where(v => v.InStock && perUnit[v.Id] is not null)
+        .GroupBy(v => perUnit[v.Id]!.Value.Unit)
+        .Where(g => g.Count() > 1)
+        .Select(g => g.MinBy(v => perUnit[v.Id]!.Value.Value)!.Id)
+        .ToHashSet();
+    string UnitText(int id) => perUnit[id] is { } u ? $"{Format.Money(u.Value)} за 1 {u.Unit}" : "";
+    var text = ProductText.Split(product.Description);
+}
+@* Компьютерная версия: 12 колонок, две равные половины. Фото — колонки 1–6 и остаётся на месте при прокрутке, покупка — 7–12. *@
+<div class="pp">
+    <div class="pp-gallery">
+        <div class="pp-photo">
+            <img id="gallery-main" src="@Media.PhotoUrl(product, Media.Large)" alt="@product.Name">
+        </div>
         @if (images.Count > 1)
         {
             <div class="gallery-thumbs">
@@ -56,17 +71,27 @@
         }
     </div>
 
-    <div>
-        <h1>@product.Name</h1>
-        @if (chosen is not null || packs.Count > 0)
-        {
-            <p class="article-line">арт. <span id="buy-article">@((chosen ?? packs[0]).Article)</span></p>
-        }
-        <partial name="_FavoriteButton" model="new FavoriteButtonModel(product.Id, (await Favorites.IdsAsync()).Contains(product.Id), WithLabel: true)" />
-        @if (!product.InStock && product.ActiveVariants.Count > 0)
-        {
-            <p class="muted" style="margin:-8px 0 16px; font-size:.9rem;">Добавьте товар в избранное, и мы напишем на почту, когда он появится.</p>
-        }
+    <div class="pp-info">
+        <a class="pp-cat" href="@Url.Category(product.Category)">@brand.Name · @CategoryNames.Short(product.Category.Name)</a>
+        <h1 class="pp-h1">@Typo.Text(product.Name)</h1>
+        @* Артикул и отзывы слева, «В избранное» справа — одной строкой, с воздухом между ними. *@
+        <div class="pp-meta">
+            <p class="pp-meta-info">
+                @if (chosen is not null || packs.Count > 0)
+                {
+                    <span>арт. <span id="buy-article">@((chosen ?? packs[0]).Article)</span></span>
+                }
+                @if (Model.AverageRating is { } avg)
+                {
+                    <a href="#reviews"><span class="pp-stars">@Icons.Get("star", 14) @avg.ToString("0.0")</span> @Model.Reviews.Count @Plural.Choose(Model.Reviews.Count, "отзыв", "отзыва", "отзывов")</a>
+                }
+                else
+                {
+                    <a href="#reviews">Отзывов пока нет</a>
+                }
+            </p>
+            <partial name="_FavoriteButton" model="new FavoriteButtonModel(product.Id, (await Favorites.IdsAsync()).Contains(product.Id), WithLabel: true)" />
+        </div>
 
         @if (packs.Count == 0)
         {
@@ -74,7 +99,7 @@
         }
         else
         {
-            <form asp-controller="Cart" asp-action="AddSelected" method="post" class="buy-box" id="buy-box">
+            <form asp-controller="Cart" asp-action="AddSelected" method="post" class="buy-box pp-buy" id="buy-box">
                 <input type="hidden" name="next" value="@returnUrl">
                 <p class="buy-label">@(packs.Count > 1 ? "Выберите фасовку" : "Фасовка")</p>
                 <div class="pack-options">
@@ -83,53 +108,100 @@
                         var available = pack.InStock && pack.Price is not null;
                         <label class="pack-option@(available ? "" : " is-off")">
                             <input type="radio" name="variantId" value="@pack.Id" checked="@(pack == chosen)" disabled="@(!available)"
-                                   data-price="@(pack.Price is { } p ? Format.Money(p) : "")"
+                                   data-price="@(pack.Price is { } p ? Format.Money(p) : "")" data-unit="@UnitText(pack.Id)"
                                    data-available="@pack.AvailableQty" data-article="@pack.Article">
+                            @if (bestId.Contains(pack.Id))
+                            {
+                                <span class="pack-best">Выгоднее</span>
+                            }
                             <span class="pack-name">@(string.IsNullOrEmpty(pack.PackLabel) ? pack.Article : pack.PackLabel)</span>
                             <span class="pack-price">@(pack.Price is { } price ? Format.Money(price) : "цена уточняется")</span>
-                            <span class="pack-stock">@(pack.InStock ? $"в наличии: {pack.AvailableQty} шт." : "нет в наличии")</span>
+                            @if (packs.Count > 1 && perUnit[pack.Id] is not null)
+                            {
+                                <span class="pack-unit">@UnitText(pack.Id)</span>
+                            }
+                            <span class="pack-stock">@(pack.InStock ? $"в наличии {pack.AvailableQty} шт." : "нет в наличии")</span>
                         </label>
                     }
                 </div>
 
                 @if (canBuy)
                 {
-                    <div class="buy-row">
-                        <span class="price" id="buy-price">@Format.Money(chosen!.Price!.Value)</span>
+                    <div class="pp-total">
+                        <div class="pp-price">
+                            <span class="price" id="buy-price">@Format.Money(chosen!.Price!.Value)</span>
+                            @if (packs.Count > 1)
+                            {
+                                <span class="pp-unit" id="buy-unit">@UnitText(chosen.Id)</span>
+                            }
+                        </div>
                         <span class="qty">
                             <button type="button" data-qty="minus" aria-label="Меньше">−</button>
                             <input type="number" name="quantity" value="1" min="1" max="@chosen!.AvailableQty" id="buy-qty" aria-label="Количество">
                             <button type="button" data-qty="plus" aria-label="Больше">+</button>
                         </span>
-                        <button class="btn" type="submit">@Icons.Get("cart", 18) В корзину</button>
                     </div>
+                    <button class="btn btn-block pp-cart" type="submit">@Icons.Get("cart", 20) В корзину</button>
                     <p class="buy-stock" id="buy-stock">В наличии: @chosen!.AvailableQty шт.</p>
-                    <p class="buy-note">Оплата наличными или картой при получении. Доставку и время уточнит менеджер.</p>
                 }
                 else
                 {
-                    <p class="buy-note">@(chosen is null ? "Цена уточняется, позвоните в магазин." : "Сейчас нет в наличии. Узнать о поступлении можно по телефону магазина.")</p>
+                    <p class="buy-note">@(chosen is null ? "Цена уточняется, позвоните в магазин." : "Сейчас нет в наличии. Добавьте товар в избранное, и мы напишем на почту, когда он появится.")</p>
                 }
             </form>
         }
 
-        <h3 style="margin-top:26px;">Характеристики</h3>
+        <ul class="pp-perks">
+            <li>@Icons.Get("truck", 20)<span><b>Доставка по Актау</b>Удобное время уточнит менеджер</span></li>
+            <li>@Icons.Get("check", 20)<span><b>Оплата при получении</b>Наличными или картой</span></li>
+            <li>@Icons.Get("star", 20)<span><b>Оригинальная продукция</b>Официальный дилер @brand.Name</span></li>
+        </ul>
+    </div>
+</div>
+
+@* Описание (колонки 1–6) и характеристики (7–12) — ровно под фото и покупкой. *@
+<div class="pp-details">
+    <section class="pp-desc" aria-labelledby="desc-title">
+        <h2 id="desc-title">Описание</h2>
+        @if (text.Intro.Length > 0)
+        {
+            <div class="prose">@text.Intro</div>
+        }
+        @if (text.Steps.Count > 0)
+        {
+            <h3 class="pp-howto">Способ применения</h3>
+            <ol class="pp-steps">
+                @foreach (var step in text.Steps)
+                {
+                    <li>@Typo.Text(step)</li>
+                }
+            </ol>
+        }
+        @if (text.Outro.Length > 0)
+        {
+            <div class="prose">@text.Outro</div>
+        }
+        @if (text.Intro.Length == 0 && text.Steps.Count == 0)
+        {
+            <p class="muted">Описание скоро появится. Подробности подскажет менеджер.</p>
+        }
+    </section>
+    <aside class="pp-specs" aria-labelledby="specs-title">
+        <h2 id="specs-title">Характеристики</h2>
         <ul class="spec-list">
-            <li><span>Категория</span><span>@product.Category.Name</span></li>
             <li><span>Бренд</span><span>@brand.Name</span></li>
+            <li><span>Раздел</span><span><a href="@Url.Category(product.Category)">@product.Category.Name</a></span></li>
             @if (!string.IsNullOrEmpty(product.Ph))
             {
                 <li><span>Кислотность</span><span>@product.Ph</span></li>
             }
-            <li><span>Артикулы</span><span>@string.Join(", ", packs.Select(v => v.Article))</span></li>
+            @if (packs.Count > 0)
+            {
+                <li><span>Фасовки</span><span>@string.Join(", ", packs.Select(v => v.PackLabel).Where(l => !string.IsNullOrEmpty(l)))</span></li>
+                <li><span>Артикулы</span><span>@string.Join(", ", packs.Select(v => v.Article))</span></li>
+            }
         </ul>
-
-        @if (!string.IsNullOrEmpty(product.Description))
-        {
-            <h3 style="margin-top:26px;">Описание</h3>
-            <div class="prose">@product.Description</div>
-        }
-    </div>
+    </aside>
 </div>
 
 <section class="section reviews" id="reviews">
@@ -208,6 +280,7 @@
         // Цена у кнопки «В корзину» показывает выбранную фасовку.
         // При выборе фасовки меняются цена, артикул, остаток и наибольшее количество.
         var price = document.getElementById('buy-price');
+        var unit = document.getElementById('buy-unit');
         var article = document.getElementById('buy-article');
         var stock = document.getElementById('buy-stock');
         var qty = document.getElementById('buy-qty');
@@ -215,6 +288,7 @@
             radio.addEventListener('change', function () {
                 if (price && radio.getAttribute('data-price')) price.textContent = radio.getAttribute('data-price');
                 if (article) article.textContent = radio.getAttribute('data-article');
+                if (unit) unit.textContent = radio.getAttribute('data-unit') || '';
                 var available = parseInt(radio.getAttribute('data-available'), 10);
                 if (stock) stock.textContent = 'В наличии: ' + available + ' шт.';
                 if (qty) {

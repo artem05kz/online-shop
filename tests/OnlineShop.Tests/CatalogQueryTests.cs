@@ -93,8 +93,18 @@ public class CatalogQueryTests : IDisposable
     [Fact]
     public void Price_sort_uses_cheapest_visible_pack_and_puts_unpriced_last()
     {
-        Assert.Equal(["Гель Альфа", "Шампунь Бета", "Пена Гамма"], Names(q => q.ApplySort("price_asc")));
-        Assert.Equal(["Шампунь Бета", "Гель Альфа", "Пена Гамма"], Names(q => q.ApplySort("price_desc")));
+        // «Шампунь Бета» нет в наличии (видимая фасовка с нулевым остатком), поэтому он в конце при любой цене.
+        Assert.Equal(["Гель Альфа", "Пена Гамма", "Шампунь Бета"], Names(q => q.ApplySort("price_asc")));
+        Assert.Equal(["Гель Альфа", "Пена Гамма", "Шампунь Бета"], Names(q => q.ApplySort("price_desc")));
+    }
+
+    [Fact]
+    public void Out_of_stock_goes_last_in_every_sort()
+    {
+        foreach (var sort in CatalogFilter.SortOptions.Select(o => o.Value))
+        {
+            Assert.Equal("Шампунь Бета", Names(q => q.ApplySort(sort)).Last());
+        }
     }
 
     [Fact]

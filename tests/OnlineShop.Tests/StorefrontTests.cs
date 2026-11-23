@@ -396,4 +396,146 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         Assert.Equal(HttpStatusCode.Redirect, checkout.StatusCode);
         Assert.Equal("/", checkout.Headers.Location!.OriginalString);
     }
+
+    [Fact]
+    public async Task Hero_shows_only_slides_whose_product_is_on_sale()
+    {
+        // Ни одного товара из слайдов в базе: первого экрана нет, страница открывается как раньше.
+        Assert.DoesNotContain("class=\"hero\"", await Page(Client(), "/"));
+
+        int id;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var category = db.Categories.First();
+            var wax = new Product
+            {
+                Category = category, Name = "Холодный воск TOP WAX", Slug = "холодный-воск-top-wax",
+                Variants = [new ProductVariant { Article = "212101", PackLabel = "1 кг", Price = 180m, StockQty = 3 }],
+            };
+            db.Products.Add(wax);
+            db.SaveChanges();
+            id = wax.Id;
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            Assert.Contains("class=\"hero\"", html);
+            Assert.Contains("Холодный воск TOP WAX", html);
+            Assert.Contains("img/hero/top-wax.webp", html);
+            Assert.Contains(">Купить</a>", html);
+            // Один слайд: листать нечего, стрелок нет.
+            Assert.DoesNotContain("class=\"hero-controls\"", html);
+            Assert.DoesNotContain("glass-gloss.webp", html);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Products.Remove(db.Products.Include(p => p.Variants).First(p => p.Id == id));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Home_shows_active_stores_with_route_link()
+    {
+        int[] ids;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var shown = new Store
+            {
+                Address = "г. Актау, 7 микрорайон, тест-бутик", Kind = StoreKind.Shop, SortOrder = -2,
+                WorkingHours = "Пн-Сб, 9:00-18:00", LunchHours = "с 13:00 до 14:00", Phone = "+7 700 111-22-33",
+                Latitude = 43.65, Longitude = 51.16,
+            };
+            var hidden = new Store { Address = "г. Актау, скрытая тест-точка", SortOrder = -1, IsActive = false };
+            db.Stores.AddRange(shown, hidden);
+            db.SaveChanges();
+            ids = [shown.Id, hidden.Id];
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            Assert.Contains("Где нас найти", html);
+            Assert.Contains("тест-бутик", html);
+            Assert.Contains("обед с 13:00 до 14:00", html);
+            Assert.Contains("href=\"tel:+7 700 111-22-33\"", html);
+            Assert.Contains("Как добраться", html);
+            Assert.DoesNotContain("скрытая тест-точка", html);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Stores.RemoveRange(db.Stores.Where(s => ids.Contains(s.Id)));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Category_page_has_pack_buttons_and_puts_in_stock_first()
+    {
+        int[] ids;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var category = db.Categories.Include(c => c.Brand).First(c => c.Slug == "автошампуни" && c.Brand.Slug == "grass");
+            var spray = new Product
+            {
+                Category = category, Name = "А-тест триггер", Slug = "а-тест-триггер",
+                Variants = [new ProductVariant { Article = "990001", PackLabel = "500 мл триггер", Price = 100m, StockQty = 0 }],
+            };
+            var canister = new Product
+            {
+                Category = category, Name = "Я-тест канистра", Slug = "я-тест-канистра",
+                Variants = [new ProductVariant { Article = "990002", PackLabel = "20 кг", Price = 900m, StockQty = 5 }],
+            };
+            db.Products.AddRange(spray, canister);
+            db.SaveChanges();
+            ids = [spray.Id, canister.Id];
+        }
+        try
+        {
+            var html = await Page(Client(), "/catalog/grass/автошампуни");
+            Assert.Contains("class=\"quick-filters\"", html);
+            Assert.Contains("Триггер 500", html);
+            Assert.Contains("Только в наличии", html);
+            // То, что можно купить сейчас, стоит выше товара «нет в наличии», хотя по алфавиту он первый.
+            Assert.True(html.IndexOf("Я-тест канистра") < html.IndexOf("А-тест триггер"));
+
+            var sprays = await Page(Client(), "/catalog/grass/автошампуни?pack=spray");
+            Assert.Contains("А-тест триггер", sprays);
+            Assert.DoesNotContain("Я-тест канистра", sprays);
+
+            var inStock = await Page(Client(), "/catalog/grass/автошампуни?in_stock=1");
+            Assert.Contains("Я-тест канистра", inStock);
+            Assert.DoesNotContain("А-тест триггер", inStock);
+
+            // Цена — в том же ряду кнопок; боковой панели фильтров на странице раздела больше нет.
+            var cheap = await Page(Client(), "/catalog/grass/автошампуни?price_max=500");
+            Assert.Contains("А-тест триггер", cheap);
+            Assert.DoesNotContain("Я-тест канистра", cheap);
+            Assert.Contains("name=\"price_max\"", cheap);
+            Assert.DoesNotContain("id=\"filters\"", cheap);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Products.RemoveRange(db.Products.Include(p => p.Variants).Where(p => ids.Contains(p.Id)));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Header_has_new_logo_and_no_top_strip()
+    {
+        var html = await Page(Client(), "/");
+        Assert.DoesNotContain("class=\"topbar\"", html);
+        Assert.Contains("img/logo-128.png", html);
+        Assert.Contains("IFOAM", html);
+        Assert.Contains("Бытовая и автохимия", html);
+    }
 }

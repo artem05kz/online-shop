@@ -11,6 +11,8 @@
     <span>@category.Name</span>
 </nav>
 
-<h1>@category.Name</h1>
+<h1>@Typo.Text(category.Name)</h1>
+
+<partial name="_CategoryNav" model="Model" />
 
 <partial name="_ProductList" model="Model" />

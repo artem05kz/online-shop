@@ -1,0 +1,63 @@
+@model ProductListViewModel
+@*
+    Верх страницы раздела, как в Kaspi: соседние разделы кнопками и быстрые фильтры
+    (фасовка, наличие). Каждая кнопка — обычная ссылка: срабатывает с одного нажатия, без «Показать»,
+    и выбранное остаётся в адресе страницы (можно отправить ссылку).
+*@
+@{
+    var category = Model.Category!;
+    var filter = Model.Filter;
+    var path = Context.Request.Path.ToString();
+
+    // Ссылка на эту же страницу с изменённым параметром; номер страницы сбрасывается.
+    string Link(string key, string? value)
+    {
+        var rest = QueryStrings.Except(Context.Request.Query, key, "page").ToList();
+        if (value is not null) rest.Add(new(key, value));
+        return rest.Count == 0 ? path : path + new Microsoft.AspNetCore.Http.Extensions.QueryBuilder(rest).ToString();
+    }
+}
+@if (Model.SideCategories.Count > 1)
+{
+    <nav class="cat-chips" aria-label="Разделы @category.Brand.Name">
+        @foreach (var tile in Model.SideCategories)
+        {
+            tile.Category.Brand = category.Brand;
+            var active = tile.Category.Id == category.Id;
+            <a class="chip@(active ? " is-active" : "")" href="@Url.Category(tile.Category)" title="@tile.Category.Name"
+               aria-current="@(active ? "page" : null)">@CategoryNames.Short(tile.Category.Name) <span class="chip-n">@tile.ProductCount</span></a>
+        }
+    </nav>
+}
+<div class="quick-bar">
+<div class="quick-filters" role="group" aria-label="Быстрые фильтры">
+    @if (Model.PackChips.Count > 0)
+    {
+        <span class="quick-label">Фасовка</span>
+        <a class="chip chip-sm@(filter.Pack.Length == 0 ? " is-active" : "")" href="@Link("pack", null)">Все</a>
+        @foreach (var chip in Model.PackChips)
+        {
+            var active = filter.Pack == chip.Key;
+            <a class="chip chip-sm@(active ? " is-active" : "")" href="@Link("pack", active ? null : chip.Key)"
+               aria-pressed="@(active ? "true" : "false")">@chip.Label</a>
+        }
+        <span class="quick-sep" aria-hidden="true"></span>
+    }
+    <a class="chip chip-sm chip-check@(filter.InStockOnly ? " is-active" : "")" href="@Link("in_stock", filter.InStockOnly ? null : "1")"
+       aria-pressed="@(filter.InStockOnly ? "true" : "false")"><span class="chip-box" aria-hidden="true">@Icons.Get("check", 12)</span>Только в наличии</a>
+</div>
+    <form class="quick-price" method="get" aria-label="Цена">
+        @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "price_min", "price_max", "page"))
+        {
+            <input type="hidden" name="@name" value="@value">
+        }
+        <label class="quick-label" for="price-min">Цена, ₸</label>
+        <input class="field quick-field" id="price-min" type="text" inputmode="numeric" name="price_min" placeholder="от" value="@filter.PriceMinRaw" aria-label="Цена от">
+        <input class="field quick-field" id="price-max" type="text" inputmode="numeric" name="price_max" placeholder="до" value="@filter.PriceMaxRaw" aria-label="Цена до">
+        <button class="chip chip-sm" type="submit">Показать</button>
+    </form>
+    @if (filter.HasActiveFilters)
+    {
+        <a class="quick-reset" href="@path">Сбросить всё</a>
+    }
+</div>

@@ -43,9 +43,20 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             .GroupBy(x => x.CategoryId)
             .ToDictionary(g => g.Key, g => g.First().ImagePath);
 
+        // Раздел, где есть товар с 3D-рендером, показывает рендер: он чище фото из прайса.
+        var renderSlugs = TileRenders.BySlug.Keys.ToList();
+        var tileRenders = (await db.Products
+                .Where(p => p.IsActive && tileIds.Contains(p.CategoryId) && renderSlugs.Contains(p.Slug))
+                .OrderBy(p => p.Name)
+                .Select(p => new { p.CategoryId, p.Slug })
+                .ToListAsync())
+            .GroupBy(x => x.CategoryId)
+            .ToDictionary(g => g.Key, g => TileRenders.BySlug[g.First().Slug]);
+
         var tiles = rootCategories
             .Where(c => tileIds.Contains(c.Id))
-            .Select(c => new CategoryTile(c, productCounts[c.Id], tileImages.GetValueOrDefault(c.Id)))
+            .Select(c => new CategoryTile(c, productCounts[c.Id], tileImages.GetValueOrDefault(c.Id),
+                tileRenders.GetValueOrDefault(c.Id)))
             .ToList();
 
         var featured = await db.Products.ForListing()
@@ -55,7 +66,21 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             .AsNoTracking()
             .ToListAsync();
 
-        return View(new HomeViewModel { Banners = banners, Tiles = tiles, Featured = featured });
+        // Первый экран: товары слайдов по slug. Скрытый или переименованный товар просто выпадает из слайдов.
+        var heroSlugs = HeroSlides.All.Select(s => s.ProductSlug).ToList();
+        var heroProducts = await db.Products.ForListing()
+            .Where(p => heroSlugs.Contains(p.Slug))
+            .AsNoTracking()
+            .ToDictionaryAsync(p => p.Slug);
+        var hero = HeroSlides.All
+            .Where(s => heroProducts.ContainsKey(s.ProductSlug))
+            .Select(s => new HeroSlideView(s, heroProducts[s.ProductSlug]))
+            .ToList();
+
+        // «Где нас найти»: первые точки из «Адресов», которые магазин ведёт в панели управления.
+        var stores = await db.Stores.Where(s => s.IsActive).Ordered().Take(3).AsNoTracking().ToListAsync();
+
+        return View(new HomeViewModel { Hero = hero, Banners = banners, Tiles = tiles, Featured = featured, Stores = stores });
     }
 
     [HttpGet("/catalog/{brandSlug}/{categorySlug}")]
@@ -72,11 +97,32 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
         }
 
         var filter = CatalogFilter.FromQuery(Request.Query);
+
+        // Фасовки раздела разбираются в памяти: в 1С это строки вида «5,5 кг» или «500мл триггер».
+        var packs = (await db.ProductVariants
+                .Where(v => v.IsActive && v.Product.IsActive && v.Product.CategoryId == category.Id)
+                .Select(v => new { v.ProductId, v.PackLabel })
+                .ToListAsync())
+            .Select(v => (v.ProductId, Pack: PackSize.Parse(v.PackLabel)))
+            .Where(v => v.Pack is not null)
+            .Select(v => (v.ProductId, Pack: v.Pack!.Value))
+            .ToList();
+        var packChips = PackSize.Order
+            .Select(g => new PackChip(g, PackSize.Label(g, packs.Select(p => p.Pack)),
+                packs.Where(p => p.Pack.Group == g).Select(p => p.ProductId).Distinct().Count()))
+            .Where(c => c.Count > 0)
+            .ToList();
+
         var query = db.Products.ForListing()
             .Where(p => p.CategoryId == category.Id)
             .ApplyFilter(filter)
             .ApplySort(filter.Sort)
             .AsNoTracking();
+        if (filter.Pack.Length > 0)
+        {
+            var ids = packs.Where(p => p.Pack.Group == filter.Pack).Select(p => p.ProductId).Distinct().ToList();
+            query = query.Where(p => ids.Contains(p.Id));
+        }
 
         var siblings = await db.Categories
             .Where(c => c.BrandId == category.BrandId && c.ParentId == null && c.IsActive)
@@ -91,6 +137,8 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             Category = category,
             SideCategories = siblings.Where(x => x.Count > 0 || x.Category.Id == category.Id)
                 .Select(x => new CategoryTile(x.Category, x.Count, null)).ToList(),
+            // Одна группа на весь раздел ничего не отбирает: кнопки показываем, только если групп хотя бы две.
+            PackChips = packChips.Count > 1 ? packChips : [],
             Page = await PagedList<Models.Product>.CreateAsync(query, page, CatalogQuery.PageSize),
         });
     }

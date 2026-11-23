@@ -3,13 +3,19 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.ViewModels;
 
-public record CategoryTile(Category Category, int ProductCount, string? ImagePath);
+/// <param name="Render">3D-рендер товара раздела из wwwroot/img/tiles/ (если есть) — показывается вместо фото.</param>
+public record CategoryTile(Category Category, int ProductCount, string? ImagePath, string? Render = null);
+
+/// <summary>Слайд первого экрана вместе с товаром из базы (цена, ссылка, наличие).</summary>
+public record HeroSlideView(OnlineShop.Web.Infrastructure.HeroSlide Slide, Product Product);
 
 public class HomeViewModel
 {
+    public IReadOnlyList<HeroSlideView> Hero { get; init; } = [];
     public required IReadOnlyList<Banner> Banners { get; init; }
     public required IReadOnlyList<CategoryTile> Tiles { get; init; }
     public required IReadOnlyList<Product> Featured { get; init; }
+    public IReadOnlyList<Store> Stores { get; init; } = [];
 }
 
 /// <summary>Список товаров с фильтрами: страница категории или результаты поиска.</summary>
@@ -33,7 +39,12 @@ public class ProductListViewModel
 
     /// <summary>Все категории бренда со счётчиками для списка слева: перейти в соседнюю, не возвращаясь на главную.</summary>
     public IReadOnlyList<CategoryTile> SideCategories { get; init; } = [];
+
+    /// <summary>Кнопки фасовок раздела («Триггер 500 мл», «1 кг», «5–6 кг»…): только те, что есть в разделе.</summary>
+    public IReadOnlyList<PackChip> PackChips { get; init; } = [];
 }
+
+public record PackChip(string Key, string Label, int Count);
 
 public class ProductPageViewModel
 {

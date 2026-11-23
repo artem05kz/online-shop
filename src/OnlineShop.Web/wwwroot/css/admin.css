@@ -429,6 +429,10 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
 /* На телефоне у кнопок в узких таблицах остаётся только иконка, подпись есть во всплывающей подсказке. */
 @media (max-width: 480px) {
     .narrow-hide { display: none; }
+    /* Две кнопки по 180 px не влезали в экран телефона, и страница ездила вбок. */
+    .savebar { margin-left: 0; margin-right: 0; padding: 12px; gap: 10px; flex-wrap: wrap; }
+    .savebar .btn { min-width: 0; flex: 1 1 0; }
+    .savebar .note { flex-basis: 100%; }
 }
 
 /* Превью баннера в пропорции сайта (BannerShape, .banner-carousel в style.css). */

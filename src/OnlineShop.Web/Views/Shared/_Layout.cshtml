@@ -16,36 +16,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@(title is null ? "GRASS Актау: автохимия и бытовая химия" : $"{title} | GRASS Актау")</title>
     <meta name="description" content="@description">
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
     @await RenderSectionAsync("Head", required: false)
 </head>
-<body>
+<body class="storefront">
 
-<div class="topbar">
-    <div class="container">
-        <span>@Icons.Get("pin", 15) @city</span>
-        @if (!string.IsNullOrEmpty(contact?.WorkingHours))
-        {
-            <span>@Icons.Get("clock", 15) @contact.WorkingHours</span>
-        }
-        <span class="spacer"></span>
-        <span>Оплата при получении</span>
-        @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
-        {
-            <a href="@contact.WhatsappLink" target="_blank" rel="noopener">@Icons.Get("chat", 15) WhatsApp</a>
-        }
-        @if (!string.IsNullOrEmpty(contact?.Phone))
-        {
-            <a href="tel:@contact.PhoneLink"><strong>@Icons.Get("phone", 15) @contact.Phone</strong></a>
-        }
-    </div>
-</div>
-
+@* Верхней чёрной строки (город, «Оплата при получении», телефон) больше нет: шапка — первое, что видит покупатель.
+   Телефон — в шапке справа, часы работы и WhatsApp — в подвале, «Оплата при получении» — в блоке «Почему удобно». *@
 <header class="header">
     <div class="container">
-        <a class="logo" asp-controller="Catalog" asp-action="Home">
-            <span class="logo-mark">G</span>
-            <span>GRASS <span class="logo-city">Актау</span></span>
+        <a class="logo" asp-controller="Catalog" asp-action="Home" aria-label="GRASS и IFOAM, @city — на главную">
+            <img class="logo-mark" src="~/img/logo-128.png" srcset="~/img/logo-256.png 2x" width="60" height="60" alt="">
+            @* Сетка логотипа: название ровно на линии центра буквы G, подпись «Бытовая и автохимия» над ним. *@
+            <span class="logo-text" aria-hidden="true">
+                <span class="logo-over">Бытовая и автохимия</span>
+                <span class="logo-name">GRASS<span class="logo-bar"></span>IFOAM</span>
+            </span>
         </a>
 
         <button type="button" class="catalog-btn" id="catalog-toggle" aria-expanded="false" aria-controls="catalog-menu">
@@ -60,8 +47,16 @@
             <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
         </form>
 
+        @if (!string.IsNullOrEmpty(contact?.Phone))
+        {
+            <a class="header-phone" href="tel:@contact.PhoneLink">
+                <span class="header-phone-num">@contact.Phone</span>
+                <span class="header-phone-sub">@(string.IsNullOrEmpty(contact.WorkingHours) ? "Позвонить" : contact.WorkingHours)</span>
+            </a>
+        }
+
         <nav class="header-actions">
-            <a class="header-link" asp-controller="Stores" asp-action="Index">
+            <a class="header-link header-link-stores" asp-controller="Stores" asp-action="Index">
                 <span class="ico">@Icons.Get("pin", 22)</span>
                 <span class="lbl">Адреса</span>
             </a>

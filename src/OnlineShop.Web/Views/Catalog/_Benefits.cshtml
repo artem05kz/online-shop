@@ -1,0 +1,27 @@
+@*
+    «Почему удобно у нас»: четыре коротких факта, которые снимают вопросы перед заказом.
+    Только то, что сайт уже обещает в других местах (подвал, оформление заказа). Новые обещания
+    (сроки, бесплатная доставка, опт) — после ответов заказчицы.
+*@
+@{
+    var items = new (string Icon, string Title, string Text, string Theme)[]
+    {
+        ("truck", "Доставка по Актау", "Привезём домой или в офис. Удобное время уточнит менеджер.", "green"),
+        ("check", "Оплата при получении", "Наличными или картой, когда заказ уже у вас в руках.", "blue"),
+        ("star", "Официальный дилер", "Только оригинальная продукция GRASS и Ifoam, без подделок.", "yellow"),
+        ("phone", "Менеджер на связи", "Позвоним, подтвердим заказ и подскажем, что лучше подойдёт.", "pink"),
+    };
+}
+<section class="section benefits" aria-labelledby="benefits-title">
+    <div class="section-head"><h2 id="benefits-title">Почему удобно заказывать у нас</h2></div>
+    <ul class="benefits-grid">
+        @foreach (var item in items)
+        {
+            <li class="benefit benefit--@item.Theme">
+                <span class="benefit-icon" aria-hidden="true">@Icons.Get(item.Icon, 22)</span>
+                <h3 class="benefit-title">@Typo.Text(item.Title)</h3>
+                <p class="benefit-text">@Typo.Text(item.Text)</p>
+            </li>
+        }
+    </ul>
+</section>

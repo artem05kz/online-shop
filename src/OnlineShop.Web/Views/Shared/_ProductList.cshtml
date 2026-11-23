@@ -6,13 +6,20 @@
         ? "Попробуйте изменить фильтры или сбросить их."
         : "Попробуйте другое название или артикул.";
 }
-<div class="catalog-layout">
-    <partial name="_Filters" model="Model" />
+@* На странице раздела все фильтры — кнопками над товарами (_CategoryNav), и боковая панель не нужна. *@
+<div class="catalog-layout@(Model.Category is not null ? " is-wide" : "")">
+    @if (Model.Category is null)
+    {
+        <partial name="_Filters" model="Model" />
+    }
 
     <div>
         <div class="toolbar">
-            <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
-                    aria-expanded="false" aria-controls="filters">Фильтры</button>
+            @if (Model.Category is null)
+            {
+                <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
+                        aria-expanded="false" aria-controls="filters">Фильтры</button>
+            }
             <span class="count">Найдено: @pager.TotalCount</span>
             <form class="sort" method="get">
                 @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "sort", "page"))

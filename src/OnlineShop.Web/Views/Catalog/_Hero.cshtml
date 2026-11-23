@@ -1,0 +1,58 @@
+@model IReadOnlyList<HeroSlideView>
+@*
+    Первый экран главной: товар крупно (3D-рендер), рукописное название за ним, коротко «что это» и «Купить».
+    Слайды сменяются сами только на компьютере (мышь), раз в 7 секунд, с паузой; на телефоне листаются пальцем.
+    Текст настоящий, не на картинке: читается на любом экране и виден поисковикам.
+*@
+<section class="hero" id="hero" aria-roledescription="carousel" aria-label="Популярные товары">
+    <div class="hero-track">
+        @for (var i = 0; i < Model.Count; i++)
+        {
+            var slide = Model[i].Slide;
+            var product = Model[i].Product;
+            var url = Url.Product(product);
+            <article class="hero-slide hero-slide--@slide.Theme@(i == 0 ? " active" : "")"
+                     aria-roledescription="slide" aria-label="@(i + 1) из @Model.Count"
+                     aria-hidden="@(i == 0 ? "false" : "true")" inert="@(i == 0 ? null : "inert")">
+                <a class="hero-visual" href="@url" tabindex="-1" aria-hidden="true">
+                    <span class="hero-script">@slide.Script</span>
+                    <img src="~/img/hero/@slide.Image" alt="" width="1360" height="800"
+                         loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                </a>
+                <div class="hero-copy">
+                    <h2 class="hero-title">@Typo.Text(slide.Title)</h2>
+                    <p class="hero-text">@Typo.Text(slide.Text)</p>
+                    @if (product.MinPrice is { } price)
+                    {
+                        <p class="hero-price">@(product.HasSeveralPacks ? "от " : "")@Format.Money(price)</p>
+                    }
+                    @if (product.InStock)
+                    {
+                        <a class="btn hero-buy" href="@url">Купить</a>
+                    }
+                    else
+                    {
+                        <a class="btn btn-outline hero-buy" href="@url">Подробнее</a>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (Model.Count > 1)
+    {
+        @* Управление стоит в той же сетке, что и текст: начинается с левого края текста, кончается правым. *@
+        <div class="hero-controls"><div class="hero-controls-row">
+            <button type="button" class="hero-arrow hero-prev" aria-label="Предыдущий товар">@Icons.Get("arrow-left", 18)</button>
+            <div class="hero-dots">
+                @for (var i = 0; i < Model.Count; i++)
+                {
+                    <button type="button" class="hero-dot@(i == 0 ? " active" : "")" aria-label="Товар @(i + 1)"
+                            aria-current="@(i == 0 ? "true" : "false")"></button>
+                }
+            </div>
+            <button type="button" class="hero-arrow hero-next" aria-label="Следующий товар">@Icons.Get("arrow-right", 18)</button>
+            <button type="button" class="hero-pause" aria-label="Остановить смену слайдов" hidden></button>
+        </div></div>
+    }
+</section>
