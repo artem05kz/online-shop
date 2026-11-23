@@ -18,12 +18,15 @@
         {
             var route = !string.IsNullOrEmpty(store.MapUrl) ? store.MapUrl
                 : store.Latitude is { } lat && store.Longitude is { } lng ? TwoGis.RouteUrl(lat, lng) : null;
+            // Город уже в заголовке блока и в шапке — в адресе его не повторяем.
+            var address = store.Address.Replace($"г. {store.City}, ", "");
+            var everyDay = store.WorkingHours.Contains("ежедневно", StringComparison.OrdinalIgnoreCase)
+                || store.WorkingHours.Contains("без выходных", StringComparison.OrdinalIgnoreCase);
             <li class="visit-card">
-                <span class="visit-kind">@store.Kind.Label()</span>
-                <p class="visit-address">@Typo.Text(store.Address)</p>
+                <p class="visit-address">@Typo.Text(address)</p>
                 @if (store.WorkingHours.Length > 0)
                 {
-                    <p class="visit-row">@Icons.Get("clock", 16)<span>@Dash(store.WorkingHours)@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span></p>
+                    <p class="visit-row">@Icons.Get("clock", 16)<span>@Dash(store.WorkingHours)@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span>@if (everyDay) {<span class="visit-badge">Без выходных</span>}</p>
                 }
                 @if (store.Phone.Length > 0)
                 {
@@ -31,7 +34,7 @@
                 }
                 @if (route is not null)
                 {
-                    <a class="btn btn-outline btn-sm visit-route" href="@route" target="_blank" rel="noopener">@Icons.Get("map", 16) Как добраться</a>
+                    <a class="btn visit-route" href="@route" target="_blank" rel="noopener">@Icons.Get("map", 16) Как добраться</a>
                 }
             </li>
         }

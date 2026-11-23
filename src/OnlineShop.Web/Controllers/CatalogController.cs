@@ -227,7 +227,8 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
 
         var related = await db.Products.ForListing()
             .Where(p => p.CategoryId == product.CategoryId && p.Id != product.Id)
-            .Ordered()
+            // как в списках: сначала то, что можно купить сейчас
+            .ApplySort(CatalogFilter.DefaultSort)
             .Take(RelatedCount)
             .AsNoTracking()
             .ToListAsync();

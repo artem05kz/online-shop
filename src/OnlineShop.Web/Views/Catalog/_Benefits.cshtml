@@ -8,7 +8,7 @@
     {
         ("truck", "Доставка по Актау", "Привезём домой или в офис. Удобное время уточнит менеджер.", "green"),
         ("check", "Оплата при получении", "Наличными или картой, когда заказ уже у вас в руках.", "blue"),
-        ("star", "Официальный дилер", "Только оригинальная продукция GRASS и Ifoam, без подделок.", "yellow"),
+        ("star", "Официальный дилер", "Только оригинальная продукция GRASS и IFOAM, без подделок.", "yellow"),
         ("phone", "Менеджер на связи", "Позвоним, подтвердим заказ и подскажем, что лучше подойдёт.", "pink"),
     };
 }
@@ -18,8 +18,11 @@
         @foreach (var item in items)
         {
             <li class="benefit benefit--@item.Theme">
-                <span class="benefit-icon" aria-hidden="true">@Icons.Get(item.Icon, 22)</span>
-                <h3 class="benefit-title">@Typo.Text(item.Title)</h3>
+                @* Иконка и заголовок в одну строку, пояснение под ними. *@
+                <div class="benefit-head">
+                    <span class="benefit-icon" aria-hidden="true">@Icons.Get(item.Icon, 22)</span>
+                    <h3 class="benefit-title">@Typo.Text(item.Title)</h3>
+                </div>
                 <p class="benefit-text">@Typo.Text(item.Text)</p>
             </li>
         }

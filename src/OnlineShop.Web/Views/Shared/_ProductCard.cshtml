@@ -8,6 +8,7 @@
     var showBrand = (await StorefrontLayout.GetAsync()).NavBrands.Count > 1;
     var isFavorite = (await Favorites.IdsAsync()).Contains(Model.Id);
     var packs = Model.ActiveVariants.Select(v => v.PackLabel).Where(l => l.Length > 0).ToList();
+    var shownVariant = variant ?? Model.ActiveVariants.FirstOrDefault();
 }
 <article class="product-card@(Model.InStock ? "" : " is-out")">
     <partial name="_FavoriteButton" model="new FavoriteButtonModel(Model.Id, isFavorite)" />
@@ -24,17 +25,11 @@
         <p class="brand">@Model.Category.Brand.Name</p>
     }
     <a class="name" href="@url">@Typo.Text(Model.Name)</a>
-    @* Артикул главный ориентир и для магазина, и для постоянных покупателей. *@
-    <p class="card-article">арт. @string.Join(", ", Model.ActiveVariants.Select(v => v.Article))</p>
-    @if (packs.Count > 1)
-    {
-        <ul class="pack-chips" aria-label="Фасовки">
-            @foreach (var pack in packs)
-            {
-                <li>@pack</li>
-            }
-        </ul>
-    }
+    @* Под названием две строки фиксированной высоты: фасовки и артикул. Так у всех карточек в ряду
+       цены и кнопки стоят на одной линии, сколько бы фасовок и артикулов ни было у товара.
+       Артикул — той фасовки, что предложена по умолчанию (остальные — на странице товара). *@
+    <p class="card-packs">@(packs.Count > 0 ? string.Join(" · ", packs) : "")</p>
+    <p class="card-article">@(shownVariant is null ? "" : $"арт. {shownVariant.Article}")</p>
 
     <div class="price-row">
         @if (Model.MinPrice is { } price)

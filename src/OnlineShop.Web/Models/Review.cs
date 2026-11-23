@@ -39,7 +39,12 @@ public static class ReviewStatusInfo
 /// </summary>
 public class Review
 {
-    public const int MaxTextLength = 2000;
+    /// <summary>Сколько символов покупатель может написать. Средний отзыв на Amazon — около 200 символов,
+    /// 1000 — это абзац-другой, с запасом. Решено с дизайнером 23.11.2026 (было 2000).</summary>
+    public const int MaxTextLength = 1000;
+
+    /// <summary>Длина колонки в базе. Осталась прежней, чтобы не делать миграцию; ограничение задаёт MaxTextLength.</summary>
+    public const int StorageLength = 2000;
 
     public int Id { get; set; }
 
@@ -52,7 +57,7 @@ public class Review
     [Range(1, 5)]
     public int Rating { get; set; }
 
-    [StringLength(MaxTextLength)]
+    [StringLength(StorageLength)]
     public string Text { get; set; } = "";
 
     public ReviewStatus Status { get; set; } = ReviewStatus.Pending;

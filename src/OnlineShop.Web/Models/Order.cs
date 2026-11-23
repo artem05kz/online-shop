@@ -54,9 +54,22 @@ public class Order
 
     public int Id { get; set; }
 
+    // Покупатель, если он оформлял заказ, войдя в аккаунт. У заказа без регистрации его нет.
     [Display(Name = "Покупатель")]
-    public int UserId { get; set; }
-    public ApplicationUser User { get; set; } = null!;
+    public int? UserId { get; set; }
+    public ApplicationUser? User { get; set; }
+
+    /// <summary>
+    /// Секретная метка для ссылки на заказ без входа (/orders/view/метка). Её знает только тот, кто
+    /// оформил заказ: метку нельзя подобрать, в отличие от номера заказа.
+    /// </summary>
+    [StringLength(32)]
+    public string AccessToken { get; set; } = NewAccessToken();
+
+    public static string NewAccessToken() => Guid.NewGuid().ToString("N");
+
+    [NotMapped]
+    public bool IsGuest => UserId is null;
 
     [Display(Name = "Статус")]
     public OrderStatus Status { get; set; } = OrderStatus.New;

@@ -44,7 +44,14 @@ public class FavoritesController(ShopDbContext db, Favorites favorites) : Contro
             return Json(new { active, count });
         }
 
-        TempData.Flash(active ? $"«{product.Name}» в избранном." : $"«{product.Name}» убран из избранного.");
+        if (active)
+        {
+            TempData.Flash($"«{product.Name}» в избранном.", "/favorites", "Открыть избранное");
+        }
+        else
+        {
+            TempData.Flash($"«{product.Name}» убран из избранного.");
+        }
         return Url.IsLocalUrl(next) ? LocalRedirect(next) : RedirectToAction(nameof(Index));
     }
 }

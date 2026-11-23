@@ -1851,7 +1851,7 @@ textarea.field { resize: vertical; }
    телефон, иконки. Белая полоса на тёплом фоне страницы, высота 84 px. */
 body.storefront { --header-h: 84px; }
 .storefront .header { background: var(--surface); border-bottom: 1px solid var(--line); }
-.storefront .header .container { min-height: var(--header-h); gap: 20px; }
+.storefront .header .container { min-height: var(--header-h); gap: 16px; }
 
 .storefront .logo { gap: 12px; font-size: inherit; letter-spacing: 0; }
 /* Сетка логотипа (высота 60 = высота картинки):
@@ -2049,3 +2049,641 @@ body.storefront { --header-h: 84px; }
 .pp-specs .spec-list li span:first-child { min-width: 110px; }
 .pp-specs .spec-list li:last-child { border-bottom: 0; }
 .pp-specs .spec-list a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+
+/* ---------- Карточки товаров в списках (новые, компьютерная версия) ---------- */
+/* Раздел, «Есть в наличии», «Похожие товары», поиск, избранное. Всё под названием — строки постоянной высоты:
+   название ровно 2 строки, фасовки и артикул по одной строке, цена и кнопка прижаты к низу. Так в каждом ряду
+   фото, цены и кнопки стоят на одних линиях. */
+.storefront .product-grid { gap: 20px; }
+.storefront .product-card { padding: 12px 12px 16px; border-color: transparent; border-radius: var(--radius-xl); }
+.storefront .product-card:hover { border-color: var(--line); }
+.storefront .product-card .thumb { background: var(--bg); border-radius: 18px; margin-bottom: 14px; }
+.storefront .product-card .thumb img { padding: 10%; mix-blend-mode: multiply; }
+.storefront .product-card .name {
+    flex: none;
+    -webkit-line-clamp: 2;
+    min-height: calc(2em * 1.35);
+    line-height: 1.35;
+    margin: 0 4px 8px;
+    font-weight: 600;
+}
+.storefront .card-packs, .storefront .card-article {
+    margin: 0 4px;
+    min-height: 1.4em;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+.storefront .card-packs { font-size: .84rem; color: var(--ink-soft); }
+.storefront .card-article { font-size: .78rem; color: var(--muted); overflow-wrap: normal; }
+.storefront .product-card .price-row { margin: auto 4px 12px; padding-top: 14px; }
+.storefront .product-card .price { font-size: 1.25rem; }
+.storefront .product-card .btn { border-radius: 999px; min-height: 44px; }
+.storefront .product-card .fav-form { top: 22px; right: 22px; }
+.storefront .product-card .fav-btn { background: var(--surface); border-color: transparent; }
+/* «Нет в наличии»: фото приглушено мягче, чем раньше, — товар видно, но понятно, что купить сейчас нельзя. */
+.storefront .product-card.is-out .thumb img { opacity: .6; filter: grayscale(.85); }
+.storefront .badge { top: 12px; left: 12px; }
+/* Ряд цены одной высоты с «от» и без него; кнопка «В корзину» (внутри формы) — той же высоты, что ссылка «Выбрать фасовку». */
+.storefront .product-card .price-row { height: 46px; align-items: last baseline; line-height: 1; }
+.storefront .product-card form { margin: 0; }
+.storefront .product-card .btn { display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+/* Телефон в шапке не сжимает поиск: поиск всегда не уже 280px, телефон своей ширины. */
+.storefront .search { min-width: 280px; }
+.storefront .header-link { padding: 6px; }
+.header-phone { flex: none; margin-left: 8px; }
+
+/* ---------- Отзывы на странице товара (компьютерная версия) ---------- */
+/* Слева список отзывов (7 колонок из 12), справа карточка «оставить отзыв» (5 колонок), она едет за прокруткой.
+   После отправки на месте формы — карточка «Отзыв отправлен»: сообщение видно там, куда покупатель смотрит. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.storefront .pr { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.storefront .pr-list { grid-column: 1 / span 7; }
+.storefront .pr-side { grid-column: 8 / span 5; position: sticky; top: 24px; margin-top: 6px; display: grid; gap: 12px; }
+.storefront .pr-list .review { max-width: none; }
+.storefront .pr-login { margin-top: 16px; }
+
+/* Звёзды: чёрные, как кнопки сайта, вместо жёлтых. */
+.storefront .stars { color: #d6d6cf; }
+.storefront .stars .on { color: var(--ink); }
+
+.storefront .pr-form, .storefront .pr-status { background: var(--surface); border-radius: var(--radius-xl); padding: 28px; }
+.storefront .pr-form h3, .storefront .pr-status h3 { margin: 0 0 18px; font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -.02em; }
+
+.storefront .star-input { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 16px; margin: 0 0 18px; border: 0; padding: 0; }
+.storefront .star-input legend { float: left; width: 100%; margin: 0 0 10px; padding: 0; font-weight: 600; font-size: .92rem; color: var(--ink-soft); }
+.storefront .star-row { display: inline-flex; flex-direction: row-reverse; gap: 6px; }
+.storefront .star-input label { color: #d6d6cf; line-height: 0; transition: transform .12s ease, color .12s ease; }
+.storefront .star-input label svg { fill: currentColor; stroke: none; }
+.storefront .star-input label:hover { transform: scale(1.12); }
+.storefront .star-input label:hover, .storefront .star-input label:hover ~ label,
+.storefront .star-input input:checked ~ label { color: var(--ink); }
+.storefront .star-input input:focus-visible + label { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 6px; }
+/* Слово рядом со звёздами: «Отлично», «Хорошо»… — по наведению или выбранной оценке. */
+.storefront .star-word { font-weight: 600; font-size: .95rem; min-width: 90px; }
+.storefront .star-input:has(#star-1:checked) .star-word::after { content: "Плохо"; }
+.storefront .star-input:has(#star-2:checked) .star-word::after { content: "Так себе"; }
+.storefront .star-input:has(#star-3:checked) .star-word::after { content: "Нормально"; }
+.storefront .star-input:has(#star-4:checked) .star-word::after { content: "Хорошо"; }
+.storefront .star-input:has(#star-5:checked) .star-word::after { content: "Отлично"; }
+.storefront .star-input:not(:has(input:checked)) .star-word::after { content: "Нажмите на звезду"; color: var(--muted); font-weight: 400; }
+
+/* Поле текста: тёплая «капсула» как поиск в шапке, без рамки; при вводе белеет и получает чёрную обводку. */
+.storefront .pr-text { position: relative; background: var(--bg); border: 1.5px solid transparent; border-radius: 18px; transition: background .15s, border-color .15s; }
+.storefront .pr-text:hover { border-color: var(--line); }
+.storefront .pr-text:focus-within { background: var(--surface); border-color: var(--ink); }
+.storefront .pr-text textarea {
+    display: block; width: 100%; min-height: 140px; resize: vertical;
+    border: 0; background: transparent; outline: none; box-shadow: none;
+    padding: 16px 18px 34px; font: inherit; font-size: .98rem; line-height: 1.55; color: var(--ink);
+}
+.storefront .pr-text textarea::placeholder { color: var(--muted); }
+.storefront .pr-count { position: absolute; right: 16px; bottom: 10px; font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
+.storefront .pr-send { width: 100%; min-height: 52px; margin-top: 16px; border-radius: 999px; font-size: 1rem; }
+.storefront .pr-hint { margin: 10px 0 0; text-align: center; font-size: .82rem; color: var(--muted); }
+
+/* Карточка «Отзыв отправлен / на проверке / опубликован». */
+.storefront .pr-status { display: grid; grid-template-columns: auto 1fr; gap: 0 16px; }
+.storefront .pr-status h3 { margin-bottom: 4px; }
+.storefront .pr-status p { margin: 0; color: var(--ink-soft); line-height: 1.5; }
+.storefront .pr-status-ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #fff; }
+.storefront .pr-status-mine { grid-column: 1 / -1; margin-top: 20px; padding: 16px 18px; background: var(--bg); border-radius: 18px; }
+.storefront .pr-status-mine .review-text { margin-top: 6px; color: var(--ink); }
+.storefront .pr-status.is-new { animation: pr-pop .5s ease-out; }
+@keyframes pr-pop { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .storefront .pr-status.is-new { animation: none; } }
+
+.storefront .pr-edit > summary { list-style: none; width: 100%; min-height: 48px; border-radius: 999px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.storefront .pr-edit > summary::-webkit-details-marker { display: none; }
+.storefront .pr-edit[open] > summary { display: none; }
+
+/* ---------- Подвал (новый, компьютерная версия) ---------- */
+/* Чёрный, как полоса в логотипе. Верх: название как в шапке слева, крупный телефон и кнопки справа (6 + 6 колонок).
+   Низ: каталог (6 колонок, разделы в две колонки), «Покупателю» (2), магазины с часами (4). */
+.storefront .footer { margin-top: 72px; padding: 64px 0 28px; font-size: .92rem; }
+.storefront .footer a { color: #d9d9d2; }
+.storefront .footer a:hover { color: #fff; }
+.storefront .ft-top, .storefront .ft-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; }
+.storefront .ft-top { padding-bottom: 48px; border-bottom: 1px solid rgba(255, 255, 255, .12); align-items: end; }
+.storefront .ft-brand { grid-column: 1 / span 6; display: grid; gap: 6px; }
+.storefront .ft-over { font-family: var(--font-display); font-size: .74rem; letter-spacing: .26em; text-transform: uppercase; color: #b9b9b1; }
+.storefront .ft-name { display: flex; align-items: center; gap: 14px; font-family: var(--font-display); font-weight: 700; font-size: 2.6rem; line-height: 1; color: #fff; letter-spacing: -.01em; }
+.storefront .ft-bar { width: 3px; height: .8em; background: #fff; border-radius: 2px; }
+.storefront .ft-brand p { margin: 10px 0 0; max-width: 420px; line-height: 1.55; color: #b9b9b1; }
+.storefront .ft-contact { grid-column: 7 / span 6; display: grid; justify-items: end; text-align: right; gap: 4px; }
+.storefront .footer a.ft-phone { font-family: var(--font-display); font-weight: 600; font-size: 2.2rem; line-height: 1.1; color: #fff; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.storefront .footer a.ft-phone:hover { color: var(--accent); }
+.storefront .ft-phone-sub { color: #8f8f87; font-size: .86rem; }
+.storefront .ft-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.storefront .footer a.ft-btn {
+    display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px;
+    border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, .28); color: #fff; font-weight: 600;
+    transition: background .15s, border-color .15s, color .15s;
+}
+.storefront .footer a.ft-btn:hover { border-color: #fff; }
+.storefront .footer a.ft-btn-main { background: #fff; border-color: #fff; color: var(--ink); }
+.storefront .footer a.ft-btn-main:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.storefront .ft-grid { padding: 40px 0 8px; }
+.storefront .ft-col.ft-col-cat { grid-column: 1 / span 5; }
+.storefront .ft-col { grid-column: 6 / span 3; }
+.storefront .ft-col.ft-col-stores { grid-column: 9 / span 4; }
+.storefront .footer h4 { margin: 0 0 16px; color: #fff; font-size: 1rem; }
+.storefront .footer ul { list-style: none; margin: 0; padding: 0; }
+.storefront .footer li { margin-bottom: 10px; }
+.storefront .ft-cats { columns: 2; column-gap: 24px; }
+.storefront .ft-cats li { break-inside: avoid; }
+.storefront .ft-stores li { display: grid; gap: 4px; margin-bottom: 18px; }
+.storefront .footer a.ft-store-addr { color: #fff; line-height: 1.4; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .3); text-underline-offset: 4px; }
+.storefront .footer a.ft-store-addr:hover { text-decoration-color: #fff; }
+.storefront .ft-store-hours { color: #b9b9b1; font-size: .86rem; font-variant-numeric: tabular-nums; }
+
+.storefront .ft-bottom { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; margin-top: 32px; padding-top: 20px; font-size: .82rem; }
+.storefront .ft-bottom a { margin-left: auto; color: #b9b9b1; }
+
+/* ---------- Разделы на главной (как на grass.su) ---------- */
+/* Шесть ярких плиток в ряд на всю ширину сетки. Название крупно белым сверху слева, под ним число товаров.
+   Название в одну строку, небольшое: главное на плитке — картинка, она занимает нижние ~3/4.
+   Нижняя часть плитки — место под картинку (рендер-композиция на прозрачном фоне), она выходит к нижнему краю
+   и стоит поверх мягкого светлого круга. */
+.storefront .hs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+.storefront .hs-tile {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: flex; flex-direction: column; gap: 6px;
+    aspect-ratio: 3 / 4; padding: 18px 16px;
+    border-radius: var(--radius-xl); background: var(--hs-bg); color: #fff;
+    transition: transform .2s ease;
+}
+.storefront a.hs-tile:hover { transform: translateY(-4px); color: #fff; }
+.storefront .hs-name { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; line-height: 1.15; letter-spacing: -.01em; white-space: nowrap; }
+.storefront .hs-count { font-size: .86rem; font-weight: 500; opacity: .85; }
+.storefront .hs-tile.is-soon .hs-count { align-self: flex-start; margin-top: 4px; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, .22); opacity: 1; }
+.storefront .hs-img { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 76%; object-fit: contain; object-position: bottom center; z-index: -1; }
+/* Светлый круг остаётся и под рендером на прозрачном фоне (решение дизайнера 23.11). */
+.storefront .hs-tile::after {
+    content: ""; position: absolute; z-index: -1; width: 78%; aspect-ratio: 1; right: -14%; bottom: -18%;
+    border-radius: 50%; background: rgba(255, 255, 255, .16);
+}
+@media (prefers-reduced-motion: reduce) { .storefront a.hs-tile:hover { transform: none; } }
+
+/* ---------- «Почему удобно» и «Где нас найти» (новые, компьютерная версия) ---------- */
+/* «Почему удобно»: одна белая полоса на 4 колонки, разделённые тонкими линиями, значки — белые в чёрных кругах.
+   Спокойно: яркие цвета остаются за плитками разделов и баннером. */
+.storefront .benefits-grid { gap: 0; background: var(--surface); border-radius: var(--radius-xl); padding: 8px 0; }
+.storefront .benefit { background: none; border-radius: 0; padding: 24px 28px; gap: 10px; }
+.storefront .benefit + .benefit { border-left: 1px solid var(--line); }
+.storefront .benefit-icon { width: 44px; height: 44px; background: var(--ink); color: #fff; box-shadow: none; margin-bottom: 4px; }
+.storefront .benefit-title { font-size: 1.05rem; white-space: nowrap; }
+.storefront .benefit-text { font-size: .92rem; }
+
+/* «Где нас найти»: белые карточки без рамки, как карточки товаров и отзывов. */
+.storefront .visit-card { background: var(--surface); border: 0; border-radius: var(--radius-xl); padding: 26px 28px; gap: 8px; }
+.storefront .visit-row { align-items: center; }
+.storefront .visit-row svg { margin-top: 0; }
+.storefront .visit-badge { margin-left: 4px; padding: 3px 10px; border-radius: 999px; background: var(--ink); color: #fff; font-size: .74rem; font-weight: 600; white-space: nowrap; }
+.storefront .visit-address { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; line-height: 1.25; letter-spacing: -.01em; margin-bottom: 6px; }
+.storefront .visit-row { font-size: .94rem; }
+.storefront .visit-route { align-self: flex-start; margin-top: auto; min-height: 44px; padding: 0 20px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; font-size: .92rem; }
+/* «Как добраться» при наведении краснеет — как лупа поиска и «Написать в WhatsApp». */
+.storefront .btn.visit-route:hover, .storefront .btn.route-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+/* Все главные (чёрные) кнопки витрины при наведении краснеют: «Купить», «Выбрать фасовку», «В корзину»,
+   «Отправить отзыв», оформление заказа, вход, «Каталог» в шапке. Второстепенные (обводка, «призрачные», удалить)
+   остаются спокойными. В админке не действует: там body.admin. */
+.storefront .btn:not(.btn-outline):not(.btn-ghost):not(.btn-danger):not(:disabled):hover,
+.storefront .catalog-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+
+/* ---------- Блик по рукописному слову на баннере ---------- */
+/* По буквам слева направо медленно проходит светлая полоса (4,5 с), затем пауза 4,5 с — и снова. Сам цвет слова не меняется:
+   текст «вырезает» из длинного градиента (основной цвет — светлый блик — основной цвет), градиент едет вправо.
+   Отступы с отрицательными полями — чтобы хвосты рукописных букв, выходящие за строку, тоже были окрашены. */
+.hero-slide--blue   { --hero-script-hi: #b9d6ff; }
+.hero-slide--lime   { --hero-script-hi: #eaff9e; }
+.hero-slide--orange { --hero-script-hi: #ffd2a8; }
+.storefront .hero-script {
+    /* Сверху/снизу только отступ, без отрицательного поля: слово центрируется через translateY(-50%) от своей высоты,
+       и равные отступы сверху и снизу его не сдвигают. Слева/справа отступ гасится полем. */
+    padding: .22em .2em; margin: 0 -.2em;
+    transform-origin: .2em center; /* поворот — от начала букв, как без отступа */
+    background-image: linear-gradient(100deg,
+        var(--hero-script) 0%, var(--hero-script) 38%,
+        var(--hero-script-hi) 50%,
+        var(--hero-script) 62%, var(--hero-script) 100%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+    animation: hero-shine 9s ease-in-out infinite;
+}
+@keyframes hero-shine {
+    0%   { background-position: 100% 0; }
+    50%  { background-position: 0% 0; }
+    100% { background-position: 0% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .storefront .hero-script { animation: none; }
+}
+
+/* ==========================================================================
+   Корзина, оформление, «Заказ принят» (компьютерная версия)
+   Сетка 12 колонок: слева 8 (товары / форма), справа 4 (итог, едет за прокруткой). Белые карточки без рамок,
+   скругление как у карточек товаров; поля — тёплые капсулы, как поиск; выбор — чёрная обводка, без зелёного.
+   ========================================================================== */
+/* Шаги покупки */
+.storefront .co-steps { display: flex; align-items: center; gap: 12px; list-style: none; margin: 28px 0 0; padding: 0; font-size: .9rem; }
+.storefront .co-step { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.storefront .co-step + .co-step::before { content: ""; width: 48px; height: 1.5px; background: var(--line); margin-right: 2px; }
+.storefront .co-step-num {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    border: 1.5px solid var(--line); font-weight: 700; font-size: .82rem; font-variant-numeric: tabular-nums; background: var(--surface);
+}
+.storefront .co-step.is-done { color: var(--ink-soft); }
+.storefront .co-step.is-done .co-step-num { background: var(--ink); border-color: var(--ink); color: #fff; }
+.storefront .co-step.is-done a { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+.storefront .co-step.is-done a:hover { color: var(--ink); text-decoration-color: var(--ink); }
+.storefront .co-step.is-current { color: var(--ink); font-weight: 600; }
+.storefront .co-step.is-current .co-step-num { border-color: var(--ink); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+
+.storefront .co-head { display: flex; align-items: baseline; gap: 14px; margin: 18px 0 24px; }
+.storefront .co-head h1 { margin: 0; }
+.storefront .co-count { color: var(--muted); font-size: 1rem; }
+
+.storefront .co { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.storefront .co-main { grid-column: 1 / span 8; display: grid; gap: 16px; }
+.storefront .co-side { grid-column: 9 / span 4; position: sticky; top: 24px; display: grid; gap: 16px; }
+.storefront .co-card { background: var(--surface); border-radius: var(--radius-xl); padding: 28px; }
+.storefront .co-card > h2 { margin: 0 0 18px; font-family: var(--font-display); font-size: 1.3rem; letter-spacing: -.01em; }
+
+/* Итог справа */
+.storefront .co-side .summary-row { padding: 8px 0; font-size: .95rem; }
+.storefront .co-side .summary-row.total, .storefront .co-card .summary-row.total {
+    margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 1.35rem; align-items: baseline;
+}
+.storefront .btn.co-cta { width: 100%; min-height: 54px; margin-top: 20px; border-radius: 999px; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.storefront .co-notes { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 10px; font-size: .86rem; color: var(--ink-soft); }
+.storefront .co-notes li { display: flex; gap: 10px; align-items: center; }
+.storefront .co-notes svg { flex: none; color: var(--ink); }
+.storefront .co-edit { display: block; margin-top: 16px; text-align: center; font-size: .88rem; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+.storefront .co-edit:hover { color: var(--accent-strong); text-decoration-color: currentColor; }
+.storefront .co-back { display: inline-flex; align-items: center; gap: 8px; justify-self: start; padding: 8px 4px; font-weight: 600; font-size: .92rem; }
+.storefront .co-back:hover { color: var(--accent-strong); }
+
+/* Строки товаров (корзина и состав заказа) */
+.storefront .cart-list { list-style: none; margin: 0; padding: 8px 28px; background: var(--surface); border-radius: var(--radius-xl); }
+.storefront .co-card .cart-list { padding: 0; border-radius: 0; }
+.storefront .cart-line { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto 120px 40px; gap: 20px; align-items: center; padding: 20px 0; }
+.storefront .od-items .cart-line { grid-template-columns: 80px minmax(0, 1fr) 120px; }
+.storefront .cart-line + .cart-line { border-top: 1px solid var(--line); }
+.storefront .cart-thumb { width: 96px; aspect-ratio: 1; border-radius: 18px; background: var(--bg); display: block; overflow: hidden; }
+.storefront .od-items .cart-thumb { width: 80px; }
+.storefront .cart-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 10%; mix-blend-mode: multiply; }
+.storefront .cart-name { font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.storefront .cart-name:hover { color: var(--accent-strong); }
+.storefront .cart-meta, .storefront .cart-price, .storefront .cart-stock { margin: 4px 0 0; font-size: .86rem; color: var(--muted); }
+.storefront .cart-price { color: var(--ink-soft); }
+.storefront .cart-info .li-warn { margin: 6px 0 0; }
+.storefront .cart-sum { text-align: right; font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; white-space: nowrap; }
+.storefront .cart-qty .qty { border: 0; background: var(--bg); border-radius: 999px; padding: 3px; }
+.storefront .cart-qty .qty button { width: 34px; height: 34px; border-radius: 50%; font-size: 1.1rem; color: var(--ink); }
+.storefront .cart-qty .qty button:hover { background: var(--surface); color: var(--ink); }
+.storefront .cart-qty .qty input { width: 40px; background: transparent; font-weight: 600; font-size: .95rem; }
+.storefront .cart-remove button {
+    width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--muted);
+    display: grid; place-items: center; cursor: pointer; transition: background .15s, color .15s;
+}
+.storefront .cart-remove button:hover { background: #fdeceb; color: var(--accent-strong); }
+
+/* Пустая корзина */
+.storefront .co-empty { max-width: 460px; margin: 72px auto 24px; text-align: center; display: grid; justify-items: center; gap: 10px; }
+.storefront .co-empty h1 { margin: 8px 0 0; }
+.storefront .co-empty p { margin: 0; color: var(--ink-soft); }
+.storefront .co-empty-ico { width: 84px; height: 84px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--ink); }
+.storefront .co-empty .btn.co-cta { width: auto; padding: 0 32px; }
+
+/* Шаги формы оформления */
+.storefront .co-section > h2 { display: flex; align-items: center; gap: 12px; }
+.storefront .co-num { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; font-family: var(--font-body); font-size: .85rem; font-weight: 700; flex: none; }
+.storefront .co-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.storefront .co-fields-addr { grid-template-columns: 1fr 2fr; }
+.storefront .co-section .form-row:last-child { margin-bottom: 0; }
+.storefront .co-hint { margin: 14px 0 0; font-size: .88rem; color: var(--ink-soft); }
+
+/* Поля — тёплые капсулы без рамки, как поиск в шапке; при вводе белеют с чёрной обводкой. */
+.storefront .co .field, .storefront .co .select {
+    background: var(--bg); border: 1.5px solid transparent; border-radius: 14px; padding: 13px 16px; font-size: .96rem;
+    transition: background .15s, border-color .15s;
+}
+.storefront .co .field:hover, .storefront .co .select:hover { border-color: var(--line); }
+.storefront .co .field:focus, .storefront .co .select:focus { background: var(--surface); border-color: var(--ink); }
+.storefront .co .field::placeholder { color: var(--muted); }
+.storefront .co .field.input-validation-error { border-color: var(--accent-strong); background: #fff6f5; }
+.storefront .co textarea.field { resize: vertical; min-height: 96px; }
+.storefront .co .form-row label { font-size: .86rem; }
+
+/* Выбор «Доставка / Самовывоз» и магазина: плитки, выбранная — с чёрной обводкой. */
+.storefront .delivery-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.storefront .pickup-list { display: grid; gap: 10px; }
+.storefront .choice-tile {
+    position: relative; display: flex; gap: 14px; align-items: center; padding: 16px 18px;
+    border: 1.5px solid var(--line); border-radius: 18px; background: var(--surface); cursor: pointer; line-height: 1.35;
+    transition: border-color .15s;
+}
+.storefront .choice-tile:hover { border-color: #bdbdb4; }
+.storefront .choice-tile:has(input:checked) { border-color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--ink); }
+.storefront .choice-tile:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 2px; }
+.storefront .choice-tile input { accent-color: var(--ink); margin: 0; }
+.storefront .choice-tile b { display: block; font-size: 1rem; }
+.storefront .choice-tile .muted { display: block; font-size: .86rem; margin-top: 2px; }
+.storefront .choice-tile .visit-badge { display: inline-block; margin: 6px 0 0; }
+.storefront .choice-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; color: var(--ink); flex: none; }
+.storefront .choice-tile:has(input:checked) .choice-ico { background: var(--ink); color: #fff; }
+
+/* Согласие на обработку данных в карточке итога */
+.storefront .co-side .consent { margin-top: 16px; font-size: .84rem; line-height: 1.45; }
+.storefront .co-side .check input:checked { background: var(--ink); border-color: var(--ink); }
+
+/* Заказ в карточке итога: маленькие фото */
+.storefront .co-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.storefront .co-items li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.storefront .co-item-thumb { width: 52px; aspect-ratio: 1; border-radius: 12px; background: var(--bg); overflow: hidden; }
+.storefront .co-item-thumb img { width: 100%; height: 100%; object-fit: contain; padding: 8%; mix-blend-mode: multiply; }
+.storefront .co-item-text { display: grid; gap: 2px; font-size: .88rem; line-height: 1.3; min-width: 0; }
+.storefront .co-item-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.storefront .co-item-text .muted { font-size: .8rem; }
+.storefront .co-item-sum { font-weight: 600; font-size: .9rem; white-space: nowrap; }
+
+/* «Заказ принят» */
+.storefront .placed {
+    margin: 20px 0 16px; padding: 36px 40px; border-radius: var(--radius-xl); background: var(--ink); color: #fff;
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 24px; align-items: center;
+    animation: pr-pop .5s ease-out;
+}
+.storefront .placed-ico { width: 64px; height: 64px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; }
+.storefront .placed h1 { margin: 0; color: #fff; font-size: 2rem; }
+.storefront .placed-text p { margin: 6px 0 0; color: #d0d0c8; font-size: 1rem; line-height: 1.5; }
+.storefront .placed-text b { color: #fff; font-weight: 600; white-space: nowrap; }
+.storefront .placed-steps { grid-column: 1 / -1; list-style: none; margin: 24px 0 0; padding: 24px 0 0; border-top: 1px solid rgba(255, 255, 255, .15);
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; font-size: .94rem; color: #e6e6df; }
+.storefront .placed-steps li { display: flex; gap: 12px; align-items: flex-start; line-height: 1.4; }
+.storefront .placed-steps span { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .4); display: grid; place-items: center; font-weight: 700; font-size: .82rem; flex: none; }
+.storefront .placed-actions { grid-column: 1 / -1; display: flex; gap: 12px; margin-top: 24px; }
+.storefront .placed-actions .btn { min-height: 50px; padding: 0 28px; border-radius: 999px; display: inline-flex; align-items: center; }
+.storefront .placed-actions .btn:not(.btn-outline) { background: #fff; border-color: #fff; color: var(--ink); }
+.storefront .placed-actions .btn:not(.btn-outline):hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+.storefront .placed-actions .btn-outline { background: transparent; border-color: rgba(255, 255, 255, .35); color: #fff; }
+.storefront .placed-actions .btn-outline:hover { background: transparent; border-color: #fff; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .storefront .placed { animation: none; } }
+
+/* Страница заказа: шапка со статусом, полоса прогресса чёрная вместо зелёной */
+.storefront .od-head { margin-bottom: 16px; }
+.storefront .order-head .o-num { font-family: var(--font-display); font-size: 1.4rem; }
+.storefront .status { border-radius: 999px; padding: 5px 14px; font-weight: 600; }
+.storefront .status-new { background: var(--bg); color: var(--ink); }
+.storefront .status-confirmed { background: #e6eefb; color: #1f4f9e; }
+.storefront .status-delivering { background: #fff1e2; color: #9a560c; }
+.storefront .status-completed { background: var(--ink); color: #fff; }
+.storefront .status-canceled { background: #fdeceb; color: var(--accent-strong); }
+.storefront .tracker { margin: 20px 0 0; gap: 8px; }
+.storefront .tracker-bar { height: 5px; border-radius: 3px; }
+.storefront .tracker-step.done .tracker-bar, .storefront .tracker-step.current .tracker-bar { background: var(--ink); }
+.storefront .tracker-step.current .tracker-label { color: var(--ink); }
+.storefront .co-side .spec-list li span:first-child { min-width: 110px; }
+.storefront .od-pay { margin: 0; line-height: 1.5; }
+
+/* Заказ без регистрации: тихая строка под заголовком оформления и подсказка про ссылку на карточке «Заказ принят». */
+.storefront .co-head:has(.co-guest) { flex-wrap: wrap; }
+.storefront .co-guest { flex-basis: 100%; margin: 6px 0 0; color: var(--muted); font-size: .95rem; }
+.storefront .co-guest a { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.storefront .co-guest a:hover { color: var(--accent-strong); }
+.storefront .placed-link { grid-column: 1 / -1; margin: 22px 0 0; color: #d0d0c8; font-size: .95rem; }
+.storefront .placed-actions [data-copy-link] { gap: 8px; cursor: pointer; }
+/* Галочка согласия: чёрная, ссылка на политику чёрная с подчёркиванием (зелёного на сайте нет). */
+.storefront .consent input[type="checkbox"] { accent-color: var(--ink); }
+.storefront .consent a { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; }
+.storefront .consent a:hover { color: var(--accent-strong); }
+
+/* Правки после проверки «Заказ принят» и оформления */
+.storefront .placed-steps li { align-items: center; }
+.storefront .placed-call { margin: 4px 0 0; color: #d0d0c8; font-size: .95rem; }
+.storefront .placed-call a { color: #fff; font-weight: 600; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .4); }
+.storefront .placed-call a:hover { text-decoration-color: #fff; }
+/* Галочка согласия: если её забыли, красная рамка и подсказка прямо под ней */
+.storefront .co-side .check input:hover { border-color: var(--ink); }
+.storefront .co-side .check input:focus-visible { outline-color: var(--ink); }
+.storefront .co-side .consent.is-invalid input { border-color: var(--accent-strong); box-shadow: 0 0 0 3px rgba(224, 25, 15, .15); }
+.storefront .consent-error,
+.storefront .co-side .errorlist:not(:empty) { display: block; margin: -4px 0 12px 28px; color: var(--accent-strong); font-size: .84rem; line-height: 1.4; font-weight: 600; }
+
+/* «Почему удобно»: иконка и заголовок в одну строку, пояснение под ними */
+.storefront .benefit { padding: 24px 16px 26px 22px; gap: 12px; }
+.storefront .benefit-head { display: flex; align-items: center; gap: 10px; }
+.storefront .benefit-head .benefit-icon { width: 38px; height: 38px; margin: 0; flex: none; }
+.storefront .benefit-head .benefit-icon svg { width: 19px; height: 19px; }
+.storefront .benefit-head .benefit-title { font-size: .88rem; white-space: nowrap; }
+.storefront .benefit-text { font-size: .88rem; }
+
+/* «Заказ принят» у гостя: спокойное предложение создать аккаунт, внизу карточки */
+.storefront .placed-account {
+    grid-column: 1 / -1; margin-top: 28px; padding: 18px 20px; border-radius: 18px; background: rgba(255, 255, 255, .07);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px; align-items: center;
+}
+.storefront .placed-account-ico { width: 40px; height: 40px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; }
+.storefront .placed-account p { margin: 0; color: #d0d0c8; font-size: .94rem; line-height: 1.45; }
+.storefront .placed-account p b { display: block; color: #fff; font-weight: 600; }
+.storefront .placed-account-btn { min-height: 44px; padding: 0 22px; border-radius: 999px; background: #fff; color: var(--ink); font-weight: 600; font-size: .92rem;
+    display: inline-flex; align-items: center; white-space: nowrap; transition: background .15s, color .15s; }
+.storefront .placed-account-btn:hover { background: var(--accent-strong); color: #fff; }
+.storefront .placed-account-login { color: #fff; font-size: .92rem; white-space: nowrap; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .4); }
+.storefront .placed-account-login:hover { text-decoration-color: #fff; }
+
+/* Сообщения сайта: чёрные карточки справа под шапкой вместо зелёных и красных полос вверху страницы.
+   Успех — белая галочка, подсказка — «i», ошибка — красный кружок с «!» (зелёного нет). */
+.storefront .toasts {
+    position: fixed; z-index: 60; top: 96px; right: max(20px, calc((100vw - var(--container)) / 2 + 20px));
+    width: min(400px, calc(100vw - 40px)); margin: 0; padding: 0; list-style: none; display: grid; gap: 10px;
+    pointer-events: none;
+}
+.storefront .toast {
+    pointer-events: auto; margin: 0; padding: 14px 12px 14px 14px; border: 0; border-radius: 18px;
+    background: var(--ink); color: #fff; font-size: .92rem; line-height: 1.4;
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center;
+    box-shadow: 0 12px 32px rgba(15, 15, 15, .22);
+    animation: toast-in .35s cubic-bezier(.2, .8, .2, 1);
+}
+.storefront .toast.is-leaving { animation: toast-out .25s ease-in forwards; }
+.storefront .toast-ico { width: 34px; height: 34px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; }
+.storefront .toast.error .toast-ico { background: var(--accent-strong); color: #fff; }
+.storefront .toast-text { margin: 0; color: #fff; text-wrap: pretty; }
+.storefront .toast-link { display: inline-block; margin-top: 2px; color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .45); }
+.storefront .toast-link:hover { text-decoration-color: var(--accent-strong); color: #fff; }
+.storefront .toast-close {
+    width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent; color: rgba(255, 255, 255, .6);
+    display: grid; place-items: center; cursor: pointer; align-self: start; transition: background .15s, color .15s;
+}
+.storefront .toast-close:hover { background: rgba(255, 255, 255, .12); color: #fff; }
+.storefront .toast-close:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-10px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(16px); } }
+@media (prefers-reduced-motion: reduce) { .storefront .toast, .storefront .toast.is-leaving { animation: none; } }
+
+/* Ошибки внутри форм (вход, регистрация, профиль, адреса, оформление) в стиле витрины:
+   текст под полем красный, поле с ошибкой в красной рамке без розовой заливки,
+   общая ошибка формы — белая карточка с красной рамкой и красным кружком «!» (как у сообщений). */
+.storefront .form-row .errorlist,
+.storefront .form-grid .errorlist { padding-left: 4px; color: var(--accent-strong); font-weight: 600; font-size: .84rem; line-height: 1.4; }
+.storefront .field.input-validation-error,
+.storefront .select.input-validation-error { border-color: var(--accent-strong); background: var(--surface); }
+.storefront .field.input-validation-error:focus { box-shadow: 0 0 0 3px rgba(224, 25, 15, .12); }
+.storefront .messages:not(.toasts) { margin: 0 0 16px; }
+.storefront .messages:not(.toasts) .message.error,
+.storefront .checkout-errors ul {
+    position: relative; margin: 0 0 16px; padding: 14px 16px 14px 56px; list-style: none;
+    border: 1.5px solid var(--accent-strong); border-radius: 16px; background: var(--surface);
+    color: var(--ink); font-weight: 500; font-size: .92rem; line-height: 1.45;
+}
+.storefront .messages:not(.toasts) .message.error::before,
+.storefront .checkout-errors ul::before {
+    content: "!"; position: absolute; left: 14px; top: 12px; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent-strong); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .9rem;
+}
+.storefront .checkout-errors li + li { margin-top: 6px; }
+.storefront .co .field.input-validation-error,
+.storefront .co .select.input-validation-error { background: var(--surface); border-color: var(--accent-strong); }
+
+/* Зелёного на витрине нет: старые правила берут цвета из переменных --green*, поэтому подменяем их
+   цветами сайта сразу для всей витрины (наведение, выбранная фасовка, «в наличии», ссылки, вкладки).
+   Админка (без класса .storefront) остаётся в своей зелёной теме. Цвета плиток разделов заданы отдельно и не меняются. */
+body.storefront { --green: var(--ink); --green-dark: var(--ink); --green-soft: var(--bg); }
+.storefront .pp-buy .pack-stock { color: var(--ink-soft); }
+.storefront .pp-buy .pack-option.is-off .pack-stock,
+.storefront .pp-buy .pack-option:has(input:disabled) .pack-stock { color: var(--muted); }
+.storefront .buy-stock { color: var(--ink); }
+.storefront .panel a[href]:not(.btn) { text-decoration: underline; text-underline-offset: 3px; }
+.storefront .panel a[href]:not(.btn):hover { color: var(--accent-strong) !important; }
+
+/* ---------- Каталог сбоку (переделан 23.11) ----------
+   Шире прежнего: слева разделы на тёплом фоне, справа белая колонка с категориями выбранного раздела.
+   Цвет метки раздела тот же, что у плитки на главной (--sec). */
+.storefront .catalog-menu.cm { width: min(860px, 94vw); background: var(--surface); }
+.storefront .cm-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 22px 28px; border-bottom: 1px solid var(--line); flex: none;
+}
+.storefront .cm-head strong { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
+.storefront .cm-close {
+    width: 44px; height: 44px; padding: 0; border-radius: 50%; background: var(--bg); color: var(--ink);
+    display: grid; place-items: center; font-size: 0; transition: background .15s, color .15s;
+}
+.storefront .cm-close:hover { background: var(--ink); color: #fff; }
+.storefront .cm-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 300px minmax(0, 1fr); }
+
+.storefront .cm-sections { list-style: none; margin: 0; padding: 16px 12px; background: var(--bg); overflow-y: auto; }
+.storefront .cm-sections li { margin: 0 0 4px; }
+.storefront .cm-sec {
+    width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+    display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 16px; gap: 12px; align-items: center;
+    padding: 14px; border-radius: 14px; transition: background .15s;
+}
+.storefront .cm-sec:hover { background: rgba(15, 15, 15, .04); }
+.storefront .cm-sec.is-active { background: var(--surface); box-shadow: 0 2px 10px rgba(15, 15, 15, .06); }
+.storefront .cm-sec:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.storefront .cm-dot { width: 14px; height: 14px; border-radius: 5px; background: var(--sec); }
+.storefront .cm-sec-name { font-weight: 600; font-size: 1rem; }
+.storefront .cm-sec-count { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.storefront .cm-sec.is-soon .cm-sec-name { color: var(--ink-soft); font-weight: 500; }
+.storefront .cm-sec-arrow { color: var(--muted); opacity: 0; transition: opacity .15s; display: grid; }
+.storefront .cm-sec.is-active .cm-sec-arrow { opacity: 1; color: var(--ink); }
+
+.storefront .cm-panels { overflow-y: auto; padding: 24px 32px 32px; }
+.storefront .cm-panel { display: none; }
+.storefront .cm-panel.is-active { display: block; animation: cm-in .2s ease-out; }
+@keyframes cm-in { from { opacity: 0; transform: translateX(6px); } to { opacity: 1; transform: none; } }
+.storefront .cm-panel-head { display: flex; align-items: baseline; gap: 14px; padding-bottom: 16px; margin-bottom: 8px; border-bottom: 3px solid var(--sec); }
+.storefront .cm-panel-head h3 { margin: 0; font-family: var(--font-display); font-size: 1.35rem; }
+.storefront .cm-panel-count { color: var(--muted); font-size: .9rem; }
+.storefront .cm-cats { list-style: none; margin: 0; padding: 0; }
+.storefront .cm-cat {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center;
+    padding: 14px 4px; border-bottom: 1px solid var(--line); color: var(--ink); font-size: .98rem; line-height: 1.35;
+    transition: color .15s, padding .15s;
+}
+.storefront .cm-cat:hover { color: var(--accent-strong); padding-left: 10px; }
+.storefront .cm-cat-name small { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem; }
+.storefront .cm-cat-count {
+    min-width: 32px; padding: 3px 10px; border-radius: 999px; background: var(--bg); color: var(--ink-soft);
+    font-size: .82rem; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums;
+}
+.storefront .cm-cat:hover .cm-cat-count { background: var(--accent-strong); color: #fff; }
+.storefront .cm-soon { margin-top: 16px; padding: 20px 22px; border-radius: 18px; background: var(--bg); }
+.storefront .cm-soon p { margin: 0 0 14px; color: var(--ink-soft); line-height: 1.5; }
+.storefront .cm-soon p b { color: var(--ink); }
+.storefront .cm-soon-link {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 22px; border-radius: 999px;
+    background: var(--ink); color: #fff; font-weight: 600; font-size: .92rem; transition: background .15s;
+}
+.storefront .cm-soon-link:hover { background: var(--accent-strong); color: #fff; }
+
+.storefront .cm-foot {
+    flex: none; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 16px 28px; border-top: 1px solid var(--line); background: var(--surface);
+}
+.storefront .cm-phone, .storefront .cm-stores { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
+.storefront .cm-phone span { display: grid; line-height: 1.25; }
+.storefront .cm-phone small { color: var(--muted); font-size: .8rem; }
+.storefront .cm-stores { font-weight: 600; font-size: .94rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); }
+.storefront .cm-phone:hover b, .storefront .cm-stores:hover { color: var(--accent-strong); }
+@media (prefers-reduced-motion: reduce) { .storefront .cm-panel.is-active { animation: none; } }
+
+/* ---------- Адреса магазинов (переделаны 23.11) ----------
+   Заголовок с общим телефоном справа, ниже крупные карточки: статус «Открыто до …», адрес, часы, кнопки. */
+.storefront .st-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; margin: 8px 0 28px; }
+.storefront .st-head h1 { margin: 0 0 10px; }
+.storefront .st-head p { margin: 0; max-width: 620px; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.55; }
+.storefront .st-phone {
+    flex: none; display: inline-flex; align-items: center; gap: 14px; padding: 12px 22px 12px 12px;
+    border-radius: 999px; background: var(--surface); color: var(--ink); transition: background .15s, color .15s;
+}
+.storefront .st-phone-ico { width: 44px; height: 44px; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; }
+.storefront .st-phone span:last-child { display: grid; line-height: 1.3; }
+.storefront .st-phone small { color: var(--muted); font-size: .8rem; }
+.storefront .st-phone b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.storefront .st-phone:hover { background: var(--ink); color: #fff; }
+.storefront .st-phone:hover small { color: rgba(255, 255, 255, .7); }
+.storefront .st-phone:hover .st-phone-ico { background: var(--accent-strong); }
+
+.storefront .st-map { height: 420px; margin-bottom: 24px; border-radius: var(--radius-xl); overflow: hidden; }
+.storefront .st-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-bottom: 48px; }
+.storefront .st-card {
+    display: flex; flex-direction: column; padding: 32px; border-radius: var(--radius-xl); background: var(--surface);
+}
+.storefront .st-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 22px; }
+.storefront .st-top .visit-badge { margin: 0; }
+.storefront .st-kind { margin-left: auto; color: var(--muted); font-size: .86rem; }
+.storefront .st-status {
+    display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px;
+    background: var(--bg); color: var(--ink-soft); font-size: .86rem; font-weight: 600;
+}
+.storefront .st-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.storefront .st-status.is-open { background: var(--ink); color: #fff; }
+.storefront .st-status.is-open i { background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .25); }
+.storefront .st-address { margin: 0; font-family: var(--font-display); font-size: 1.45rem; line-height: 1.25; text-wrap: balance; }
+.storefront .st-city { margin: 6px 0 0; color: var(--muted); font-size: .92rem; }
+.storefront .st-rows { list-style: none; margin: 24px 0 0; padding: 20px 0 0; border-top: 1px solid var(--line); display: grid; gap: 14px; }
+.storefront .st-rows li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; }
+.storefront .st-ico { width: 36px; height: 36px; border-radius: 50%; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
+.storefront .st-rows li > span:last-child, .storefront .st-rows li > a { padding-top: 7px; }
+.storefront .st-line { display: block; font-size: 1rem; line-height: 1.5; color: var(--ink); }
+.storefront a.st-line { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line); font-variant-numeric: tabular-nums; }
+.storefront a.st-line:hover { color: var(--accent-strong); }
+.storefront .st-actions { display: flex; gap: 10px; margin-top: auto; padding-top: 28px; }
+.storefront .st-route { min-height: 50px; padding: 0 26px; border-radius: 999px; gap: 10px; }
+.storefront .st-btn {
+    min-height: 50px; padding: 0 24px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface);
+    display: inline-flex; align-items: center; justify-content: center; color: var(--ink); font-weight: 600; font-size: .94rem;
+    transition: border-color .15s, background .15s, color .15s;
+}
+.storefront .st-btn:hover { border-color: var(--ink); }
+.storefront .st-wa { width: 50px; padding: 0; }
+.storefront .st-wa:hover { background: var(--ink); border-color: var(--ink); color: #fff; }
+.storefront .st-address + .st-rows { margin-top: 22px; }

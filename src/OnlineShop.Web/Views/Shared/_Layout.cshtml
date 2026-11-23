@@ -41,7 +41,7 @@
         </button>
 
         <form class="search" asp-controller="Catalog" asp-action="Search" method="get" role="search">
-            <input type="text" name="q" placeholder="Поиск: название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу"
+            <input type="text" name="q" placeholder="Название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу"
                    id="search-input" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggest">
             <div class="search-suggest" id="search-suggest" role="listbox" hidden></div>
             <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
@@ -51,7 +51,8 @@
         {
             <a class="header-phone" href="tel:@contact.PhoneLink">
                 <span class="header-phone-num">@contact.Phone</span>
-                <span class="header-phone-sub">@(string.IsNullOrEmpty(contact.WorkingHours) ? "Позвонить" : contact.WorkingHours)</span>
+                @* Часы у двух филиалов разные — в шапке только короткая подпись, часы есть в «Где нас найти» и подвале. *@
+                <span class="header-phone-sub">@(string.IsNullOrEmpty(contact.Whatsapp) ? "Позвонить" : "Звонок и WhatsApp")</span>
             </a>
         }
 
@@ -89,79 +90,176 @@
 </header>
 
 <div class="catalog-backdrop" id="catalog-backdrop" hidden></div>
-<nav class="catalog-menu" id="catalog-menu" aria-label="Каталог товаров" aria-hidden="true">
-    <div class="catalog-menu-head">
-        <strong>Каталог товаров</strong>
-        <button type="button" class="catalog-close" id="catalog-close" aria-label="Закрыть каталог">×</button>
+@*
+    Каталог сбоку: те же шесть разделов, что плитками на главной (Infrastructure/HomeSections.cs).
+    Слева разделы с цветной меткой, справа категории выбранного раздела с числом товаров.
+    Наведение или нажатие на раздел переключает правую часть (site.js). Без скрипта видны все разделы подряд.
+    Категории, которые не подошли ни к одному разделу, попадают в «Другое» — чтобы товар не потерялся.
+*@
+@{
+    var allCategories = nav.NavBrands.SelectMany(b => b.Categories.Select(c => (Brand: b, Category: c)))
+        .Where(x => nav.CountIn(x.Category) > 0).ToList();
+    var manyBrands = allCategories.Select(x => x.Brand.Id).Distinct().Count() > 1;
+    var menuSections = HomeSections.All
+        .Select(s => (Key: s.Key, Title: s.Title, Color: s.Color, Items: allCategories.Where(x => HomeSections.Contains(s, x.Category.Name)).ToList()))
+        .ToList();
+    var other = allCategories.Where(x => !HomeSections.All.Any(s => HomeSections.Contains(s, x.Category.Name))).ToList();
+    if (other.Count > 0)
+    {
+        menuSections.Add(("other", "Другое", "#8A8A82", other));
+    }
+    var activeKey = menuSections.FirstOrDefault(s => s.Items.Count > 0).Key ?? menuSections[0].Key;
+}
+<nav class="catalog-menu cm" id="catalog-menu" aria-label="Каталог товаров" aria-hidden="true">
+    <div class="cm-head">
+        <strong>Каталог</strong>
+        <button type="button" class="catalog-close cm-close" id="catalog-close" aria-label="Закрыть каталог">@Icons.Get("x", 20)</button>
     </div>
-    <div class="catalog-menu-body">
-        @foreach (var brand in nav.NavBrands)
-        {
-            <div class="catalog-menu-group">
-                <h4>@brand.Name</h4>
-                <ul>
-                    @foreach (var category in brand.Categories)
+    <div class="cm-body">
+        <ul class="cm-sections" role="list">
+            @foreach (var s in menuSections)
+            {
+                var total = s.Items.Sum(x => nav.CountIn(x.Category));
+                <li>
+                    <button type="button" class="cm-sec@(s.Key == activeKey ? " is-active" : "")@(s.Items.Count == 0 ? " is-soon" : "")"
+                            data-cm-sec="@s.Key" aria-controls="cm-panel-@s.Key" aria-expanded="@(s.Key == activeKey ? "true" : "false")" style="--sec: @s.Color">
+                        <span class="cm-dot" aria-hidden="true"></span>
+                        <span class="cm-sec-name">@s.Title</span>
+                        <span class="cm-sec-count">@(s.Items.Count == 0 ? "скоро" : total.ToString())</span>
+                        <span class="cm-sec-arrow" aria-hidden="true">@Icons.Get("chevron-right", 16)</span>
+                    </button>
+                </li>
+            }
+        </ul>
+        <div class="cm-panels">
+            @foreach (var s in menuSections)
+            {
+                var total = s.Items.Sum(x => nav.CountIn(x.Category));
+                <section class="cm-panel@(s.Key == activeKey ? " is-active" : "")" id="cm-panel-@s.Key" data-cm-panel="@s.Key" style="--sec: @s.Color">
+                    <div class="cm-panel-head">
+                        <h3>@s.Title</h3>
+                        @if (s.Items.Count > 0)
+                        {
+                            <span class="cm-panel-count">@total @Plural.Products(total)</span>
+                        }
+                    </div>
+                    @if (s.Items.Count > 0)
                     {
-                        <li><a href="@Url.Category(category)">@category.Name</a></li>
+                        <ul class="cm-cats" role="list">
+                            @foreach (var x in s.Items.OrderByDescending(x => nav.CountIn(x.Category)))
+                            {
+                                var count = nav.CountIn(x.Category);
+                                <li>
+                                    <a class="cm-cat" href="@Url.Category(x.Category)">
+                                        <span class="cm-cat-name">@x.Category.Name@if (manyBrands) {<small>@x.Brand.Name</small>}</span>
+                                        <span class="cm-cat-count">@count</span>
+                                    </a>
+                                </li>
+                            }
+                        </ul>
                     }
-                    @if (brand.Categories.Count == 0)
+                    else
                     {
-                        <li class="muted">Категорий пока нет</li>
+                        <div class="cm-soon">
+                            <p><b>Скоро в каталоге.</b> Раздел ещё наполняется. Спросите менеджера, что из него есть в магазине сейчас.</p>
+                            @if (!string.IsNullOrEmpty(contact?.Phone))
+                            {
+                                <a class="cm-soon-link" href="@(string.IsNullOrEmpty(contact.Whatsapp) ? "tel:" + contact.PhoneLink : contact.WhatsappLink)" target="_blank" rel="noopener">@(string.IsNullOrEmpty(contact.Whatsapp) ? "Позвонить" : "Спросить в WhatsApp")</a>
+                            }
+                        </div>
                     }
-                </ul>
-            </div>
-        }
-        @if (nav.NavBrands.Count == 0)
-        {
-            <p class="muted">Каталог пока пуст.</p>
-        }
-        <div class="catalog-menu-group">
-            <h4>Ещё</h4>
-            <ul>
-                <li><a asp-controller="Stores" asp-action="Index">Адреса магазинов</a></li>
-                <li><a asp-controller="Cart" asp-action="Index">Корзина</a></li>
-                @if (signedIn)
-                {
-                    <li><a href="@ShopUrls.OrderHistory">Мои заказы</a></li>
-                }
-            </ul>
+                </section>
+            }
         </div>
+    </div>
+    <div class="cm-foot">
+        @if (!string.IsNullOrEmpty(contact?.Phone))
+        {
+            <a class="cm-phone" href="tel:@contact.PhoneLink">@Icons.Get("phone", 18) <span><b>@contact.Phone</b><small>@(string.IsNullOrEmpty(contact.Whatsapp) ? "Позвонить" : "Звонок и WhatsApp")</small></span></a>
+        }
+        <a class="cm-stores" asp-controller="Stores" asp-action="Index">@Icons.Get("pin", 18) Адреса магазинов</a>
     </div>
 </nav>
 
 <main class="container">
     @if (flash.Count > 0)
     {
-        <ul class="messages">
+        @* Сообщения («Товар в корзине», «Данные сохранены», ошибки): чёрные карточки справа под шапкой.
+           Успех и подсказки сами исчезают через несколько секунд (site.js), ошибки висят, пока их не закроют.
+           Без скриптов карточки просто остаются на месте. *@
+        <ul class="messages toasts">
             @foreach (var message in flash)
             {
-                <li class="message @message.CssClass">@message.Text</li>
+                <li class="message toast @message.CssClass" role="@(message.Level == FlashLevel.Error ? "alert" : "status")">
+                    <span class="toast-ico">@Icons.Get(message.Level switch { FlashLevel.Error => "alert", FlashLevel.Info => "info", _ => "check" }, 18)</span>
+                    <p class="toast-text">@message.Text
+                        @if (!string.IsNullOrEmpty(message.Link))
+                        {
+                            <a class="toast-link" href="@message.Link">@message.LinkText</a>
+                        }
+                    </p>
+                    <button class="toast-close" type="button" aria-label="Закрыть сообщение">@Icons.Get("x", 16)</button>
+                </li>
             }
         </ul>
     }
     @RenderBody()
 </main>
 
+@* Подвал. Сверху — как связаться (телефон крупно, WhatsApp и Instagram кнопками), ниже — разделы, покупателю, магазины.
+   Магазины и контакты берутся из админки («Адреса», «Контакты»). *@
 <footer class="footer">
     <div class="container">
-        <div class="footer-grid">
-            <div>
-                <h4>GRASS Актау</h4>
-                <p>Официальный дилер продукции GRASS и Ifoam в Актау.<br>Автохимия, бытовая химия, профессиональный клининг.</p>
+        <div class="ft-top">
+            <div class="ft-brand">
+                <span class="ft-over">Бытовая и автохимия</span>
+                <span class="ft-name">GRASS<span class="ft-bar" aria-hidden="true"></span>IFOAM</span>
+                <p>Официальный дилер продукции GRASS и IFOAM в @city. Средства для авто, дома и автомоек.</p>
             </div>
-            <div>
+            @if (!string.IsNullOrEmpty(contact?.Phone) || !string.IsNullOrEmpty(contact?.WhatsappLink))
+            {
+                <div class="ft-contact">
+                    @if (!string.IsNullOrEmpty(contact?.Phone))
+                    {
+                        <a class="ft-phone" href="tel:@contact.PhoneLink">@contact.Phone</a>
+                        <span class="ft-phone-sub">Звоните или пишите — подскажем, что подойдёт</span>
+                    }
+                    <div class="ft-actions">
+                        @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
+                        {
+                            var waText = Uri.EscapeDataString("Здравствуйте! Пишу с сайта GRASS.");
+                            var waHref = contact.WhatsappLink.Contains('?') ? contact.WhatsappLink : $"{contact.WhatsappLink}?text={waText}";
+                            <a class="ft-btn ft-btn-main" href="@waHref" target="_blank" rel="noopener">@Icons.Get("whatsapp", 20) Написать в WhatsApp</a>
+                        }
+                        @if (!string.IsNullOrEmpty(contact?.InstagramLink))
+                        {
+                            <a class="ft-btn" href="@contact.InstagramLink" target="_blank" rel="noopener">@Icons.Get("instagram", 20) Instagram</a>
+                        }
+                        @if (!string.IsNullOrEmpty(contact?.TelegramLink))
+                        {
+                            <a class="ft-btn" href="@contact.TelegramLink" target="_blank" rel="noopener">@Icons.Get("send", 20) Telegram</a>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="ft-grid">
+            <div class="ft-col ft-col-cat">
                 <h4>Каталог</h4>
-                <ul>
+                <ul class="ft-cats">
                     @foreach (var brand in nav.NavBrands)
                     {
-                        <li><a asp-controller="Catalog" asp-action="Home">@brand.Name</a></li>
+                        @foreach (var category in brand.Categories)
+                        {
+                            <li><a href="@Url.Category(category)">@CategoryNames.Short(category.Name)</a></li>
+                        }
                     }
                 </ul>
             </div>
-            <div>
+            <div class="ft-col">
                 <h4>Покупателю</h4>
                 <ul>
-                    <li><a asp-controller="Stores" asp-action="Index">Адреса магазинов</a></li>
                     <li><a asp-controller="Cart" asp-action="Index">Корзина</a></li>
                     @if (signedIn)
                     {
@@ -170,49 +268,52 @@
                     }
                     else
                     {
-                        <li><a href="@ShopUrls.Register">Регистрация</a></li>
                         <li><a href="@ShopUrls.Login">Вход</a></li>
+                        <li><a href="@ShopUrls.Register">Регистрация</a></li>
                     }
-                    <li><a href="@OnlineShop.Web.Controllers.InfoController.PrivacyUrl">Политика конфиденциальности</a></li>
-                </ul>
-            </div>
-            <div>
-                <h4>Контакты</h4>
-                <ul>
-                    @if (!string.IsNullOrEmpty(contact?.Phone))
-                    {
-                        <li><a href="tel:@contact.PhoneLink">@contact.Phone</a></li>
-                    }
-                    @if (!string.IsNullOrEmpty(contact?.PhoneExtra))
-                    {
-                        <li>@contact.PhoneExtra</li>
-                    }
+                    <li><a asp-controller="Stores" asp-action="Index">Адреса магазинов</a></li>
                     @if (!string.IsNullOrEmpty(contact?.Email))
                     {
                         <li><a href="mailto:@contact.Email">@contact.Email</a></li>
                     }
-                    @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
-                    {
-                        <li><a href="@contact.WhatsappLink" target="_blank" rel="noopener">WhatsApp</a></li>
-                    }
-                    @if (!string.IsNullOrEmpty(contact?.TelegramLink))
-                    {
-                        <li><a href="@contact.TelegramLink" target="_blank" rel="noopener">Telegram</a></li>
-                    }
-                    @if (!string.IsNullOrEmpty(contact?.InstagramLink))
-                    {
-                        <li><a href="@contact.InstagramLink" target="_blank" rel="noopener">Instagram</a></li>
-                    }
-                    <li>@city</li>
-                    @if (!string.IsNullOrEmpty(contact?.WorkingHours))
-                    {
-                        <li>@contact.WorkingHours</li>
-                    }
                 </ul>
             </div>
+            <div class="ft-col ft-col-stores">
+                <h4>Магазины в @city</h4>
+                @if (nav.Stores.Count > 0)
+                {
+                    <ul class="ft-stores">
+                        @foreach (var store in nav.Stores)
+                        {
+                            <li>
+                                @{ var shortAddress = store.Address.Replace($"г. {store.City}, ", ""); }
+                                @if (string.IsNullOrEmpty(store.MapUrl))
+                                {
+                                    <a class="ft-store-addr" asp-controller="Stores" asp-action="Index">@shortAddress</a>
+                                }
+                                else
+                                {
+                                    <a class="ft-store-addr" href="@store.MapUrl" target="_blank" rel="noopener">@shortAddress</a>
+                                }
+                                @if (!string.IsNullOrEmpty(store.HoursLine))
+                                {
+                                    <span class="ft-store-hours">@store.HoursLine</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                else if (!string.IsNullOrEmpty(contact?.WorkingHours))
+                {
+                    <p>@contact.WorkingHours</p>
+                }
+            </div>
         </div>
-        <div class="footer-bottom">
-            Оплата наличными или картой при получении. Заказ подтверждает менеджер.
+
+        <div class="footer-bottom ft-bottom">
+            <span>© @DateTime.Now.Year GRASS @city</span>
+            <span>Оплата наличными или картой при получении. Заказ подтверждает менеджер.</span>
+            <a href="@OnlineShop.Web.Controllers.InfoController.PrivacyUrl">Политика конфиденциальности</a>
         </div>
     </div>
 </footer>

@@ -126,6 +126,7 @@ builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
+builder.Services.AddScoped<GuestOrders>();
 builder.Services.AddScoped<StockReservations>();
 builder.Services.AddSingleton<SearchSpelling>();
 builder.Services.AddSingleton<SiteAddress>();

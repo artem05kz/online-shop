@@ -1,0 +1,31 @@
+@model int
+@*
+    Шаги покупки над корзиной и оформлением: «Корзина → Оформление → Готово». Покупатель видит, сколько осталось.
+    Model — номер текущего шага (1, 2 или 3). Пройденные шаги — ссылки назад (кроме «Готово»).
+*@
+@{
+    var steps = new (string Title, string? Href)[]
+    {
+        ("Корзина", Url.Action("Index", "Cart")),
+        ("Оформление", Url.Action("Index", "Checkout")),
+        ("Готово", null),
+    };
+}
+<ol class="co-steps" aria-label="Шаги покупки">
+    @for (var i = 0; i < steps.Length; i++)
+    {
+        var n = i + 1;
+        var state = n < Model ? "is-done" : n == Model ? "is-current" : "";
+        <li class="co-step @state" aria-current="@(n == Model ? "step" : null)">
+            <span class="co-step-num">@(n < Model ? Icons.Get("check", 14) : new Microsoft.AspNetCore.Html.HtmlString(n.ToString()))</span>
+            @if (n < Model && steps[i].Href is { } href)
+            {
+                <a href="@href">@steps[i].Title</a>
+            }
+            else
+            {
+                <span>@steps[i].Title</span>
+            }
+        </li>
+    }
+</ol>

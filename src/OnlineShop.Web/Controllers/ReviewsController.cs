@@ -49,7 +49,9 @@ public class ReviewsController(ShopDbContext db) : Controller
         review.UpdatedAt = now;
         await db.SaveChangesAsync();
 
-        TempData.Flash("Спасибо за отзыв! Он появится на сайте после проверки.");
+        // Сообщение показывается прямо в блоке отзывов (карточка «Отзыв отправлен»), а не плашкой вверху страницы:
+        // после отправки страница открывается на отзывах, и верх страницы покупатель не видит.
+        TempData["ReviewSent"] = true;
         return LocalRedirect(back);
     }
 }

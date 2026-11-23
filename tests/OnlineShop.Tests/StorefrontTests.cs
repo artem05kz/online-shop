@@ -327,11 +327,59 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     }
 
     [Fact]
-    public async Task Checkout_requires_login()
+    public async Task Side_catalog_groups_categories_by_home_sections()
     {
-        var response = await Client().GetAsync("/orders/checkout");
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/accounts/login", response.Headers.Location!.AbsolutePath);
+        var html = await Page(Client(), "/");
+        // Шесть разделов как на главной; пустые помечены «скоро», у категорий число товаров.
+        Assert.Contains("data-cm-sec=\"laundry\"", html);
+        Assert.Contains("data-cm-sec=\"car\"", html);
+        Assert.Contains("скоро", html);
+        Assert.Contains("class=\"cm-cat-count\"", html);
+    }
+
+    [Fact]
+    public async Task Guest_checks_out_without_account_and_sees_order_by_secret_link()
+    {
+        var client = Client();
+        var token = await TokenFrom(client, "/product/шампунь-тест");
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token);
+        // Сообщение после добавления — карточка со ссылкой в корзину.
+        var afterAdd = await Page(client, "/product/шампунь-тест");
+        Assert.Contains("message toast success", afterAdd);
+        Assert.Contains("Перейти в корзину", afterAdd);
+
+        // Входить не надо: форма открывается сразу, город уже подставлен, согласие спрашиваем.
+        var form = await Page(client, "/orders/checkout");
+        Assert.Contains("Без регистрации", form);
+        Assert.Contains("value=\"Актау\"", form);
+        Assert.Contains("политики конфиденциальности", form);
+
+        var address = new[] { ("Form.ContactName", "Гость"), ("Form.ContactPhone", "+7 701 111-22-33"),
+            ("Form.IsPickup", "false"), ("Form.City", "Актау"), ("Form.StreetAndDetails", "3 микрорайон, дом 1") };
+        var refused = await Post(client, "/orders/checkout", token, address);
+        Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
+
+        var placed = await Post(client, "/orders/checkout", token, [.. address, ("Form.AcceptPrivacy", "true")]);
+        Assert.Equal(HttpStatusCode.Redirect, placed.StatusCode);
+        var link = placed.Headers.Location!.OriginalString;
+        Assert.Matches(@"^/orders/view/[0-9a-f]{32}$", link);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var order = scope.ServiceProvider.GetRequiredService<ShopDbContext>().Orders.Single(o => o.ContactPhone == "+7 701 111-22-33");
+            Assert.Null(order.UserId);
+            Assert.Equal(link, $"/orders/view/{order.AccessToken}");
+        }
+
+        var page = await Page(client, link);
+        Assert.Contains("принят", page);
+        Assert.Contains("Скопировать ссылку", page);
+        Assert.DoesNotContain("Мои заказы</a>", page);
+        Assert.Contains("Корзина пуста", await Page(client, "/orders/cart"));
+
+        // По ссылке заказ открывается и без куки (с другого устройства), а по выдуманной метке нет.
+        Assert.Equal(HttpStatusCode.OK, (await Client().GetAsync(link)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Client().GetAsync("/orders/view/" + new string('0', 32))).StatusCode);
     }
 
     [Fact]
@@ -365,7 +413,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         {
             var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
             var order = db.Orders.Include(o => o.Items).OrderBy(o => o.Id).Last();
-            Assert.Equal(_factory.BuyerId, order.UserId);
+            Assert.Equal<int?>(_factory.BuyerId, order.UserId);
             Assert.Equal(OrderStatus.New, order.Status);
             var item = Assert.Single(order.Items);
             Assert.Equal(("Шампунь Тест", "1 л", "100", 1890m, 2), (item.ProductName, item.PackLabel, item.Article, item.Price, item.Quantity));
@@ -373,14 +421,15 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
 
         // Менеджеру в Telegram уходит заказ со ссылкой на него в панели.
         var orderId = orderUrl.Split('/').Last();
-        var alert = await _factory.Telegram.WaitForMessage(ShopFactory.ManagerChatId);
-        Assert.StartsWith($"<b>Новый заказ №{orderId}</b>", alert.Text);
+        var alert = await _factory.Telegram.WaitForMessage(ShopFactory.ManagerChatId, m => m.Text.StartsWith($"<b>Новый заказ №{orderId}</b>"));
         Assert.Contains("Шампунь Тест, 1 л: 2 × 1 890 ₸", alert.Text);
         Assert.Contains("Комментарий: позвонить заранее", alert.Text);
         Assert.EndsWith($"/admin/orders/{orderId}", alert.Text);
 
         var page = await Page(client, orderUrl);
-        Assert.Contains("оформлен. Оплата при получении.", page);
+        // Сразу после оформления — карточка «Заказ принят» с шагом «Готово».
+        Assert.Contains($"Заказ №{orderId} принят", page);
+        Assert.Contains("co-step is-current", page);
         Assert.Contains("3 780 ₸", page);
         Assert.Contains("Корзина пуста", await Page(client, "/orders/cart"));
 
@@ -451,9 +500,10 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
                 Latitude = 43.65, Longitude = 51.16,
             };
             var hidden = new Store { Address = "г. Актау, скрытая тест-точка", SortOrder = -1, IsActive = false };
-            db.Stores.AddRange(shown, hidden);
+            var daily = new Store { Address = "г. Актау, 15 микрорайон, тест-ежедневно", Kind = StoreKind.Shop, SortOrder = -3, WorkingHours = "Ежедневно 11:00–18:00" };
+            db.Stores.AddRange(shown, hidden, daily);
             db.SaveChanges();
-            ids = [shown.Id, hidden.Id];
+            ids = [shown.Id, hidden.Id, daily.Id];
         }
         try
         {
@@ -464,12 +514,67 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             Assert.Contains("href=\"tel:+7 700 111-22-33\"", html);
             Assert.Contains("Как добраться", html);
             Assert.DoesNotContain("скрытая тест-точка", html);
+            // Точка, работающая каждый день, получает плашку «Без выходных»; «г. Актау» в адресе не повторяется.
+            var visit = html[html.IndexOf("visit-list", StringComparison.Ordinal)..html.IndexOf("</section>", html.IndexOf("visit-list", StringComparison.Ordinal), StringComparison.Ordinal)];
+            Assert.Contains("Без выходных", visit);
+            Assert.DoesNotContain("г. Актау, 15", visit);
         }
         finally
         {
             using var scope = _factory.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
             db.Stores.RemoveRange(db.Stores.Where(s => ids.Contains(s.Id)));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Home_shows_six_big_sections_and_marks_empty_ones()
+    {
+        var html = await Page(Client(), "/");
+        foreach (var title in new[] { "Для стирки", "Для уборки", "Для дома", "Для гигиены", "Для авто", "Для бизнеса" })
+        {
+            Assert.Contains($"<span class=\"hs-name\">{title}</span>", html);
+        }
+        // В тестовом каталоге нет товаров для стирки: плитка не ссылка, а «Скоро в каталоге».
+        Assert.Contains("Скоро в каталоге", html);
+    }
+
+    [Fact]
+    public async Task Footer_has_whatsapp_button_and_shops_with_hours_but_no_warehouse()
+    {
+        int[] storeIds;
+        int contactId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var shop = new Store { Address = "г. Актау, 21 микрорайон, подвал-бутик", Kind = StoreKind.Shop, WorkingHours = "Пн–Пт 9:00–16:00", SortOrder = -5 };
+            var warehouse = new Store { Address = "г. Актау, подвал-склад", Kind = StoreKind.Warehouse, SortOrder = -4 };
+            var contact = new SiteContact { Phone = "+7 701 245-48-48", Whatsapp = "+7 701 245-48-48", Instagram = "grassaktau" };
+            db.Stores.AddRange(shop, warehouse);
+            db.SiteContacts.Add(contact);
+            db.SaveChanges();
+            storeIds = [shop.Id, warehouse.Id];
+            contactId = contact.Id;
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            var footer = html[html.IndexOf("<footer", StringComparison.Ordinal)..];
+            Assert.Contains("Написать в WhatsApp", footer);
+            Assert.Contains("https://wa.me/77012454848?text=", footer);
+            Assert.Contains("https://instagram.com/grassaktau", footer);
+            // Адрес без «г. Актау»: город уже в заголовке колонки.
+            Assert.Contains(">21 микрорайон, подвал-бутик</a>", footer);
+            Assert.Contains("Пн–Пт 9:00–16:00", footer);
+            Assert.DoesNotContain("подвал-склад", footer);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Stores.RemoveRange(db.Stores.Where(s => storeIds.Contains(s.Id)));
+            db.SiteContacts.RemoveRange(db.SiteContacts.Where(c => c.Id == contactId));
             db.SaveChanges();
         }
     }

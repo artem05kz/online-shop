@@ -81,4 +81,28 @@ public class OrdersController(ShopDbContext db, Cart cart) : Controller
 
         return order is null ? NotFound() : View(order);
     }
+
+    /// <summary>
+    /// Заказ по секретной ссылке, без входа: так покупатель без регистрации видит свой заказ и его статус.
+    /// Ссылку он получает сразу после оформления. Метку не подобрать, поэтому чужой заказ так не открыть.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("/orders/view/{token:length(32)}")]
+    public async Task<IActionResult> ByLink(string token)
+    {
+        var order = await db.Orders
+            .Include(o => o.Items).ThenInclude(i => i.Variant).ThenInclude(v => v.Product).ThenInclude(p => p.Images)
+            .AsSplitQuery()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.AccessToken == token);
+        if (order is null)
+        {
+            return NotFound();
+        }
+        ViewData["ByLink"] = true;
+        return View(nameof(Detail), order);
+    }
+
+    /// <summary>Ссылка на заказ без входа, её показываем покупателю без регистрации.</summary>
+    public static string LinkPath(Models.Order order) => $"/orders/view/{order.AccessToken}";
 }

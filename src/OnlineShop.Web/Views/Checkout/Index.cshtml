@@ -7,31 +7,45 @@
         a => a.Id.ToString(),
         a => new { name = a.FullName, phone = a.Phone, city = a.City, street = CheckoutForm.AddressLine(a) });
 }
-<h1>Оформление заказа</h1>
+@*
+    Оформление (компьютерная версия): слева три шага формы (8 колонок из 12), справа заказ и кнопка (4 колонки).
+    Шаги пронумерованы, потому что идут по порядку: как получить → куда / откуда → кто получает.
+*@
+<partial name="_CheckoutSteps" model="2" />
+<div class="co-head">
+    <h1>Оформление заказа</h1>
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        @* Регистрация не нужна: достаточно имени и телефона. Вход — только для тех, кто хочет историю заказов. *@
+        <p class="co-guest">Без регистрации, нужны только имя и телефон. Есть аккаунт? <a href="@ShopUrls.Login?returnUrl=@Uri.EscapeDataString("/orders/checkout")">Войти</a></p>
+    }
+</div>
 
 <form asp-action="Index" method="post">
     <div asp-validation-summary="ModelOnly" class="checkout-errors"></div>
-    <div class="two-col">
-        <div>
-            <div class="panel">
-                <h3>Как получить заказ</h3>
+    <div class="co">
+        <div class="co-main">
+            <section class="co-card co-section">
+                <h2><span class="co-num">1</span>Как получить заказ</h2>
                 <div class="delivery-choice">
                     <label class="choice-tile">
                         <input type="radio" name="Form.IsPickup" value="false" checked="@(!Model.Form.IsPickup)">
-                        <span><b>Доставка</b><br><span class="muted">Курьер привезёт по адресу</span></span>
+                        <span class="choice-ico">@Icons.Get("truck", 22)</span>
+                        <span><b>Доставка</b><span class="muted">Курьер привезёт по Актау</span></span>
                     </label>
                     @if (Model.PickupStores.Count > 0)
                     {
                         <label class="choice-tile">
                             <input type="radio" name="Form.IsPickup" value="true" checked="@Model.Form.IsPickup">
-                            <span><b>Самовывоз</b><br><span class="muted">Заберу в магазине</span></span>
+                            <span class="choice-ico">@Icons.Get("pin", 22)</span>
+                            <span><b>Самовывоз</b><span class="muted">Заберу в магазине</span></span>
                         </label>
                     }
                 </div>
-            </div>
+            </section>
 
-            <div class="panel" id="delivery-block">
-                <h3>Адрес доставки</h3>
+            <section class="co-card co-section" id="delivery-block">
+                <h2><span class="co-num">2</span>Адрес доставки</h2>
                 @if (Model.Addresses.Count > 0)
                 {
                     <div class="form-row">
@@ -47,7 +61,7 @@
                         <span class="help">Выберите сохранённый адрес или заполните поля ниже вручную.</span>
                     </div>
                 }
-                <div class="form-grid">
+                <div class="co-fields co-fields-addr">
                     <div class="form-row">
                         <label asp-for="Form.City"></label>
                         <input class="field" asp-for="Form.City">
@@ -55,78 +69,93 @@
                     </div>
                     <div class="form-row">
                         <label asp-for="Form.StreetAndDetails"></label>
-                        <input class="field" asp-for="Form.StreetAndDetails" placeholder="Улица, дом, квартира">
+                        <input class="field" asp-for="Form.StreetAndDetails" placeholder="Микрорайон, дом, квартира">
                         <span class="errorlist" asp-validation-for="Form.StreetAndDetails"></span>
                     </div>
                 </div>
-            </div>
+            </section>
 
             @if (Model.PickupStores.Count > 0)
             {
-                <div class="panel" id="pickup-block">
-                    <h3>Где забрать</h3>
+                <section class="co-card co-section" id="pickup-block">
+                    <h2><span class="co-num">2</span>Где забрать</h2>
                     <div class="pickup-list">
                         @foreach (var store in Model.PickupStores)
                         {
+                            var everyDay = store.WorkingHours.Contains("ежедневно", StringComparison.OrdinalIgnoreCase);
                             <label class="choice-tile">
                                 <input type="radio" name="Form.PickupStoreId" value="@store.Id" checked="@(Model.Form.PickupStoreId == store.Id || Model.PickupStores.Count == 1)">
                                 <span>
-                                    <b>@store.Address</b>
+                                    <b>@store.Address.Replace($"г. {store.City}, ", "")</b>
                                     @if (store.WorkingHours.Length > 0)
                                     {
-                                        <br><span class="muted">@store.WorkingHours@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span>
+                                        <span class="muted">@store.WorkingHours.Replace("-", "–")@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span>
+                                    }
+                                    @if (everyDay)
+                                    {
+                                        <span class="visit-badge">Без выходных</span>
                                     }
                                 </span>
                             </label>
                         }
                     </div>
                     <span class="errorlist" asp-validation-for="Form.PickupStoreId"></span>
-                    <p class="muted" style="font-size:.88rem; margin:10px 0 0;">Мы позвоним, когда заказ будет собран. Оплата в магазине наличными или картой.</p>
-                </div>
+                    <p class="co-hint">Позвоним, когда заказ будет собран. Оплата в магазине наличными или картой.</p>
+                </section>
             }
 
-            <div class="panel">
-                <h3>Получатель</h3>
-                <div class="form-grid">
+            <section class="co-card co-section">
+                <h2><span class="co-num">3</span>Получатель</h2>
+                <div class="co-fields">
                     <div class="form-row">
                         <label asp-for="Form.ContactName"></label>
-                        <input class="field" asp-for="Form.ContactName">
+                        <input class="field" asp-for="Form.ContactName" autocomplete="name">
                         <span class="errorlist" asp-validation-for="Form.ContactName"></span>
                     </div>
                     <div class="form-row">
                         <label asp-for="Form.ContactPhone"></label>
-                        <input class="field" asp-for="Form.ContactPhone" type="tel">
+                        <input class="field" asp-for="Form.ContactPhone" type="tel" autocomplete="tel" placeholder="+7 7__ ___-__-__">
                         <span class="errorlist" asp-validation-for="Form.ContactPhone"></span>
                     </div>
                 </div>
                 <div class="form-row">
                     <label asp-for="Form.Comment"></label>
-                    <textarea class="field" asp-for="Form.Comment" rows="3"></textarea>
+                    <textarea class="field" asp-for="Form.Comment" rows="3" placeholder="Например: позвонить за час до доставки"></textarea>
                 </div>
+            </section>
+        </div>
+
+        <aside class="co-side">
+            <div class="co-card">
+                <h2>Ваш заказ</h2>
+                <ul class="co-items">
+                    @foreach (var line in Model.Cart.Lines)
+                    {
+                        var product = line.Variant.Product;
+                        <li>
+                            <span class="co-item-thumb"><img src="@Media.PhotoUrl(product, Media.Small)" alt=""></span>
+                            <span class="co-item-text">
+                                <span class="co-item-name">@product.Name</span>
+                                <span class="muted">@(string.IsNullOrEmpty(line.Variant.PackLabel) ? "" : $"{line.Variant.PackLabel} · ")@line.Quantity шт.</span>
+                            </span>
+                            <span class="co-item-sum">@Format.Money(line.Subtotal)</span>
+                        </li>
+                    }
+                </ul>
+                <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Cart.Total)</span></div>
+                @if (Model.NeedsConsent)
+                {
+                    <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
+                    <span class="errorlist" asp-validation-for="Form.AcceptPrivacy"></span>
+                }
+                <button class="btn co-cta" type="submit">Подтвердить заказ</button>
+                <ul class="co-notes">
+                    <li>@Icons.Get("check", 16) Оплата наличными или картой при получении</li>
+                    <li>@Icons.Get("phone", 16) После оформления позвонит менеджер</li>
+                </ul>
+                <a class="co-edit" asp-controller="Cart" asp-action="Index">Изменить корзину</a>
             </div>
-        </div>
-        <div class="panel sticky-side">
-            <h3>Ваш заказ</h3>
-            @foreach (var line in Model.Cart.Lines)
-            {
-                <div class="summary-row">
-                    <span>@line.Variant.Product.Name<br>
-                        <span class="muted" style="font-size:.82rem;">@line.Variant.PackLabel · @line.Quantity шт.</span>
-                    </span>
-                    <span style="white-space:nowrap;">@Format.Money(line.Subtotal)</span>
-                </div>
-            }
-            <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Cart.Total)</span></div>
-            <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
-                Оплата наличными или картой при получении. После оформления с вами свяжется менеджер.
-            </p>
-            @if (Model.NeedsConsent)
-            {
-                <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
-                <span class="errorlist" asp-validation-for="Form.AcceptPrivacy"></span>
-            }
-            <button class="btn btn-block" type="submit">Подтвердить заказ</button>
-        </div>
+        </aside>
     </div>
 </form>
 
@@ -145,6 +174,32 @@
         }
         radios.forEach(function (r) { r.addEventListener('change', update); });
         update();
+    })();
+
+    // Без галочки согласия заказ не отправляем и сразу показываем, что её нужно поставить,
+    // а не перезагружаем страницу с ошибкой где-то сбоку.
+    (function () {
+        var box = document.querySelector('.co-side .consent input[type="checkbox"]');
+        if (!box) return;
+        var consent = box.closest('.consent');
+        var note = document.createElement('p');
+        note.className = 'consent-error';
+        note.textContent = 'Отметьте согласие на обработку данных, без него мы не можем принять заказ.';
+        note.hidden = true;
+        consent.after(note);
+        box.form.addEventListener('submit', function (e) {
+            if (box.checked) return;
+            e.preventDefault();
+            consent.classList.add('is-invalid');
+            note.hidden = false;
+            consent.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            box.focus({ preventScroll: true });
+        });
+        box.addEventListener('change', function () {
+            if (!box.checked) return;
+            consent.classList.remove('is-invalid');
+            note.hidden = true;
+        });
     })();
 
     // Выбор сохранённого адреса заполняет поля формы, дальше их можно поправить вручную.

@@ -7,7 +7,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class LoginModel(SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart) : PageModel
+public class LoginModel(SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart, GuestOrders guestOrders) : PageModel
 {
     public class InputModel
     {
@@ -59,6 +59,7 @@ public class LoginModel(SignInManager<ApplicationUser> signInManager, Favorites 
         {
             await favorites.MergeGuestAsync(user.Id);
             await cart.MergeGuestAsync(user.Id);
+            await guestOrders.ClaimAsync(user.Id);
         }
         return Url.IsLocalUrl(ReturnUrl) ? LocalRedirect(ReturnUrl) : RedirectToAction("Home", "Catalog");
     }

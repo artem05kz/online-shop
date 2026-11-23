@@ -6,31 +6,37 @@
     <partial name="_Hero" model="Model.Hero" />
 }
 
-@if (Model.Tiles.Count > 0)
-{
-    <section class="section">
-        <div class="section-head"><h2>Категории</h2></div>
-        <div class="tiles">
-            @foreach (var tile in Model.Tiles)
+@* Крупные разделы, как на grass.su: цветные плитки, название сверху, картинка снизу (картинки — позже, рендеры).
+   Какие категории каталога входят в раздел — Infrastructure/HomeSections.cs. Ссылка ведёт на самую большую из них:
+   на странице категории сверху есть кнопки остальных. *@
+<section class="section hs-section">
+    <div class="section-head"><h2>Разделы</h2></div>
+    <div class="hs">
+        @foreach (var hs in HomeSections.All)
+        {
+            var inside = Model.Tiles.Where(t => HomeSections.Contains(hs, t.Category.Name)).ToList();
+            var count = inside.Sum(t => t.ProductCount);
+            var target = inside.OrderByDescending(t => t.ProductCount).FirstOrDefault();
+            var image = hs.Image is null ? null : Url.Content($"~/img/sections/{hs.Image}");
+            if (target is not null)
             {
-                <a class="tile" href="@Url.Category(tile.Category)">
-                    <span class="tile-img@(tile.Render is null ? "" : " is-render")">
-                        @if (tile.Render is not null)
-                        {
-                            <img src="~/img/tiles/@tile.Render" alt="" loading="lazy">
-                        }
-                        else
-                        {
-                            <img src="@(tile.ImagePath is null ? Media.NoPhoto : Media.Thumb(tile.ImagePath, Media.Card))" alt="" loading="lazy">
-                        }
-                    </span>
-                    <span class="tile-name">@Typo.Text(tile.Category.Name)</span>
-                    <span class="tile-count">@tile.ProductCount @Plural.Products(tile.ProductCount)</span>
+                <a class="hs-tile" style="--hs-bg: @hs.Color" href="@Url.Category(target.Category)">
+                    <span class="hs-name">@hs.Title</span>
+                    <span class="hs-count">@count @Plural.Products(count)</span>
+                    @if (image is not null) { <img class="hs-img" src="@image" alt="" loading="lazy"> }
                 </a>
             }
-        </div>
-    </section>
-}
+            else
+            {
+                <div class="hs-tile is-soon" style="--hs-bg: @hs.Color">
+                    <span class="hs-name">@hs.Title</span>
+                    <span class="hs-count">Скоро в каталоге</span>
+                    @if (image is not null) { <img class="hs-img" src="@image" alt="" loading="lazy"> }
+                </div>
+            }
+        }
+    </div>
+</section>
 
 @* Баннеры-картинки из панели (акции) идут после разделов: первый экран занят слайдами товаров. *@
 @if (Model.Banners.Count > 0)

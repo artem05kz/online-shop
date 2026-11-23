@@ -93,7 +93,7 @@ public class SeoController(ShopDbContext db) : Controller
             new XElement("channel",
                 new XElement("title", "GRASS Актау"),
                 new XElement("link", site),
-                new XElement("description", "Автохимия и бытовая химия GRASS и Ifoam в Актау"),
+                new XElement("description", "Автохимия и бытовая химия GRASS и IFOAM в Актау"),
                 items));
         return Content(new XDeclaration("1.0", "utf-8", null) + "\n" + rss, "application/xml; charset=utf-8");
     }

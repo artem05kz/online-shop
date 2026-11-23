@@ -26,7 +26,7 @@
 <form method="post" id="changelist-form">
     <div class="admin-box">
         <ul class="spec-list">
-            <li><span>Покупатель (логин)</span><span>@order.User.UserName</span></li>
+            <li><span>Покупатель (логин)</span><span>@(order.User?.UserName ?? "без регистрации")</span></li>
             <li><span>Оформлен</span><span>@Format.DateTimeText(order.CreatedAt)</span></li>
             <li><span>Изменён</span><span>@Format.DateTimeText(order.UpdatedAt)</span></li>
         </ul>

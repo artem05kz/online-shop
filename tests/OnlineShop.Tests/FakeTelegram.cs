@@ -79,4 +79,18 @@ public sealed class FakeTelegramApi : ITelegramApi
         }
         throw new TimeoutException($"В чат {chatId} не пришло сообщение №{count}.");
     }
+
+    /// <summary>Ждёт нужное сообщение, когда в тот же чат могут прийти сообщения других тестов.</summary>
+    public async Task<Sent> WaitForMessage(long chatId, Func<Sent, bool> match)
+    {
+        for (var i = 0; i < 250; i++)
+        {
+            if (SentTo(chatId).FirstOrDefault(match) is { } sent)
+            {
+                return sent;
+            }
+            await Task.Delay(20);
+        }
+        throw new TimeoutException($"В чат {chatId} не пришло нужное сообщение.");
+    }
 }

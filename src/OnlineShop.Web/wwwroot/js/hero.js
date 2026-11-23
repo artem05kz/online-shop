@@ -18,9 +18,11 @@
             if (!script) return;
             // offsetLeft отрицательный, когда слово заходит в поле слева (компьютер, планшет)
             // ×0.96: у рукописных букв хвосты выступают за свою ширину (x, f, s)
-            var target = (visual.clientWidth - script.offsetLeft - GAP) * 0.96;
+            // У слова есть внутренние отступы (под блик, см. CSS «Блик по рукописному слову») — считаем без них.
             script.style.fontSize = '100px';
-            var w = script.offsetWidth;
+            var pad = parseFloat(getComputedStyle(script).paddingLeft) || 0; // в px при 100px, растёт вместе со шрифтом
+            var target = (visual.clientWidth - (script.offsetLeft + pad) - GAP) * 0.96;
+            var w = script.offsetWidth - 2 * pad;
             if (!w) return;
             var size = 100 * target / w;
             var maxByHeight = visual.clientHeight * 0.95 / 0.8; // line-height .8

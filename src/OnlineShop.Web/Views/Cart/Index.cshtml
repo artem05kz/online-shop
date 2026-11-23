@@ -2,46 +2,53 @@
 @{
     ViewData["Title"] = "Корзина";
 }
-<h1>Корзина</h1>
-
+@*
+    Корзина (компьютерная версия): слева товары (8 колонок из 12), справа итог (4 колонки), он едет за прокруткой.
+    Сверху шаги покупки. Количество меняется кнопками − и +, форма отправляется сама (forms.js, data-autosubmit).
+*@
 @if (Model.IsEmpty)
 {
-    <div class="empty">
-        <div class="empty-ico">@Icons.Get("cart", 44)</div>
-        <h2>Корзина пуста</h2>
-        <p>Загляните в каталог, там есть что выбрать.</p>
-        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+    <div class="co-empty">
+        <span class="co-empty-ico">@Icons.Get("cart", 34)</span>
+        <h1>Корзина пуста</h1>
+        <p>Загляните в разделы на главной — там всё, что есть в наличии.</p>
+        <a class="btn co-cta" asp-controller="Catalog" asp-action="Home">Перейти к товарам</a>
     </div>
 }
 else
 {
-    <div class="two-col">
-        <div class="panel">
-            @foreach (var line in Model.Lines)
-            {
-                var product = line.Variant.Product;
-                var url = Url.Product(product);
-                <div class="line-item">
-                    <a class="thumb" href="@url">
-                        <img src="@Media.PhotoUrl(product, Media.Small)" alt="@product.Name">
-                    </a>
-                    <div>
-                        <a class="li-name" href="@url">@product.Name</a>
-                        <div class="li-meta">
-                            Фасовка: @(string.IsNullOrEmpty(line.Variant.PackLabel) ? "не указана" : line.Variant.PackLabel) · Артикул: @line.Variant.Article
+    <partial name="_CheckoutSteps" model="1" />
+    <div class="co-head">
+        <h1>Корзина</h1>
+        <span class="co-count">@Model.Count @Plural.Choose(Model.Count, "товар", "товара", "товаров")</span>
+    </div>
+
+    <div class="co">
+        <div class="co-main">
+            <ul class="cart-list">
+                @foreach (var line in Model.Lines)
+                {
+                    var product = line.Variant.Product;
+                    var url = Url.Product(product);
+                    var pack = string.IsNullOrEmpty(line.Variant.PackLabel) ? null : line.Variant.PackLabel;
+                    <li class="cart-line">
+                        <a class="cart-thumb" href="@url">
+                            <img src="@Media.PhotoUrl(product, Media.Small)" alt="">
+                        </a>
+                        <div class="cart-info">
+                            <a class="cart-name" href="@url">@product.Name</a>
+                            <p class="cart-meta">@(pack is null ? "" : $"{pack} · ")арт. @line.Variant.Article</p>
+                            <p class="cart-price">@Format.Money(line.Price) за шт.</p>
+                            @if (line.Quantity > line.Variant.AvailableQty)
+                            {
+                                <p class="li-warn">@(line.Variant.AvailableQty == 0 ? "Закончился, уберите из корзины." : $"В наличии только {line.Variant.AvailableQty} шт., уменьшите количество.")</p>
+                            }
+                            else
+                            {
+                                <p class="cart-stock">В наличии: @line.Variant.AvailableQty шт.</p>
+                            }
                         </div>
-                        <div class="li-meta">@Format.Money(line.Price) за штуку</div>
-                        @if (line.Quantity > line.Variant.AvailableQty)
-                        {
-                            <div class="li-warn">@(line.Variant.AvailableQty == 0 ? "Закончился, уберите из корзины." : $"В наличии только {line.Variant.AvailableQty} шт., уменьшите количество.")</div>
-                        }
-                        else
-                        {
-                            <div class="li-meta">В наличии: @line.Variant.AvailableQty шт.</div>
-                        }
-                    </div>
-                    <div class="li-right">
-                        <form asp-action="Update" asp-route-variantId="@line.Variant.Id" method="post" data-autosubmit>
+                        <form class="cart-qty" asp-action="Update" asp-route-variantId="@line.Variant.Id" method="post" data-autosubmit>
                             <span class="qty">
                                 <button type="button" data-qty="minus" aria-label="Меньше">−</button>
                                 <input type="number" name="quantity" value="@line.Quantity" min="1" max="@Math.Max(1, line.Variant.AvailableQty)" aria-label="Количество">
@@ -50,24 +57,28 @@ else
                             @* Запасной вариант, если в браузере отключены скрипты. *@
                             <noscript><button class="btn btn-ghost btn-sm" type="submit">Применить</button></noscript>
                         </form>
-                        <strong>@Format.Money(line.Subtotal)</strong>
-                        <form asp-action="Remove" asp-route-variantId="@line.Variant.Id" method="post">
-                            <button class="btn btn-danger btn-sm" type="submit">Убрать</button>
+                        <strong class="cart-sum">@Format.Money(line.Subtotal)</strong>
+                        <form class="cart-remove" asp-action="Remove" asp-route-variantId="@line.Variant.Id" method="post">
+                            <button type="submit" aria-label="Убрать «@product.Name» из корзины" title="Убрать">@Icons.Get("trash", 18)</button>
                         </form>
-                    </div>
-                </div>
-            }
+                    </li>
+                }
+            </ul>
+            <a class="co-back" asp-controller="Catalog" asp-action="Home">@Icons.Get("arrow-left", 16) Продолжить покупки</a>
         </div>
-        <div class="panel sticky-side">
-            <h3>Итого</h3>
-            <div class="summary-row"><span>Товаров</span><span>@Model.Count шт.</span></div>
-            <div class="summary-row"><span>Доставка</span><span class="muted">уточнит менеджер</span></div>
-            <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Total)</span></div>
-            <p class="muted" style="font-size:.85rem; margin:12px 0 16px;">
-                Оплата наличными или картой при получении.
-            </p>
-            <a class="btn btn-block" asp-controller="Checkout" asp-action="Index">Оформить заказ</a>
-            <a class="btn btn-ghost btn-block" asp-controller="Catalog" asp-action="Home" style="margin-top:10px;">Продолжить покупки</a>
-        </div>
+
+        <aside class="co-side">
+            <div class="co-card">
+                <h2>Итого</h2>
+                <div class="summary-row"><span>Товары, @Model.Count шт.</span><span>@Format.Money(Model.Total)</span></div>
+                <div class="summary-row"><span>Доставка</span><span class="muted">уточнит менеджер</span></div>
+                <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Total)</span></div>
+                <a class="btn co-cta" asp-controller="Checkout" asp-action="Index">Перейти к оформлению</a>
+                <ul class="co-notes">
+                    <li>@Icons.Get("check", 16) Оплата наличными или картой при получении</li>
+                    <li>@Icons.Get("phone", 16) Менеджер позвонит и подтвердит заказ</li>
+                </ul>
+            </div>
+        </aside>
     </div>
 }

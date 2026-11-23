@@ -38,7 +38,7 @@ public class IndexModel(ShopDbContext db, AccountMail mail, StockReservations re
             var needle = Q.Trim().ToLowerInvariant();
             query = query.Where(o => SqliteFunctions.Lower(o.ContactPhone).Contains(needle)
                 || SqliteFunctions.Lower(o.ContactName).Contains(needle)
-                || SqliteFunctions.Lower(o.User.UserName!).Contains(needle)
+                || (o.User != null && SqliteFunctions.Lower(o.User.UserName!).Contains(needle))
                 // По артикулу: найти, кто заказывал конкретную фасовку.
                 || o.Items.Any(i => SqliteFunctions.Lower(i.Article).Contains(needle))
                 || o.Id.ToString() == needle);
@@ -58,7 +58,7 @@ public class IndexModel(ShopDbContext db, AccountMail mail, StockReservations re
 
         var rows = query.Select(o => new Row
         {
-            Id = o.Id, UserName = o.User.UserName ?? "", ContactName = o.ContactName, ContactPhone = o.ContactPhone,
+            Id = o.Id, UserName = o.User != null ? o.User.UserName ?? "" : "без регистрации", ContactName = o.ContactName, ContactPhone = o.ContactPhone,
             City = o.City, IsPickup = o.IsPickup, CreatedAt = o.CreatedAt, Status = o.Status,
         });
         var list = await PagedList<Row>.CreateAsync(rows, p, AdminList.PageSize);
