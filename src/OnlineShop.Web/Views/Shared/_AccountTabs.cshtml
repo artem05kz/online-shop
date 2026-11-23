@@ -1,13 +1,44 @@
-@* Вкладки личного кабинета. Активную задаёт ViewData["AccountTab"]: profile, addresses или orders. *@
+@using Microsoft.EntityFrameworkCore
+@inject OnlineShop.Web.Data.ShopDbContext Db
+@*
+    Боковое меню личного кабинета (компьютерная версия): кружок с буквами имени, имя и почта,
+    разделы с числом заказов и адресов, «Выйти» внизу. Активный раздел задаёт ViewData["AccountTab"]:
+    profile, addresses или orders. Страница кладёт меню и своё содержимое в <div class="acc">.
+*@
 @{
     var active = ViewData["AccountTab"] as string;
+    var userId = User.ShopUserId();
+    var me = await Db.Users.Where(u => u.Id == userId)
+        .Select(u => new { u.UserName, u.FirstName, u.LastName, u.Email })
+        .AsNoTracking().FirstOrDefaultAsync();
+    var orders = await Db.Orders.CountAsync(o => o.UserId == userId);
+    var addresses = await Db.Addresses.CountAsync(a => a.UserId == userId);
+    var name = me is null ? "" : $"{me.FirstName} {me.LastName}".Trim();
+    var shown = name.Length > 0 ? name : me?.UserName ?? "";
+    var initials = string.Concat(shown.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
 }
-<nav class="tabs">
-    <a href="@ShopUrls.Profile" class="@(active == "profile" ? "active" : null)">Личные данные</a>
-    <a href="@ShopUrls.AddressBook" class="@(active == "addresses" ? "active" : null)">Адреса доставки</a>
-    <a href="@ShopUrls.OrderHistory" class="@(active == "orders" ? "active" : null)">История заказов</a>
-    <form action="@ShopUrls.Logout" method="post" style="margin-left:auto;">
+<aside class="acc-side">
+    <div class="acc-me">
+        <span class="acc-avatar" aria-hidden="true">@(initials.Length > 0 ? initials : "?")</span>
+        <span class="acc-me-text">
+            <b>@shown</b>
+            <small>@(me?.Email ?? (name.Length > 0 ? me?.UserName : ""))</small>
+        </span>
+    </div>
+    <nav class="acc-nav" aria-label="Личный кабинет">
+        <a href="@ShopUrls.OrderHistory" class="@(active == "orders" ? "is-active" : null)" aria-current="@(active == "orders" ? "page" : null)">
+            @Icons.Get("package", 18) <span>Мои заказы</span>@if (orders > 0) {<em>@orders</em>}
+        </a>
+        <a href="@ShopUrls.AddressBook" class="@(active == "addresses" ? "is-active" : null)" aria-current="@(active == "addresses" ? "page" : null)">
+            @Icons.Get("pin", 18) <span>Адреса доставки</span>@if (addresses > 0) {<em>@addresses</em>}
+        </a>
+        <a href="@ShopUrls.Profile" class="@(active == "profile" ? "is-active" : null)" aria-current="@(active == "profile" ? "page" : null)">
+            @Icons.Get("user", 18) <span>Личные данные</span>
+        </a>
+        <a href="/favorites">@Icons.Get("heart", 18) <span>Избранное</span></a>
+    </nav>
+    <form class="acc-logout" action="@ShopUrls.Logout" method="post">
         @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-ghost btn-sm">Выйти</button>
+        <button type="submit">@Icons.Get("arrow-left", 16) Выйти</button>
     </form>
-</nav>
+</aside>

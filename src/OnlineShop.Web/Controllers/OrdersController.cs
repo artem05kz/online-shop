@@ -18,7 +18,9 @@ public class OrdersController(ShopDbContext db, Cart cart) : Controller
         var userId = User.ShopUserId();
         var orders = await db.Orders
             .Where(o => o.UserId == userId)
-            .Include(o => o.Items)
+            // Фото товаров нужны для миниатюр в списке заказов.
+            .Include(o => o.Items).ThenInclude(i => i.Variant).ThenInclude(v => v.Product).ThenInclude(p => p.Images)
+            .AsSplitQuery()
             .Ordered()
             .AsNoTracking()
             .ToListAsync();

@@ -3,38 +3,42 @@
 @{
     ViewData["Title"] = "Регистрация";
 }
-<div class="panel form-narrow" style="margin:34px auto;">
-    <h1>Регистрация</h1>
-    <p class="muted" style="font-size:.9rem;">Имя и адрес доставки можно будет заполнить позже, в личном кабинете.</p>
-    <form method="post" style="margin-top:18px;">
-        <input type="hidden" asp-for="ReturnUrl">
-        <div class="form-row">
-            <label asp-for="Input.UserName"></label>
-            <input class="field" asp-for="Input.UserName" autocomplete="username" autofocus>
-            <span class="help">Не длиннее 150 символов: буквы, цифры и символы @@ . + - _.</span>
-            <span class="errorlist" asp-validation-for="Input.UserName"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.Email"></label>
-            <input class="field" asp-for="Input.Email" type="email" autocomplete="email" placeholder="name@mail.ru">
-            <span class="errorlist" asp-validation-for="Input.Email"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.Password"></label>
-            <input class="field" asp-for="Input.Password" autocomplete="new-password">
-            <span class="help">Не короче 8 символов, не только цифры и не похож на логин.</span>
-            <span class="errorlist" asp-validation-for="Input.Password"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.ConfirmPassword"></label>
-            <input class="field" asp-for="Input.ConfirmPassword" autocomplete="new-password">
-            <span class="errorlist" asp-validation-for="Input.ConfirmPassword"></span>
-        </div>
-        <partial name="_PrivacyConsent" model="@("Input.AcceptPrivacy")" />
-        <span class="errorlist" asp-validation-for="Input.AcceptPrivacy"></span>
-        <button class="btn btn-block" type="submit">Создать аккаунт</button>
-    </form>
-    <p class="muted" style="margin-top:16px; font-size:.9rem;">
-        Уже есть аккаунт? <a asp-page="Login" asp-route-returnUrl="@Model.ReturnUrl" style="color:var(--green-dark); font-weight:600;">Войти</a>
-    </p>
+@* Регистрация: слева форма, справа «Аккаунт — по желанию» (_AuthAside). *@
+<div class="auth auth-split">
+    <div class="auth-card">
+        <h1>Регистрация</h1>
+        <p class="auth-lead">Имя и адрес доставки можно заполнить позже, в личном кабинете.</p>
+        <form method="post">
+            <input type="hidden" asp-for="ReturnUrl">
+            <div class="form-row">
+                <label asp-for="Input.UserName"></label>
+                <input class="field" asp-for="Input.UserName" autocomplete="username" autofocus>
+                <span class="help">Буквы, цифры и символы @@ . + - _, не длиннее 150 символов.</span>
+                <span class="errorlist" asp-validation-for="Input.UserName"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Email"></label>
+                <input class="field" asp-for="Input.Email" type="email" autocomplete="email" placeholder="name@mail.ru">
+                <span class="errorlist" asp-validation-for="Input.Email"></span>
+            </div>
+            <div class="auth-two">
+                <div class="form-row">
+                    <label asp-for="Input.Password"></label>
+                    <input class="field" asp-for="Input.Password" autocomplete="new-password">
+                    <span class="errorlist" asp-validation-for="Input.Password"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.ConfirmPassword"></label>
+                    <input class="field" asp-for="Input.ConfirmPassword" autocomplete="new-password">
+                    <span class="errorlist" asp-validation-for="Input.ConfirmPassword"></span>
+                </div>
+            </div>
+            <p class="help auth-help">Пароль не короче 8 символов, не только цифры и не похож на логин.</p>
+            <partial name="_PrivacyConsent" model="@("Input.AcceptPrivacy")" />
+            <span class="errorlist" asp-validation-for="Input.AcceptPrivacy"></span>
+            <button class="btn btn-block auth-submit" type="submit">Создать аккаунт</button>
+        </form>
+        <p class="auth-switch">Уже есть аккаунт? <a class="auth-link" asp-page="Login" asp-route-returnUrl="@Model.ReturnUrl">Войти</a></p>
+    </div>
+    <partial name="_AuthAside" />
 </div>

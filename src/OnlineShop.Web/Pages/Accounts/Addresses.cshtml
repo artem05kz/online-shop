@@ -4,56 +4,44 @@
     ViewData["Title"] = "Адреса доставки";
     ViewData["AccountTab"] = "addresses";
 }
-<h1>Личный кабинет</h1>
+@* Адреса доставки: карточки (основной первым и с чёрной меткой) и плитка «Добавить адрес». *@
+<div class="acc">
 <partial name="_AccountTabs" />
+<div class="acc-main">
+<h1 class="acc-title">Адреса доставки</h1>
+<p class="acc-lead">Основной адрес сам подставляется при оформлении заказа.</p>
 
-<div class="panel-head">
-    <h3>Адреса доставки</h3>
-    <a class="btn" href="/accounts/profile/addresses/add">Добавить адрес</a>
-</div>
-
-@if (Model.Addresses.Count > 0)
-{
-    <div class="address-grid">
-        @foreach (var address in Model.Addresses)
-        {
-            <div class="address-card@(address.IsDefault ? " is-default" : "")">
-                <div class="addr-label">
-                    @(string.IsNullOrEmpty(address.Label) ? "Адрес" : address.Label)
-                    @if (address.IsDefault)
-                    {
-                        <span class="chip">Основной</span>
-                    }
-                </div>
-                <div class="addr-text">
-                    @address.City, @address.StreetLine<br>
-                    @if (address.DetailsLine.Length > 0)
-                    {
-                        @address.DetailsLine<br>
-                    }
-                    <span class="muted">@address.FullName, @address.Phone</span>
-                    @if (!string.IsNullOrEmpty(address.Comment))
-                    {
-                        <br><span class="muted">@address.Comment</span>
-                    }
-                </div>
-                <div class="addr-actions">
-                    <a class="btn btn-ghost btn-sm" asp-page="AddressEdit" asp-route-id="@address.Id">Изменить</a>
-                    <form asp-page-handler="Delete" asp-route-id="@address.Id" method="post"
-                          data-confirm="Удалить этот адрес?">
-                        <button class="btn btn-danger btn-sm" type="submit">Удалить</button>
-                    </form>
-                </div>
+<div class="addr-grid">
+    @foreach (var address in Model.Addresses)
+    {
+        <article class="co-card addr-card@(address.IsDefault ? " is-default" : "")">
+            <div class="addr-top">
+                <span class="addr-name">@(string.IsNullOrEmpty(address.Label) ? "Адрес" : address.Label)</span>
+                @if (address.IsDefault)
+                {
+                    <span class="addr-main">Основной</span>
+                }
             </div>
-        }
-    </div>
-}
-else
-{
-    <div class="empty">
-        <div class="empty-ico">@Icons.Get("pin", 44)</div>
-        <h2>Адресов пока нет</h2>
-        <p>Сохраните адрес, и он будет подставляться при оформлении заказа.</p>
-        <p style="margin-top:18px;"><a class="btn" href="/accounts/profile/addresses/add">Добавить адрес</a></p>
-    </div>
-}
+            <p class="addr-line">@address.StreetLine</p>
+            <p class="addr-sub">@address.City@(address.DetailsLine.Length > 0 ? ", " + address.DetailsLine : "")</p>
+            <p class="addr-who">@address.FullName · @address.Phone</p>
+            @if (!string.IsNullOrEmpty(address.Comment))
+            {
+                <p class="addr-comment">@address.Comment</p>
+            }
+            <div class="addr-actions">
+                <a class="addr-btn" asp-page="AddressEdit" asp-route-id="@address.Id">@Icons.Get("pencil", 16) Изменить</a>
+                <form asp-page-handler="Delete" asp-route-id="@address.Id" method="post" data-confirm="Удалить этот адрес?">
+                    <button class="addr-btn addr-del" type="submit">@Icons.Get("trash", 16) Удалить</button>
+                </form>
+            </div>
+        </article>
+    }
+    <a class="addr-add" href="/accounts/profile/addresses/add">
+        <span class="addr-add-ico">@Icons.Get("plus", 22)</span>
+        <b>Добавить адрес</b>
+        <small>@(Model.Addresses.Count == 0 ? "Сохраните адрес, и он будет подставляться при заказе" : "Например, рабочий или адрес родителей")</small>
+    </a>
+</div>
+</div>
+</div>

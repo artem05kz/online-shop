@@ -4,9 +4,10 @@
     ViewData["Title"] = "Электронная почта";
     ViewData["AccountTab"] = "profile";
 }
-<div class="panel form-narrow" style="margin:34px auto;">
+<div class="auth">
+<div class="auth-card auth-narrow">
     <h1>Электронная почта</h1>
-    <p class="muted">На почту приходят статусы заказов и код, если забудете пароль.</p>
+    <p class="auth-lead">На почту приходят статусы заказов и код, если забудете пароль.</p>
 
     @if (Model.CurrentEmail is not null && Model.IsConfirmed)
     {
@@ -21,7 +22,7 @@
                 <input class="field code-field" asp-for="Code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" autofocus>
                 <span class="errorlist" asp-validation-for="Code"></span>
             </div>
-            <button class="btn btn-block" type="submit">Подтвердить</button>
+            <button class="btn btn-block auth-submit" type="submit">Подтвердить</button>
         </form>
         <form method="post" asp-page-handler="Resend" asp-route-returnUrl="@Model.ReturnUrl" style="margin-top:10px;">
             <button class="btn btn-ghost btn-block" type="submit">Письмо не пришло, отправить код ещё раз</button>
@@ -38,4 +39,5 @@
             @(Model.CurrentEmail is null ? "Получить код" : "Сменить почту")
         </button>
     </form>
+</div>
 </div>

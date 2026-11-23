@@ -4,21 +4,19 @@
     ViewData["Title"] = "Личные данные";
     ViewData["AccountTab"] = "profile";
 }
-<h1>Личный кабинет</h1>
+@* Личные данные: имя и фамилия (подставляются в заказ), логин и почта со статусом подтверждения. *@
+<div class="acc">
 <partial name="_AccountTabs" />
+<div class="acc-main">
+<h1 class="acc-title">Личные данные</h1>
 
-<div class="panel form-narrow">
-    <h3>Личные данные</h3>
-    <p class="muted" style="font-size:.88rem;">Имя и фамилию заполнять необязательно, они только подставляются в заказ.</p>
-    <form method="post" style="margin-top:16px;">
-        <div class="form-row">
-            <label for="login">Логин</label>
-            <input class="field" id="login" type="text" value="@Model.UserName" disabled>
-            <span class="help">Логин изменить нельзя.</span>
-        </div>
+<form method="post" class="co-card acc-card">
+    <h2>Как к вам обращаться</h2>
+    <p class="acc-hint">Необязательно: имя только подставляется в заказ, чтобы не вводить его каждый раз.</p>
+    <div class="auth-two">
         <div class="form-row">
             <label asp-for="Input.FirstName"></label>
-            <input class="field" asp-for="Input.FirstName" placeholder="Необязательно" autocomplete="given-name">
+            <input class="field" asp-for="Input.FirstName" placeholder="Например, Айгерим" autocomplete="given-name">
             <span class="errorlist" asp-validation-for="Input.FirstName"></span>
         </div>
         <div class="form-row">
@@ -26,18 +24,36 @@
             <input class="field" asp-for="Input.LastName" placeholder="Необязательно" autocomplete="family-name">
             <span class="errorlist" asp-validation-for="Input.LastName"></span>
         </div>
-        <div class="form-row">
-            <label for="email">Электронная почта</label>
-            <input class="field" id="email" type="text" value="@(Model.Email ?? "не указана")" disabled>
-            <span class="help">
-                @if (Model.Email is null) { <text>Нужна для заказов.</text> }
-                else if (!Model.EmailConfirmed) { <text>Не подтверждена.</text> }
-                else { <text>Подтверждена.</text> }
-                <a href="@EmailModel.PageUrl" style="color:var(--green-dark); font-weight:600;">@(Model.Email is null ? "Указать" : Model.EmailConfirmed ? "Сменить" : "Подтвердить")</a>
+    </div>
+    <button class="btn acc-save" type="submit">Сохранить</button>
+</form>
+
+<div class="co-card acc-card">
+    <h2>Вход и почта</h2>
+    <ul class="acc-facts">
+        <li>
+            <span class="acc-fact-label">Логин</span>
+            <span class="acc-fact-value">@Model.UserName</span>
+            <span class="acc-fact-note">изменить нельзя</span>
+        </li>
+        <li>
+            <span class="acc-fact-label">Электронная почта</span>
+            <span class="acc-fact-value">
+                @(Model.Email ?? "не указана")
+                @if (Model.Email is not null)
+                {
+                    <span class="acc-badge@(Model.EmailConfirmed ? " is-ok" : "")">@(Model.EmailConfirmed ? "подтверждена" : "не подтверждена")</span>
+                }
             </span>
-        </div>
-        <div class="form-actions">
-            <button class="btn" type="submit">Сохранить</button>
-        </div>
-    </form>
+            <a class="acc-fact-action" href="@EmailModel.PageUrl">@(Model.Email is null ? "Указать" : Model.EmailConfirmed ? "Сменить" : "Подтвердить")</a>
+        </li>
+        <li>
+            <span class="acc-fact-label">Пароль</span>
+            <span class="acc-fact-value">••••••••</span>
+            <a class="acc-fact-action" asp-page="ForgotPassword">Сменить через почту</a>
+        </li>
+    </ul>
+    <p class="acc-hint">На почту приходят статусы заказов и код, если забудете пароль.</p>
+</div>
+</div>
 </div>

@@ -46,6 +46,21 @@
         if (parts.house && houseInput) houseInput.value = parts.house;
     }
 
+    // Колесо мыши над картой листает страницу, а не карту: иначе страница «застревает»,
+    // пока курсор над картой. Приблизить можно кнопками + и −, двойным кликом или колесом с Ctrl.
+    var wheelNote = null, wheelTimer = 0;
+    function showWheelNote() {
+        if (!wheelNote) {
+            wheelNote = document.createElement('div');
+            wheelNote.className = 'map-wheel-note';
+            wheelNote.textContent = 'Чтобы приблизить карту, зажмите Ctrl и крутите колесо или нажмите +';
+            mapEl.appendChild(wheelNote);
+        }
+        wheelNote.classList.add('is-on');
+        clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(function () { wheelNote.classList.remove('is-on'); }, 1400);
+    }
+
     var NOT_FOUND = 'Точка выбрана. Адрес не определился, впишите улицу вручную.';
     var needsAddress = !!(cityInput || streetInput || houseInput);
 
@@ -57,6 +72,7 @@
             center: [start.lng, start.lat],
             zoom: saved ? 17 : 13,
             lang: 'ru',
+            disableZoomOnScroll: true,
         });
         var marker = saved ? new mapgl.Marker(map, { coordinates: [saved.lng, saved.lat] }) : null;
 
@@ -109,7 +125,24 @@
             return;
         }
         var start = saved || AKTAU;
-        var map = L.map(mapEl).setView([start.lat, start.lng], saved ? 17 : 13);
+        var map = L.map(mapEl, { scrollWheelZoom: false }).setView([start.lat, start.lng], saved ? 17 : 13);
+        map.attributionControl.setPrefix(false);
+        // Колесо с Ctrl приближает карту, без Ctrl листает страницу и показывает подсказку.
+        mapEl.addEventListener('wheel', function (e) {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                map.setZoom(map.getZoom() + (e.deltaY < 0 ? 1 : -1));
+            } else {
+                showWheelNote();
+            }
+        }, { passive: false });
+        // Своя метка: чёрная капля с белой точкой, как в дизайне сайта.
+        var pin = L.divIcon({
+            className: 'map-pin',
+            html: '<span></span>',
+            iconSize: [34, 44],
+            iconAnchor: [17, 42],
+        });
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
@@ -140,7 +173,7 @@
             if (marker) {
                 marker.setLatLng(latlng);
             } else {
-                marker = L.marker(latlng, { draggable: true }).addTo(map);
+                marker = L.marker(latlng, { draggable: true, icon: pin }).addTo(map);
                 marker.on('dragend', function () {
                     var p = marker.getLatLng();
                     saveCoords(p.lat, p.lng);
