@@ -1,9 +1,9 @@
 @model HomeViewModel
 @inject OnlineShop.Web.Services.MediaStorage MediaStorage
 
-@if (Model.Hero.Count > 0)
+@if (Model.Hero.Count + Model.Banners.Count > 0)
 {
-    <partial name="_Hero" model="Model.Hero" />
+    <partial name="_Hero" model="Model" />
 }
 
 @* Крупные разделы, как на grass.su: цветные плитки, название сверху, картинка снизу (картинки — позже, рендеры).
@@ -38,38 +38,17 @@
     </div>
 </section>
 
-@* Баннеры-картинки из панели (акции) идут после разделов: первый экран занят слайдами товаров. *@
-@if (Model.Banners.Count > 0)
+@if (Model.Hits.Count > 0)
 {
-    <div class="banner-carousel" id="banner-carousel">
-        @for (var i = 0; i < Model.Banners.Count; i++)
-        {
-            var banner = Model.Banners[i];
-            var srcset = BannerShape.SrcSet(MediaStorage, banner.ImagePath);
-            var link = SafeLinks.OrNull(banner.LinkUrl);
-            <div class="banner-slide@(i == 0 ? " active" : "")">
-                @if (link is not null)
-                {
-                    <a href="@link"><img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.Sizes" alt="@banner.Title"></a>
-                }
-                else
-                {
-                    <img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.Sizes" alt="@banner.Title">
-                }
-            </div>
-        }
-        @if (Model.Banners.Count > 1)
-        {
-            <button type="button" class="banner-nav banner-prev" aria-label="Предыдущий баннер">@Icons.Get("arrow-left", 20)</button>
-            <button type="button" class="banner-nav banner-next" aria-label="Следующий баннер">@Icons.Get("arrow-right", 20)</button>
-            <div class="banner-dots">
-                @for (var i = 0; i < Model.Banners.Count; i++)
-                {
-                    <button type="button" class="banner-dot@(i == 0 ? " active" : "")" aria-label="Баннер @(i + 1)"></button>
-                }
-            </div>
-        }
-    </div>
+    <section class="section">
+        <div class="section-head"><h2>Хиты продаж</h2></div>
+        <div class="product-grid">
+            @foreach (var product in Model.Hits)
+            {
+                <partial name="_ProductCard" model="product" />
+            }
+        </div>
+    </section>
 }
 
 @if (Model.Featured.Count > 0)
@@ -85,6 +64,9 @@
     </section>
 }
 
+@* Запись на мойку: после товаров в наличии, перед «Почему удобно заказывать у нас». *@
+<partial name="_WashInvite" />
+
 @if (Model.Tiles.Count > 0)
 {
     <partial name="_Benefits" />
@@ -97,19 +79,18 @@
 
 @if (Model.Tiles.Count == 0)
 {
-    <div class="empty">
-        <h2>Каталог пока пуст</h2>
-        <p>Товары появятся после загрузки из 1С в панели управления.</p>
-    </div>
+    <section class="co-card search-empty">
+        <span class="search-empty-ico">@Icons.Get("package", 26)</span>
+        <div>
+            <h2>Каталог пока пуст</h2>
+            <p>Товары появятся после загрузки из 1С в панели управления.</p>
+        </div>
+    </section>
 }
 
 @section Scripts {
-    @if (Model.Hero.Count > 0)
+    @if (Model.Hero.Count + Model.Banners.Count > 0)
     {
         <script src="~/js/hero.js" asp-append-version="true"></script>
-    }
-    @if (Model.Banners.Count > 0)
-    {
-        <script src="~/js/banner_carousel.js" asp-append-version="true"></script>
     }
 }

@@ -1,0 +1,185 @@
+@model WashPageViewModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Запись на мойку";
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var form = Model.Form;
+    var today = Model.Days[0];
+    // Мойка одна — шаг «Мойка» не нужен: она выбрана скрытым полем, адрес и часы в шапке. Номера шагов идут подряд.
+    var choosePlace = CarWashes.All.Count > 1;
+    var place = Model.Wash ?? CarWashes.All[0];
+    var step = 0;
+}
+@*
+    Запись на мойку (компьютер): сверху тёмная шапка, ниже как оформление заказа — слева шаги
+    (мойка → услуга → день и время → контакты), справа «Ваша запись» и кнопка. Шаги пронумерованы: идут по порядку.
+    Свободное время подгружает wash.js при смене мойки, услуги или дня; без скрипта страница показывает время
+    на выбранный день, и запись всё равно работает.
+*@
+<header class="wash-hero">
+    <h1>Запись на мойку</h1>
+    <p class="wash-hero-lead">@(choosePlace ? "Выберите мойку, услугу и удобное время." : "Выберите услугу и удобное время.") Регистрироваться не нужно: администратор позвонит и подтвердит запись.</p>
+    <ul class="wash-hero-facts">
+        @if (!choosePlace)
+        {
+            <li>
+                @Icons.Get("pin", 18) @place.Address, @place.Opens.ToString("H:mm")–@place.Closes.ToString("H:mm") без выходных
+                @if (place.MapUrl.Length > 0)
+                {
+                    <a href="@place.MapUrl" target="_blank" rel="noopener">в 2ГИС</a>
+                }
+            </li>
+        }
+        <li>@Icons.Get("droplets", 18) Моем средствами IFOAM</li>
+        <li>@Icons.Get("clock", 18) Приезжаете ко времени, без ожидания</li>
+    </ul>
+</header>
+
+<form asp-action="Book" method="post" id="wash-form"
+      data-slots-url="@OnlineShop.Web.Controllers.WashController.PageUrl/slots">
+    <div asp-validation-summary="ModelOnly" class="checkout-errors"></div>
+    <div class="co">
+        <div class="co-main">
+            @if (!choosePlace)
+            {
+                <input type="radio" name="Form.Wash" value="@place.Key" checked data-name="@place.Name" hidden>
+            }
+            else
+            {
+            <section class="co-card co-section">
+                <h2><span class="co-num">@(++step)</span>Мойка</h2>
+                <div class="wash-places">
+                    @foreach (var wash in CarWashes.All)
+                    {
+                        <label class="choice-tile wash-place">
+                            <input type="radio" name="Form.Wash" value="@wash.Key" checked="@(form.Wash == wash.Key)" data-name="@wash.Name">
+                            <span class="choice-ico">@Icons.Get("car", 22)</span>
+                            <span>
+                                <b>@wash.Name</b>
+                                <span class="muted">@wash.Address</span>
+                                <span class="wash-hours">@Icons.Get("clock", 14) @wash.Opens.ToString("H:mm") – @wash.Closes.ToString("H:mm"), без выходных</span>
+                            </span>
+                        </label>
+                    }
+                </div>
+                <span class="errorlist" asp-validation-for="Form.Wash"></span>
+            </section>
+            }
+
+            <section class="co-card co-section">
+                <h2><span class="co-num">@(++step)</span>Что сделать</h2>
+                <div class="wash-services">
+                    @foreach (var service in CarWashes.Services)
+                    {
+                        <label class="choice-tile wash-service">
+                            <input type="radio" name="Form.Service" value="@service.Key" checked="@(form.Service == service.Key)"
+                                   data-name="@service.Name" data-minutes="@service.Minutes">
+                            <span class="wash-service-text">
+                                <b>@service.Name</b>
+                                <span class="muted">@service.Text</span>
+                            </span>
+                            <span class="wash-service-meta">
+                                <span>≈ @(service.Minutes >= 60 && service.Minutes % 60 == 0 ? $"{service.Minutes / 60} ч" : service.Minutes >= 60 ? $"{service.Minutes / 60} ч {service.Minutes % 60} мин" : $"{service.Minutes} мин")</span>
+                                @if (service.PriceFrom is { } price)
+                                {
+                                    <b>от @Format.Money(price)</b>
+                                }
+                            </span>
+                        </label>
+                    }
+                </div>
+                @if (CarWashes.Services.Any(s => s.PriceFrom is null))
+                {
+                    <p class="wash-note">Цена зависит от размера машины, администратор назовёт её при звонке.</p>
+                }
+                <span class="errorlist" asp-validation-for="Form.Service"></span>
+            </section>
+
+            <section class="co-card co-section">
+                <h2><span class="co-num">@(++step)</span>День и время</h2>
+                <div class="wash-days" role="radiogroup" aria-label="День">
+                    @foreach (var day in Model.Days)
+                    {
+                        var value = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+                        var top = day == today ? "Сегодня" : day == today.AddDays(1) ? "Завтра" : day.ToString("ddd", ru);
+                        <label class="wash-day">
+                            <input type="radio" name="Form.Date" value="@value" checked="@(form.Date == value)"
+                                   data-label="@day.ToString("dddd, d MMMM", ru)">
+                            <span class="wash-day-top">@top</span>
+                            <span class="wash-day-num">@day.Day</span>
+                            <span class="wash-day-month">@day.ToString("MMM", ru).TrimEnd('.')</span>
+                        </label>
+                    }
+                </div>
+                <div class="wash-slots" id="wash-slots" role="radiogroup" aria-label="Время" aria-live="polite">
+                    @foreach (var slot in Model.Slots)
+                    {
+                        var value = slot.Time.ToString("HH:mm", CultureInfo.InvariantCulture);
+                        <label class="wash-slot@(slot.Free ? "" : " is-busy")">
+                            <input type="radio" name="Form.Time" value="@value" checked="@(form.Time == value && slot.Free)" disabled="@(!slot.Free)">
+                            <span>@value</span>
+                        </label>
+                    }
+                </div>
+                <p class="wash-slots-empty" id="wash-slots-empty" hidden="@(Model.Slots.Any(s => s.Free) ? "hidden" : null)">
+                    На этот день свободного времени нет. Выберите другой день.
+                </p>
+                <p class="wash-legend"><span class="wash-legend-busy"></span> занято · записаться можно на @CarWashes.DaysAhead дней вперёд, не позже чем за @(CarWashes.MinLeadMinutes / 60) часа</p>
+                <span class="errorlist" asp-validation-for="Form.Time"></span>
+            </section>
+
+            <section class="co-card co-section">
+                <h2><span class="co-num">@(++step)</span>Как с вами связаться</h2>
+                <div class="co-fields">
+                    <div class="form-row">
+                        <label asp-for="Form.Name"></label>
+                        <input class="field" asp-for="Form.Name" autocomplete="name" placeholder="Например, Айдар">
+                        <span class="errorlist" asp-validation-for="Form.Name"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.Phone"></label>
+                        <input class="field" asp-for="Form.Phone" type="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__">
+                        <span class="errorlist" asp-validation-for="Form.Phone"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.Car"></label>
+                        <input class="field" asp-for="Form.Car" placeholder="Марка и номер, необязательно">
+                        <span class="errorlist" asp-validation-for="Form.Car"></span>
+                    </div>
+                    <div class="form-row">
+                        <label asp-for="Form.Comment"></label>
+                        <input class="field" asp-for="Form.Comment" placeholder="Необязательно">
+                        <span class="errorlist" asp-validation-for="Form.Comment"></span>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <aside class="co-side">
+            <div class="co-card wash-summary">
+                <h2>Ваша запись</h2>
+                <dl class="wash-summary-list">
+                    <dt>Мойка</dt><dd id="sum-wash">@Model.Wash?.Name</dd>
+                    <dt>Услуга</dt><dd id="sum-service">@Model.Service?.Name</dd>
+                    <dt>Когда</dt><dd id="sum-when">@(form.Time.Length > 0 ? $"{DateOnly.ParseExact(form.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture).ToString("dddd, d MMMM", ru)}, {form.Time}" : "выберите время")</dd>
+                </dl>
+                <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
+                <span class="errorlist" asp-validation-for="Form.AcceptPrivacy"></span>
+                <button class="btn co-cta" type="submit">Записаться</button>
+                <ul class="co-notes">
+                    <li>@Icons.Get("phone", 16) Администратор позвонит и подтвердит</li>
+                    <li>@Icons.Get("check", 16) Отменить можно по ссылке после записи</li>
+                    <li>@Icons.Get("clock", 16) Опоздание больше @CarWashes.LateMinutes минут — место может занять другой клиент</li>
+                </ul>
+                @if (place.Phone.Length > 0)
+                {
+                    <p class="wash-phone">Вопросы и перенос: <a href="tel:+@place.Phone">@PhoneNumbers.Display(place.Phone)</a></p>
+                }
+            </div>
+        </aside>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/wash.js" asp-append-version="true"></script>
+}

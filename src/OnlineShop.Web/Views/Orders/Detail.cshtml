@@ -117,9 +117,19 @@ else if (!byLink)
                     </li>
                 }
             </ul>
+            @{
+                // Доставка по Актау — доплата до 7 000 ₸, как в корзине. По области цену называет менеджер. В базе заказа доставки нет.
+                var cityDelivery = !Model.IsPickup && DeliveryPrices.IsCity(Model.City);
+                var cityFee = cityDelivery ? DeliveryPrices.CityFee(Model.Total) : 0m;
+            }
+            @if (!Model.IsPickup)
+            {
+                <div class="summary-row od-sub"><span>Товары, @Model.TotalQuantity шт.</span><span>@Format.Money(Model.Total)</span></div>
+                <div class="summary-row od-sub"><span>Доставка@(cityDelivery ? " по Актау" : "")</span><span>@(cityDelivery ? (cityFee == 0 ? "бесплатно" : Format.Money(cityFee)) : DeliveryPrices.Region + ", назовёт менеджер")</span></div>
+            }
             <div class="summary-row total">
-                <span>Итого, @Model.TotalQuantity шт.</span>
-                <span>@Format.Money(Model.Total)</span>
+                <span>@(Model.IsPickup ? $"Итого, {Model.TotalQuantity} шт." : "К оплате")</span>
+                <span>@Format.Money(Model.Total + cityFee)</span>
             </div>
         </div>
     </div>

@@ -1,27 +1,91 @@
 @model ProductListViewModel
+@inject StorefrontLayout StorefrontLayout
+@*
+    Поиск — как страница раздела: чёрная шапка (крошки, запрос крупно, сколько нашлось, кнопки категорий,
+    где нашлись товары), ниже строка фильтров (наличие, цена, сортировка) и ровная сетка карточек.
+    Ничего не нашлось — карточка с подсказкой, что ввести, и телефоном: подскажем по звонку.
+*@
 @{
     var query = Model.Query ?? "";
     ViewData["Title"] = query.Length > 0 ? $"Поиск: {query}" : "Поиск";
+    var filter = Model.Filter;
+    var total = Model.Page.TotalCount;
+    var contact = (await StorefrontLayout.GetAsync()).Contact;
+    // Кнопка категории: тот же поиск, но только в этой категории. Повторное нажатие снимает выбор.
+    string CategoryLink(string? slug)
+    {
+        var rest = QueryStrings.Except(Context.Request.Query, "category", "page").ToList();
+        if (slug is not null) rest.Add(new("category", slug));
+        return "/search" + new Microsoft.AspNetCore.Http.Extensions.QueryBuilder(rest);
+    }
+    var nothing = query.Length > 0 && total == 0 && !filter.HasActiveFilters;
 }
-<nav class="breadcrumbs">
-    <a asp-action="Home">Главная</a>
-    <span class="sep">/</span>
-    <span>Поиск</span>
-</nav>
+<header class="cat-hero search-hero" style="--cat-color:#0f0f0f">
+    <nav class="cat-crumbs" aria-label="Вы здесь">
+        <a asp-action="Home">Главная</a>
+        <span aria-hidden="true">/</span>
+        <span>Поиск</span>
+    </nav>
+    @if (query.Length == 0)
+    {
+        <h1>Поиск по каталогу</h1>
+        <p class="cat-count">Введите название товара или артикул в строке поиска наверху</p>
+    }
+    else
+    {
+        <h1>«@query»</h1>
+        <p class="cat-count">
+            @if (nothing)
+            {
+                @:Ничего не нашлось
+            }
+            else
+            {
+                @:Нашли @total @Plural.Products(total)@(filter.HasActiveFilters ? " по фильтрам" : "")
+            }
+        </p>
+        @if (Model.CorrectedQuery is { } corrected)
+        {
+            <p class="search-fixed">По запросу «@query» ничего не нашлось. Показаны результаты по запросу <b>«@corrected»</b>.</p>
+        }
+        @if (Model.SideCategories.Count > 1)
+        {
+            <nav class="cat-tabs" aria-label="Категории, где нашлись товары">
+                <a class="cat-tab@(filter.Categories.Count == 0 ? " is-active" : "")" href="@CategoryLink(null)">Все</a>
+                @foreach (var tile in Model.SideCategories)
+                {
+                    var active = filter.Categories.Contains(tile.Category.Slug);
+                    <a class="cat-tab@(active ? " is-active" : "")" href="@CategoryLink(active ? null : tile.Category.Slug)" title="@tile.Category.Name"
+                       aria-pressed="@(active ? "true" : "false")">@CategoryNames.Short(tile.Category.Name) <span>@tile.ProductCount</span></a>
+                }
+            </nav>
+        }
+    }
+</header>
 
-<h1>@(query.Length > 0 ? $"Поиск: «{query}»" : "Поиск по каталогу")</h1>
-@if (Model.CorrectedQuery is { } corrected)
+@if (query.Length == 0 || nothing)
 {
-    <p class="search-fixed">По запросу «@query» ничего не нашлось. Показаны результаты по запросу <b>«@corrected»</b>.</p>
-}
-
-@if (query.Length == 0)
-{
-    <div class="empty">
-        <p>Введите название товара или артикул в строке поиска наверху.</p>
-    </div>
+    <section class="co-card search-empty">
+        <span class="search-empty-ico">@Icons.Get("search", 26)</span>
+        <div>
+            <h2>@(nothing ? "Такого товара не нашли" : "Что ищем?")</h2>
+            <p>Попробуйте написать по-другому или одно слово: «шампунь», «воск», «стёкла». Артикул тоже подойдёт — он есть на этикетке.</p>
+            @if (!string.IsNullOrEmpty(contact?.Phone))
+            {
+                <p>Не нашли нужное? Позвоните или напишите — подскажем, что подойдёт.</p>
+            }
+            <div class="search-empty-actions">
+                <a class="btn" asp-action="Home">На главную</a>
+                @if (!string.IsNullOrEmpty(contact?.Phone))
+                {
+                    <a class="btn btn-ghost" href="tel:@contact.PhoneLink">@Icons.Get("phone", 18) @contact.Phone</a>
+                }
+            </div>
+        </div>
+    </section>
 }
 else
 {
+    <partial name="_CategoryNav" model="Model" />
     <partial name="_ProductList" model="Model" />
 }

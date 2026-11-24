@@ -1,9 +1,6 @@
 @{
     ViewData["Title"] = "Страница не найдена";
+    var card = (Code: 404, Title: "Такой страницы нет",
+        Text: "Возможно, товар сняли с продажи или ссылка устарела. Попробуйте найти его по названию или артикулу.", Search: true);
 }
-<div class="empty">
-    <div class="empty-ico">@Icons.Get("search", 44)</div>
-    <h2>Такой страницы нет</h2>
-    <p>Возможно, товар сняли с продажи или ссылка устарела.</p>
-    <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">На главную</a></p>
-</div>
+<partial name="_ErrorCard" model="card" />

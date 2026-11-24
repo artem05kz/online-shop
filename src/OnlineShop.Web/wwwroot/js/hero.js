@@ -48,6 +48,8 @@
             slide.setAttribute('aria-hidden', on ? 'false' : 'true');
             if (on) slide.removeAttribute('inert'); else slide.setAttribute('inert', '');
         });
+        // Светлые точки и стрелки на тёмном блоке текста, тёмные — на светлом.
+        root.classList.toggle('is-light', slides[index].getAttribute('data-tone') === 'light');
         dots.forEach(function (dot, n) {
             dot.classList.toggle('active', n === index);
             dot.setAttribute('aria-current', n === index ? 'true' : 'false');

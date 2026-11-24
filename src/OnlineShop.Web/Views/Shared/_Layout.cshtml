@@ -6,7 +6,7 @@
     var signedIn = User.Identity?.IsAuthenticated == true;
     var title = ViewData["Title"] as string;
     var description = ViewData["Description"] as string
-        ?? "Официальный дилер GRASS в Актау. Автохимия, бытовая химия, профессиональный клининг. Доставка по городу, оплата при получении.";
+        ?? "Официальный дилер IFOAM в Актау. Автохимия, бытовая химия, профессиональный клининг. Доставка по городу, оплата при получении.";
     var flash = TempData.TakeFlash();
 }
 <!DOCTYPE html>
@@ -14,7 +14,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@(title is null ? "GRASS Актау: автохимия и бытовая химия" : $"{title} | GRASS Актау")</title>
+    <title>@(title is null ? "IFOAM Актау: автохимия и бытовая химия" : $"{title} | IFOAM Актау")</title>
     <meta name="description" content="@description">
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
@@ -26,12 +26,13 @@
    Телефон — в шапке справа, часы работы и WhatsApp — в подвале, «Оплата при получении» — в блоке «Почему удобно». *@
 <header class="header">
     <div class="container">
-        <a class="logo" asp-controller="Catalog" asp-action="Home" aria-label="GRASS и IFOAM, @city — на главную">
-            <img class="logo-mark" src="~/img/logo-128.png" srcset="~/img/logo-256.png 2x" width="60" height="60" alt="">
-            @* Сетка логотипа: название ровно на линии центра буквы G, подпись «Бытовая и автохимия» над ним. *@
+        <a class="logo" asp-controller="Catalog" asp-action="Home" aria-label="IFOAM, @city — на главную">
+            @* Логотип как раньше: значок (жёлтое солнце IFOAM) и название по сетке — «IFOAM | Актау»
+               ровно на линии центра солнца, «Бытовая и автохимия» над ним. *@
+            <img class="logo-mark" src="~/img/logo-sun.png" width="60" height="60" alt="">
             <span class="logo-text" aria-hidden="true">
                 <span class="logo-over">Бытовая и автохимия</span>
-                <span class="logo-name">GRASS<span class="logo-bar"></span>IFOAM</span>
+                <span class="logo-name">IFOAM<span class="logo-bar"></span>@city.ToUpperInvariant()</span>
             </span>
         </a>
 
@@ -40,8 +41,11 @@
             <span class="btn-text">Каталог</span>
         </button>
 
+        @* Запись на мойку: вторая причина прийти на сайт, поэтому кнопка рядом с «Каталогом», на всех страницах. *@
+        <a class="wash-btn" href="@OnlineShop.Web.Controllers.WashController.PageUrl" title="Запись на мойку">@Icons.Get("car", 18)<span>Мойка</span></a>
+
         <form class="search" asp-controller="Catalog" asp-action="Search" method="get" role="search">
-            <input type="text" name="q" placeholder="Название или артикул" value="@Context.Request.Query["q"]" aria-label="Поиск по каталогу"
+            <input type="text" name="q" placeholder="Поиск товаров" value="@Context.Request.Query["q"]" aria-label="Поиск по названию или артикулу"
                    id="search-input" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggest">
             <div class="search-suggest" id="search-suggest" role="listbox" hidden></div>
             <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
@@ -212,9 +216,9 @@
     <div class="container">
         <div class="ft-top">
             <div class="ft-brand">
-                <span class="ft-over">Бытовая и автохимия</span>
-                <span class="ft-name">GRASS<span class="ft-bar" aria-hidden="true"></span>IFOAM</span>
-                <p>Официальный дилер продукции GRASS и IFOAM в @city. Средства для авто, дома и автомоек.</p>
+                <img class="ft-logo" src="~/img/logo-ifoam-white.png" width="336" height="237" alt="IFOAM">
+                <span class="ft-over">Бытовая и автохимия · @city</span>
+                <p>Официальный дилер продукции IFOAM в @city. Средства для авто, дома и автомоек.</p>
             </div>
             @if (!string.IsNullOrEmpty(contact?.Phone) || !string.IsNullOrEmpty(contact?.WhatsappLink))
             {
@@ -227,7 +231,7 @@
                     <div class="ft-actions">
                         @if (!string.IsNullOrEmpty(contact?.WhatsappLink))
                         {
-                            var waText = Uri.EscapeDataString("Здравствуйте! Пишу с сайта GRASS.");
+                            var waText = Uri.EscapeDataString("Здравствуйте! Пишу с сайта IFOAM.");
                             var waHref = contact.WhatsappLink.Contains('?') ? contact.WhatsappLink : $"{contact.WhatsappLink}?text={waText}";
                             <a class="ft-btn ft-btn-main" href="@waHref" target="_blank" rel="noopener">@Icons.Get("whatsapp", 20) Написать в WhatsApp</a>
                         }
@@ -261,6 +265,8 @@
                 <h4>Покупателю</h4>
                 <ul>
                     <li><a asp-controller="Cart" asp-action="Index">Корзина</a></li>
+                    <li><a href="/favorites">Избранное</a></li>
+                    <li><a href="/wash">Запись на мойку</a></li>
                     @if (signedIn)
                     {
                         <li><a href="@ShopUrls.OrderHistory">Мои заказы</a></li>
@@ -311,7 +317,7 @@
         </div>
 
         <div class="footer-bottom ft-bottom">
-            <span>© @DateTime.Now.Year GRASS @city</span>
+            <span>© @DateTime.Now.Year IFOAM @city</span>
             <span>Оплата наличными или картой при получении. Заказ подтверждает менеджер.</span>
             <a href="@OnlineShop.Web.Controllers.InfoController.PrivacyUrl">Политика конфиденциальности</a>
         </div>

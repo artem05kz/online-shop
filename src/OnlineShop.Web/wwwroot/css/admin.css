@@ -453,3 +453,48 @@ tr.row-edited > th:first-child, tr.row-edited > td:first-child { box-shadow: ins
 /* Артикул под названием товара: хозяйка магазина ищет и помнит товары по артикулу. */
 .item .article { display: block; font-size: .92rem; color: var(--a-ink-soft); font-variant-numeric: tabular-nums; margin-top: 2px; }
 .h1-article { display: block; font-size: 1rem; font-weight: 500; color: var(--a-ink-soft); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+/* Баннер первого экрана: превью «как на сайте» (фото слева, блок текста справа) и выбор точки товаров. */
+.hp { display: grid; grid-template-columns: 2fr 1fr; aspect-ratio: 2.7 / 1; border-radius: 14px; overflow: hidden; background: var(--hp-bg, #0b1a4d); color: var(--hp-ink, #fff); margin-top: 6px; }
+.hp[data-theme="navy"] { --hp-bg: #0b1a4d; --hp-ink: #fff; --hp-script: #7fa2ff; }
+.hp[data-theme="ink"] { --hp-bg: #0f0f0f; --hp-ink: #fff; --hp-script: #ff6a5f; }
+.hp[data-theme="blue"] { --hp-bg: #2c6bd3; --hp-ink: #fff; --hp-script: #b9d6ff; }
+.hp[data-theme="red"] { --hp-bg: #e0190f; --hp-ink: #fff; --hp-script: #ffd23f; }
+.hp[data-theme="lime"] { --hp-bg: #c6ec5e; --hp-ink: #0f0f0f; --hp-script: #5f8a00; }
+.hp[data-theme="orange"] { --hp-bg: #ff9447; --hp-ink: #0f0f0f; --hp-script: #a63f00; }
+.hp[data-theme="sun"] { --hp-bg: #ffd23f; --hp-ink: #0f0f0f; --hp-script: #d98e00; }
+.hp-photo { position: relative; background: rgba(255, 255, 255, .08); }
+.hp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hp-copy { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 14px 16px; min-width: 0; }
+.hp-script { font-family: "Caveat", cursive; font-weight: 700; font-size: 1.6rem; line-height: .9; color: var(--hp-script); }
+.hp-title { font-size: 1rem; line-height: 1.2; }
+.hp-text { font-size: .78rem; opacity: .85; }
+.hp-btn { align-self: flex-start; margin-top: 4px; padding: 5px 12px; border-radius: 999px; background: var(--hp-ink); color: var(--hp-bg); font-size: .75rem; font-weight: 600; }
+.banner-focus { position: relative; margin: 8px 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: #eef1ee; cursor: crosshair; min-height: 80px; }
+.banner-focus img { display: block; width: 100%; height: auto; }
+.banner-focus-frame { position: absolute; top: 0; bottom: 0; border: 3px solid #fff; outline: 2px solid rgba(0, 0, 0, .5); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .35); pointer-events: none; }
+
+/* Записи на мойку: дни кнопками, карточка записи — время слева, кто и что посередине, кнопки справа.
+   На телефоне всё столбиком: администратор мойки работает с телефона. */
+.wash-admin-days { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 18px; }
+.wash-admin-day { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: inherit; text-decoration: none; white-space: nowrap; font-size: .92rem; }
+.wash-admin-day.is-active { background: #1f3d24; border-color: #1f3d24; color: #fff; }
+.wash-admin-day .badge { background: #e8590c; color: #fff; border-radius: 20px; padding: 0 7px; font-size: .78rem; }
+.wash-admin-title { font-size: 1.15rem; margin: 0 0 12px; }
+.wash-admin-title::first-letter { text-transform: uppercase; }
+.wash-admin-list { display: grid; gap: 12px; max-width: 900px; }
+.wash-admin-card { display: grid; grid-template-columns: 86px 1fr auto; gap: 18px; align-items: start; margin: 0; }
+.wash-admin-card.is-cancelled { opacity: .55; }
+.wash-admin-time b { display: block; font-size: 1.5rem; line-height: 1; }
+.wash-admin-time span { font-size: .85rem; color: #6b746b; }
+.wash-admin-info p { margin: 0 0 4px; }
+.wash-admin-who { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wash-admin-contacts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px !important; }
+.wash-admin-actions { display: flex; flex-direction: column; gap: 8px; }
+.wash-admin-actions form { margin: 0; }
+.wash-admin-actions .btn { width: 100%; justify-content: center; }
+@media (max-width: 700px) {
+    .wash-admin-card { grid-template-columns: 64px 1fr; }
+    .wash-admin-actions { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+    .wash-admin-actions form { flex: 1; }
+}

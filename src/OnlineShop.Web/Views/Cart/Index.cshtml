@@ -8,12 +8,18 @@
 *@
 @if (Model.IsEmpty)
 {
-    <div class="co-empty">
-        <span class="co-empty-ico">@Icons.Get("cart", 34)</span>
-        <h1>Корзина пуста</h1>
-        <p>Загляните в разделы на главной — там всё, что есть в наличии.</p>
-        <a class="btn co-cta" asp-controller="Catalog" asp-action="Home">Перейти к товарам</a>
-    </div>
+    @* Пустая корзина (24.11, правка пользователя): одна белая карточка по центру страницы, без чёрной шапки. *@
+    <section class="co-card search-empty cart-empty">
+        <span class="search-empty-ico">@Icons.Get("cart", 26)</span>
+        <div>
+            <h1>Корзина пуста</h1>
+            <p>Здесь пока ничего нет. Загляните в разделы на главной — там всё, что есть в наличии. Или найдите товар по названию и артикулу в строке поиска.</p>
+            <div class="search-empty-actions">
+                <a class="btn" asp-controller="Catalog" asp-action="Home">Перейти к товарам</a>
+                <a class="btn btn-ghost" href="/favorites">@Icons.Get("heart", 18) Избранное</a>
+            </div>
+        </div>
+    </section>
 }
 else
 {
@@ -71,12 +77,30 @@ else
             <div class="co-card">
                 <h2>Итого</h2>
                 <div class="summary-row"><span>Товары, @Model.Count шт.</span><span>@Format.Money(Model.Total)</span></div>
-                <div class="summary-row"><span>Доставка</span><span class="muted">уточнит менеджер</span></div>
-                <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Total)</span></div>
+                @{
+                    // Доставка по Актау: минимум 7 000 ₸. Меньше — доплата до 7 000 ₸, от 7 000 ₸ — бесплатно (DeliveryPrices).
+                    var fee = DeliveryPrices.CityFee(Model.Total);
+                    var progress = (int)Math.Min(100m, Model.Total / DeliveryPrices.CityMinimum * 100m);
+                }
+                <div class="summary-row"><span>Доставка по Актау</span><span>@(fee == 0 ? "бесплатно" : Format.Money(fee))</span></div>
+                <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Total + fee)</span></div>
+                @if (fee > 0)
+                {
+                    <div class="free-ship">
+                        <div class="free-ship-bar" aria-hidden="true"><i style="width:@(progress)%"></i></div>
+                        <p>Минимальный заказ с доставкой — @DeliveryPrices.CityMinimumText. Добавьте товаров ещё на <b>@Format.Money(fee)</b>: доставка станет бесплатной, а сумма к оплате не изменится.</p>
+                    </div>
+                }
+                else
+                {
+                    <p class="free-ship is-free">@Icons.Get("check", 16) Доставка по Актау бесплатная</p>
+                }
+                <p class="summary-hint">При самовывозе — @Format.Money(Model.Total), без доставки.</p>
                 <a class="btn co-cta" asp-controller="Checkout" asp-action="Index">Перейти к оформлению</a>
                 <ul class="co-notes">
                     <li>@Icons.Get("check", 16) Оплата наличными или картой при получении</li>
                     <li>@Icons.Get("phone", 16) Менеджер позвонит и подтвердит заказ</li>
+                    <li>@Icons.Get("truck", 16) По области доставка @DeliveryPrices.Region, точную сумму назовёт менеджер</li>
                 </ul>
             </div>
         </aside>

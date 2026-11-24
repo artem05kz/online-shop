@@ -18,6 +18,10 @@
         {
             <span class="badge badge-out">Нет в наличии</span>
         }
+        else if (HitProducts.IsHit(Model))
+        {
+            <span class="badge badge-hit">@Icons.Get("star", 12) Хит</span>
+        }
     </a>
 
     @if (showBrand)

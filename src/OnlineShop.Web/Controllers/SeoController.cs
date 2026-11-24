@@ -91,9 +91,9 @@ public class SeoController(ShopDbContext db) : Controller
 
         var rss = new XElement("rss", new XAttribute("version", "2.0"), new XAttribute(XNamespace.Xmlns + "g", G),
             new XElement("channel",
-                new XElement("title", "GRASS Актау"),
+                new XElement("title", "IFOAM Актау"),
                 new XElement("link", site),
-                new XElement("description", "Автохимия и бытовая химия GRASS и IFOAM в Актау"),
+                new XElement("description", "Автохимия и бытовая химия IFOAM в Актау"),
                 items));
         return Content(new XDeclaration("1.0", "utf-8", null) + "\n" + rss, "application/xml; charset=utf-8");
     }

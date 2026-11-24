@@ -8,15 +8,21 @@ using OnlineShop.Web.ViewModels;
 
 namespace OnlineShop.Web.Controllers;
 
-public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Controller
+public class CatalogController(ShopDbContext db, SearchSpelling spelling, IConfiguration config) : Controller
 {
     private const int FeaturedCount = 8;
     private const int RelatedCount = 4;
+    private const int RecentCount = 4;
+    private const int BoughtWithCount = 4;
 
     [HttpGet("/")]
     public async Task<IActionResult> Home()
     {
-        var banners = await db.Banners.VisibleAt(DateTime.UtcNow).Ordered().AsNoTracking().ToListAsync();
+        // Баннеры из панели в первом экране пока выключены (решение дизайнера 24.11): на сайте только слайды
+        // с рендерами. В панели баннеры можно готовить заранее; включить показ — Storefront:ShowBanners = true.
+        var banners = config.GetValue("Storefront:ShowBanners", false)
+            ? await db.Banners.VisibleAt(DateTime.UtcNow).Ordered().AsNoTracking().ToListAsync()
+            : [];
 
         // Скрытый бренд прячет и свои категории. В Django-версии плитки категорий скрытого бренда
         // оставались на главной.
@@ -59,12 +65,15 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
                 tileRenders.GetValueOrDefault(c.Id)))
             .ToList();
 
-        var featured = await db.Products.ForListing()
-            .Where(p => p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty))
+        // «Хиты продаж» — товары из списка заказчицы (HitProducts), сначала те, что есть в наличии.
+        // «Есть в наличии» — остальные товары в наличии, чтобы одни и те же карточки не шли два раза подряд.
+        var listed = await db.Products.ForListing().AsNoTracking().ToListAsync();
+        var hits = listed.Where(HitProducts.IsHit).OrderByDescending(p => p.InStock).ThenBy(p => p.Name).Take(FeaturedCount).ToList();
+        var featured = listed
+            .Where(p => p.InStock && !HitProducts.IsHit(p))
             .OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Name)
             .Take(FeaturedCount)
-            .AsNoTracking()
-            .ToListAsync();
+            .ToList();
 
         // Первый экран: товары слайдов по slug. Скрытый или переименованный товар просто выпадает из слайдов.
         var heroSlugs = HeroSlides.All.Select(s => s.ProductSlug).ToList();
@@ -80,7 +89,7 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
         // «Где нас найти»: первые точки из «Адресов», которые магазин ведёт в панели управления.
         var stores = await db.Stores.Where(s => s.IsActive).Ordered().Take(3).AsNoTracking().ToListAsync();
 
-        return View(new HomeViewModel { Hero = hero, Banners = banners, Tiles = tiles, Featured = featured, Stores = stores });
+        return View(new HomeViewModel { Hero = hero, Banners = banners, Tiles = tiles, Featured = featured, Hits = hits, Stores = stores });
     }
 
     [HttpGet("/catalog/{brandSlug}/{categorySlug}")]
@@ -161,11 +170,25 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             query = Find(fixedText);
         }
 
+        // Кнопки категорий в шапке поиска: в каких категориях нашлись товары и сколько (без учёта фильтров,
+        // чтобы кнопки не пропадали, когда выбрана одна из них).
+        var found = text.Length == 0
+            ? []
+            : await db.Products.ForListing().Search(corrected ?? text)
+                .GroupBy(p => p.CategoryId)
+                .Select(g => new { CategoryId = g.Key, Count = g.Count() })
+                .ToListAsync();
+        var foundIds = found.Select(f => f.CategoryId).ToList();
+        var foundCategories = await db.Categories.Where(c => foundIds.Contains(c.Id)).Include(c => c.Brand)
+            .Ordered().AsNoTracking().ToListAsync();
+
         return View(new ProductListViewModel
         {
             Filter = filter,
             Query = text,
             CorrectedQuery = corrected,
+            SideCategories = foundCategories
+                .Select(c => new CategoryTile(c, found.First(f => f.CategoryId == c.Id).Count, null)).ToList(),
             Page = await PagedList<Models.Product>.CreateAsync(query.AsNoTracking(), page, CatalogQuery.PageSize),
             AllBrands = await db.Brands.Where(b => b.IsActive).Ordered().AsNoTracking().ToListAsync(),
             AllCategories = await db.Categories
@@ -233,6 +256,32 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
             .AsNoTracking()
             .ToListAsync();
 
+        // «С этим покупают» (24.11): товары из других разделов, которые лежали в тех же заказах, — чаще всего первыми.
+        // Пока заказов мало, остаток добираем хитами продаж из других разделов (сначала те, что в наличии).
+        var withOrders = db.OrderItems.Where(i => i.Variant.ProductId == product.Id).Select(i => i.OrderId);
+        var boughtIds = await db.OrderItems
+            .Where(i => withOrders.Contains(i.OrderId) && i.Variant.ProductId != product.Id && i.Variant.Product.CategoryId != product.CategoryId)
+            .GroupBy(i => i.Variant.ProductId)
+            .Select(g => new { ProductId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(BoughtWithCount * 2)
+            .Select(x => x.ProductId)
+            .ToListAsync();
+        var otherSections = await db.Products.ForListing().Where(p => p.CategoryId != product.CategoryId).AsNoTracking().ToListAsync();
+        var boughtWith = RecentlyViewed.InOrder(otherSections, p => p.Id, boughtIds).Where(p => p.InStock).ToList();
+        boughtWith.AddRange(otherSections
+            .Where(p => HitProducts.IsHit(p) && !boughtWith.Contains(p))
+            .OrderByDescending(p => p.InStock).ThenBy(p => p.Name));
+        // Хитов в других разделах может не хватить — добираем товарами в наличии из других разделов.
+        boughtWith.AddRange(otherSections.Where(p => p.InStock && !boughtWith.Contains(p)).OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Name));
+        boughtWith = boughtWith.Take(BoughtWithCount).ToList();
+
+        // Недавно смотрели: до запоминания текущего, сам товар не показываем.
+        var recentIds = RecentlyViewed.Read(Request).Where(id => id != product.Id).Take(RecentCount).ToList();
+        var recentProducts = recentIds.Count == 0 ? [] : await db.Products.ForListing().Where(p => recentIds.Contains(p.Id)).AsNoTracking().ToListAsync();
+        var recent = RecentlyViewed.InOrder(recentProducts, p => p.Id, recentIds);
+        RecentlyViewed.Remember(HttpContext, product.Id);
+
         var reviews = await db.Reviews.Where(r => r.ProductId == product.Id && r.Status == ReviewStatus.Approved)
             .Include(r => r.User).OrderByDescending(r => r.CreatedAt).AsNoTracking().ToListAsync();
         var userId = User.Identity?.IsAuthenticated == true ? User.ShopUserId() : (int?)null;
@@ -242,6 +291,7 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling) : Cont
         return View(new ProductPageViewModel
         {
             Product = product, Related = related, Reviews = reviews, CanReview = canReview, MyReview = myReview,
+            BoughtWith = boughtWith, Recent = recent,
         });
     }
 

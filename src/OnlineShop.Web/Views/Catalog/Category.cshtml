@@ -1,17 +1,50 @@
 @model ProductListViewModel
+@*
+    Страница категории. Шапка в цвете плитки раздела с главной («Для авто», «Для бизнеса»…):
+    видно, куда попал после нажатия на плитку. Внутри шапки — соседние категории этого же раздела.
+    Если категория не входит ни в один раздел, шапка чёрная и показывает все категории бренда.
+*@
 @{
     var category = Model.Category!;
     ViewData["Title"] = category.Name;
+    var hs = HomeSections.All.FirstOrDefault(s => HomeSections.Contains(s, category.Name));
+    var siblings = hs is null
+        ? Model.SideCategories
+        : Model.SideCategories.Where(t => HomeSections.Contains(hs, t.Category.Name)).ToList();
+    // Ссылка «раздела» в крошках ведёт туда же, куда плитка на главной: в самую большую категорию раздела.
+    var sectionHome = siblings.OrderByDescending(t => t.ProductCount).FirstOrDefault();
+    var total = Model.Page.TotalCount;
 }
-<nav class="breadcrumbs">
-    <a asp-action="Home">Главная</a>
-    <span class="sep">/</span>
-    <span>@category.Brand.Name</span>
-    <span class="sep">/</span>
-    <span>@category.Name</span>
-</nav>
+<header class="cat-hero" style="--cat-color:@(hs?.Color ?? "#0f0f0f")">
+    <nav class="cat-crumbs" aria-label="Вы здесь">
+        <a asp-action="Home">Главная</a>
+        <span aria-hidden="true">/</span>
+        @if (hs is not null && sectionHome is not null)
+        {
+            sectionHome.Category.Brand = category.Brand;
+            <a href="@Url.Category(sectionHome.Category)">@hs.Title</a>
+        }
+        else
+        {
+            <span>@category.Brand.Name</span>
+        }
+    </nav>
+    <h1>@Typo.Text(category.Name)</h1>
+    <p class="cat-count">@total @Plural.Products(total)@(Model.Filter.HasActiveFilters ? " по фильтрам" : "")</p>
 
-<h1>@Typo.Text(category.Name)</h1>
+    @if (siblings.Count > 1)
+    {
+        <nav class="cat-tabs" aria-label="Категории раздела">
+            @foreach (var tile in siblings)
+            {
+                tile.Category.Brand = category.Brand;
+                var active = tile.Category.Id == category.Id;
+                <a class="cat-tab@(active ? " is-active" : "")" href="@Url.Category(tile.Category)" title="@tile.Category.Name"
+                   aria-current="@(active ? "page" : null)">@CategoryNames.Short(tile.Category.Name) <span>@tile.ProductCount</span></a>
+            }
+        </nav>
+    }
+</header>
 
 <partial name="_CategoryNav" model="Model" />
 

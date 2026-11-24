@@ -2,14 +2,14 @@
 @inject StorefrontLayout StorefrontLayout
 @{
     ViewData["Title"] = "Адреса магазинов";
-    ViewData["Description"] = "Магазины GRASS в Актау: адреса, часы работы, телефон. Самовывоз заказов с сайта.";
+    ViewData["Description"] = "Магазины IFOAM в Актау: адреса, часы работы, телефон. Самовывоз заказов с сайта.";
     var contact = (await StorefrontLayout.GetAsync()).Contact;
     var city = Model.SelectedCity.Length > 0 ? Model.SelectedCity : (Model.Cities.Count == 1 ? Model.Cities[0] : "");
     var now = Format.ToLocal(DateTime.UtcNow);
     var mapped = Model.Stores.Where(st => st.Latitude is not null && st.Longitude is not null).ToList();
 }
 @*
-    Адреса (компьютерная версия). Сверху заголовок и общий телефон, ниже карточки магазинов:
+    Адреса (компьютерная версия). Сверху заголовок и общий телефон, ниже карточки магазинов и мойки (24.11):
     статус «Открыто до …» / «Закрыто, откроется …» (по часам из «Адресов», Infrastructure/StoreHours.cs),
     часы построчно, кнопки «Как добраться», «Позвонить», WhatsApp. Карта 2ГИС — если в настройках есть ключ.
 *@
@@ -21,8 +21,8 @@
 
 <div class="st-head">
     <div>
-        <h1>Магазины GRASS@(city.Length > 0 ? $" в {city}" : "")</h1>
-        <p>Приезжайте за покупками или заберите заказ с сайта: при оформлении выберите «Самовывоз», и мы позвоним, когда всё будет собрано.</p>
+        <h1>Магазины IFOAM@(city.Length > 0 ? $" в {city}" : "")</h1>
+        <p>Приезжайте за покупками или заберите заказ с сайта: при оформлении выберите «Самовывоз», и мы позвоним, когда всё будет собрано. А машину можно помыть на нашей автомойке — запись онлайн.</p>
     </div>
     @* Общий телефон отдельно не показываем: он есть в шапке, а в карточках — кнопки «Позвонить» и WhatsApp. *@
 </div>
@@ -118,15 +118,28 @@
                 </div>
             </article>
         }
+        @* Мойка (24.11) — тоже точка в городе: карточка в том же стиле, главная кнопка — запись онлайн. *@
+        @foreach (var wash in CarWashes.All)
+        {
+            <partial name="_WashStoreCard" model="wash" />
+        }
     </div>
 }
 else
 {
-    <div class="empty">
-        <div class="empty-ico">@Icons.Get("pin", 44)</div>
-        <h2>Адреса скоро появятся</h2>
-        <p>А пока товары можно заказать с доставкой: менеджер позвонит и уточнит время.</p>
-        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+    <section class="co-card search-empty">
+        <span class="search-empty-ico">@Icons.Get("pin", 26)</span>
+        <div>
+            <h2>Адреса скоро появятся</h2>
+            <p>А пока товары можно заказать с доставкой: менеджер позвонит и уточнит время.</p>
+            <div class="search-empty-actions"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></div>
+        </div>
+    </section>
+    <div class="st-grid">
+        @foreach (var wash in CarWashes.All)
+        {
+            <partial name="_WashStoreCard" model="wash" />
+        }
     </div>
 }
 

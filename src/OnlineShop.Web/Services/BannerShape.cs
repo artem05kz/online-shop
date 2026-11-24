@@ -4,9 +4,8 @@ using OnlineShop.Web.Infrastructure;
 namespace OnlineShop.Web.Services;
 
 /// <summary>
-/// Форма баннера. Пропорция одна на всех экранах (3:1), меняется только масштаб: на телефоне
-/// это та же картинка, только меньше. Поэтому надпись на баннере не съезжает и не обрезается,
-/// где бы её ни поставили. Та же пропорция задана в style.css (.banner-carousel).
+/// Размеры фото для баннера первого экрана. Рекомендуем 3:1: фото видно частично (около 1,8:1), а
+/// запас по ширине позволяет сдвинуть его к товарам (BannerFocus). Надписи на фото не нужны: текст пишется в панели.
 /// </summary>
 public static class BannerShape
 {
@@ -29,18 +28,14 @@ public static class BannerShape
         {
             yield break;
         }
+        // На первом экране видна часть фото пропорции BannerFocus.VisibleRatio (около 1,8:1), остальное уходит
+        // за края слева и справа, и это нормально: фото сдвигается к товарам. Плохо только фото уже этой части:
+        // тогда обрезаются верх и низ.
         var ratio = (double)width / height;
-        var target = (double)RatioWidth / RatioHeight;
-        if (ratio > target * (1 + Tolerance))
+        if (ratio < BannerFocus.VisibleRatio * (1 - Tolerance))
         {
-            var cut = Percent((width - height * target) / width / 2);
-            yield return $"Картинка шире, чем {RatioWidth}:{RatioHeight}: слева и справа обрежется примерно по {cut}%. " +
-                $"Лучше сделать её размером {RecommendedWidth} × {RecommendedHeight}.";
-        }
-        else if (ratio < target * (1 - Tolerance))
-        {
-            var cut = Percent((height - width / target) / height / 2);
-            yield return $"Картинка выше, чем {RatioWidth}:{RatioHeight}: сверху и снизу обрежется примерно по {cut}%. " +
+            var cut = Percent((height - width / BannerFocus.VisibleRatio) / height / 2);
+            yield return $"Картинка слишком высокая: сверху и снизу обрежется примерно по {cut}%. " +
                 $"Лучше сделать её размером {RecommendedWidth} × {RecommendedHeight}.";
         }
         if (width < MinWidth)
@@ -69,6 +64,9 @@ public static class BannerShape
 
     /// <summary>Какой ширины баннер на странице: вся ширина экрана, но не больше колонки сайта.</summary>
     public const string Sizes = "(min-width: 1280px) 1240px, 100vw";
+
+    /// <summary>Ширина фото баннера на первом экране: левые 8 колонок из 12 (около двух третей).</summary>
+    public const string HeroSizes = "(min-width: 1280px) 820px, 70vw";
 
     private static string Percent(double share) => Math.Round(share * 100).ToString(CultureInfo.InvariantCulture);
 }

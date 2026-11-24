@@ -65,6 +65,7 @@ public static class DatabaseCopier
         await Copy<Favorite>("");
         await Copy<CartItem>("позиций в корзинах");
         await Copy<Review>("отзывов");
+        await Copy<WashBooking>("записей на мойку");
         // Ключи входа: после переноса покупатели и менеджеры остаются в аккаунтах.
         await Copy<DataProtectionKey>("");
 

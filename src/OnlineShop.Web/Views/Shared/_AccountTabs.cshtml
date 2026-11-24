@@ -3,7 +3,7 @@
 @*
     Боковое меню личного кабинета (компьютерная версия): кружок с буквами имени, имя и почта,
     разделы с числом заказов и адресов, «Выйти» внизу. Активный раздел задаёт ViewData["AccountTab"]:
-    profile, addresses или orders. Страница кладёт меню и своё содержимое в <div class="acc">.
+    profile, addresses, orders или wash. Страница кладёт меню и своё содержимое в <div class="acc">.
 *@
 @{
     var active = ViewData["AccountTab"] as string;
@@ -13,6 +13,11 @@
         .AsNoTracking().FirstOrDefaultAsync();
     var orders = await Db.Orders.CountAsync(o => o.UserId == userId);
     var addresses = await Db.Addresses.CountAsync(a => a.UserId == userId);
+    // Число предстоящих записей на мойку (отменённые и прошедшие не считаем).
+    var washNow = OnlineShop.Web.Services.WashSlots.Now();
+    var washes = await Db.WashBookings.CountAsync(b => b.UserId == userId
+        && (b.Status == OnlineShop.Web.Models.WashBookingStatus.New || b.Status == OnlineShop.Web.Models.WashBookingStatus.Confirmed)
+        && b.StartsAt > washNow.AddHours(-3));
     var name = me is null ? "" : $"{me.FirstName} {me.LastName}".Trim();
     var shown = name.Length > 0 ? name : me?.UserName ?? "";
     var initials = string.Concat(shown.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(w => char.ToUpper(w[0])));
@@ -31,6 +36,9 @@
         </a>
         <a href="@ShopUrls.AddressBook" class="@(active == "addresses" ? "is-active" : null)" aria-current="@(active == "addresses" ? "page" : null)">
             @Icons.Get("pin", 18) <span>Адреса доставки</span>@if (addresses > 0) {<em>@addresses</em>}
+        </a>
+        <a href="@OnlineShop.Web.Controllers.WashController.MyUrl" class="@(active == "wash" ? "is-active" : null)" aria-current="@(active == "wash" ? "page" : null)">
+            @Icons.Get("car", 18) <span>Записи на мойку</span>@if (washes > 0) {<em>@washes</em>}
         </a>
         <a href="@ShopUrls.Profile" class="@(active == "profile" ? "is-active" : null)" aria-current="@(active == "profile" ? "page" : null)">
             @Icons.Get("user", 18) <span>Личные данные</span>

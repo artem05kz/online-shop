@@ -1,5 +1,6 @@
 @page "/admin/banners"
 @model OnlineShop.Web.Pages.Admin.Banners.IndexModel
+@inject IConfiguration Config
 @{
     ViewData["Title"] = "Баннеры";
     ViewData["AdminSection"] = "banners";
@@ -9,6 +10,11 @@
     <a class="btn" href="/admin/banners/add">Добавить баннер</a>
 </div>
 <p class="admin-count">Баннеры сменяют друг друга по очерёдности: от меньшего числа к большему.</p>
+@if (!Config.GetValue("Storefront:ShowBanners", false))
+{
+    <p class="hint">Сейчас на главной показываются только слайды с товарами. Баннеры здесь можно готовить заранее:
+        на сайте они появятся в первом экране, когда показ включат (настройка у программиста).</p>
+}
 
 <form id="changelist-form" method="post" asp-page-handler="SaveList">
     <div class="admin-table-wrap">

@@ -99,8 +99,9 @@ public class ImageTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     {
         Assert.Empty(BannerShape.Check(3840, 1280));
         Assert.Empty(BannerShape.Check(1920, 640));
-        Assert.Contains("сверху и снизу обрежется примерно по 20%", Assert.Single(BannerShape.Check(1920, 1080)));
-        Assert.Contains("слева и справа", Assert.Single(BannerShape.Check(4000, 1000)));
+        // Широкое фото — нормально (видна часть, сдвигается к товарам), высокое обрезается сверху и снизу.
+        Assert.Empty(BannerShape.Check(4000, 1000));
+        Assert.Contains("сверху и снизу обрежется примерно по 17%", Assert.Single(BannerShape.Check(1920, 1600)));
         Assert.Contains("нечётким", Assert.Single(BannerShape.Check(1200, 400)));
     }
 
@@ -140,11 +141,11 @@ public class ImageTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         Assert.DoesNotContain("обрежется", await Page(client, "/admin/banners"));
 
         var tall = Path.Combine(_files, "tall.jpg");
-        await File.WriteAllBytesAsync(tall, Photo(1920, 1080));
+        await File.WriteAllBytesAsync(tall, Photo(1920, 1440));
         var cropped = await Upload(client, token, tall, "Высокий баннер");
         Assert.Contains("сверху и снизу обрежется", await Page(client, "/admin/banners"));
         // На странице баннера то же предупреждение остаётся под превью.
-        Assert.Contains("Размер 1920 × 1080.", await Page(client, $"/admin/banners/{cropped.Id}"));
+        Assert.Contains("Размер 1920 × 1440.", await Page(client, $"/admin/banners/{cropped.Id}"));
     }
 
     [Fact]

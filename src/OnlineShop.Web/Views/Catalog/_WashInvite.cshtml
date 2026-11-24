@@ -1,0 +1,28 @@
+@using System.Globalization
+@*
+    Приглашение на мойку на главной: тёмная полоса со светлыми кругами (как шапка раздела), слева «без очереди»
+    от руки и коротко зачем, справа мойки и кнопка. Ведёт на /wash.
+*@
+<section class="wash-invite">
+    <div class="wash-invite-text">
+        <p class="wash-invite-script">без очереди</p>
+        <h2>Запишитесь на автомойку онлайн</h2>
+        <p>Выберите услугу и время — приезжайте ко времени. Моем средствами IFOAM, которые продаём здесь же.</p>
+    </div>
+    <div class="wash-invite-side">
+        <ul class="wash-invite-places">
+            @foreach (var wash in CarWashes.All)
+            {
+                <li>
+                    <span class="wash-invite-ico">@Icons.Get("car", 18)</span>
+                    <span><b>@wash.Name</b><span>@wash.Address · @wash.Opens.ToString("H:mm")–@wash.Closes.ToString("H:mm"), без выходных</span></span>
+                    @if (wash.MapUrl.Length > 0)
+                    {
+                        <a class="wash-invite-map" href="@wash.MapUrl" target="_blank" rel="noopener">в 2ГИС</a>
+                    }
+                </li>
+            }
+        </ul>
+        <a class="btn wash-invite-btn" href="@OnlineShop.Web.Controllers.WashController.PageUrl">@Icons.Get("calendar", 18) Выбрать время</a>
+    </div>
+</section>

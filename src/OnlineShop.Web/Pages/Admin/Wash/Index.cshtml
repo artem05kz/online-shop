@@ -1,0 +1,76 @@
+@page "/admin/wash"
+@model OnlineShop.Web.Pages.Admin.Wash.IndexModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Записи на мойку";
+    ViewData["AdminSection"] = "wash";
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var today = Model.Days[0];
+}
+<div class="admin-head">
+    <h1>Записи на мойку</h1>
+    <a class="btn btn-ghost" href="@OnlineShop.Web.Controllers.WashController.PageUrl" target="_blank" rel="noopener">@Icons.Get("external") Страница записи</a>
+</div>
+<p class="admin-count">О каждой новой записи бот пишет в Telegram. Позвоните клиенту, подтвердите время и нажмите «Подтвердить».</p>
+
+<nav class="wash-admin-days" aria-label="День">
+    @foreach (var day in Model.Days)
+    {
+        var value = day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var label = day == today ? "Сегодня" : day == today.AddDays(1) ? "Завтра" : day.ToString("ddd, d MMM", ru);
+        <a class="wash-admin-day@(day == Model.Day ? " is-active" : "")" href="?date=@value">
+            @label
+            @if (Model.NewByDay.TryGetValue(day, out var count))
+            {
+                <span class="badge" title="Ждут подтверждения">@count</span>
+            }
+        </a>
+    }
+</nav>
+
+<h2 class="wash-admin-title">@Model.Day.ToString("dddd, d MMMM", ru)</h2>
+@if (Model.Bookings.Count == 0)
+{
+    <div class="admin-box"><p class="muted" style="margin:0;">На этот день записей нет.</p></div>
+}
+else
+{
+    <div class="wash-admin-list">
+        @foreach (var b in Model.Bookings)
+        {
+            <article class="admin-box wash-admin-card is-@b.Status.Code()">
+                <div class="wash-admin-time">
+                    <b>@b.StartsAt.ToString("HH:mm")</b>
+                    <span>до @b.EndsAt.ToString("HH:mm")</span>
+                </div>
+                <div class="wash-admin-info">
+                    <p class="wash-admin-who"><b>@b.Name</b> <span class="pill @(b.Status switch { WashBookingStatus.New => "warn", WashBookingStatus.Confirmed => "ok", WashBookingStatus.Done => "ok", _ => "bad" })">@b.Status.Text()</span></p>
+                    <p>@b.ServiceName · @b.WashName</p>
+                    @if (b.Car.Length > 0) { <p class="muted">Машина: @b.Car</p> }
+                    @if (b.Comment.Length > 0) { <p class="muted">«@b.Comment»</p> }
+                    <p class="wash-admin-contacts">
+                        <a class="btn btn-ghost btn-sm" href="tel:+@b.Phone">@Icons.Get("phone", 16) @PhoneNumbers.Display(b.Phone)</a>
+                        <a class="btn btn-ghost btn-sm" href="https://wa.me/@b.Phone" target="_blank" rel="noopener">@Icons.Get("whatsapp", 16) WhatsApp</a>
+                    </p>
+                </div>
+                <div class="wash-admin-actions">
+                    @if (b.Status == WashBookingStatus.New)
+                    {
+                        <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Confirmed">
+                            <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Подтвердить</button>
+                        </form>
+                    }
+                    @if (b.Status is WashBookingStatus.New or WashBookingStatus.Confirmed)
+                    {
+                        <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Done">
+                            <button class="btn btn-ghost btn-sm" type="submit">Помыли</button>
+                        </form>
+                        <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Cancelled" data-confirm="Отменить запись? Время освободится для других.">
+                            <button class="btn btn-danger btn-sm" type="submit">Отменить</button>
+                        </form>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}

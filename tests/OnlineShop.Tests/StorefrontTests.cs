@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 
 namespace OnlineShop.Tests;
@@ -639,8 +640,106 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     {
         var html = await Page(Client(), "/");
         Assert.DoesNotContain("class=\"topbar\"", html);
-        Assert.Contains("img/logo-128.png", html);
-        Assert.Contains("IFOAM", html);
+        // С 24.11 только IFOAM: GRASS убран из логотипа, рядом город.
+        Assert.Contains("img/logo-sun.png", html);
+        Assert.Contains("IFOAM<span class=\"logo-bar\"></span>", html);
         Assert.Contains("Бытовая и автохимия", html);
+        Assert.DoesNotContain("GRASS<span", html);
+    }
+
+    // ----- Доработки витрины 24.11 -----
+
+    [Fact]
+    public async Task Delivery_in_aktau_tops_up_the_order_to_the_minimum()
+    {
+        // Минимальный заказ с доставкой по Актау — 7 000 ₸: меньше — доплата до 7 000 ₸, больше — доставка бесплатная.
+        Assert.Equal(5110m, DeliveryPrices.CityFee(1890m));
+        Assert.Equal(0m, DeliveryPrices.CityFee(7000m));
+        Assert.Equal(0m, DeliveryPrices.CityFee(9450m));
+        Assert.True(DeliveryPrices.IsCity("г. Актау"));
+        Assert.False(DeliveryPrices.IsCity("Жанаозен"));
+
+        var client = Client();
+        var token = await TokenFrom(client, "/product/шампунь-тест");
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token);
+        var cart = await Page(client, "/orders/cart");
+        Assert.Contains(Format.Money(5110m), cart);                 // доставка
+        Assert.Contains(Format.Money(7000m), cart);                 // к оплате
+        Assert.Contains("При самовывозе — " + Format.Money(1890m), cart);
+        Assert.Contains(Format.Money(7000m), await Page(client, "/orders/checkout"));
+
+        // Ещё 3 шт. — товаров на 7 560 ₸, доставка бесплатная.
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token, ("quantity", "3"));
+        cart = await Page(client, "/orders/cart");
+        Assert.Contains("Доставка по Актау бесплатная", cart);
+        Assert.Contains(Format.Money(7560m), cart);
+        await Post(client, $"/orders/cart/remove/{_factory.InStockVariantId}", token);
+    }
+
+    [Fact]
+    public async Task Recently_viewed_is_on_product_pages_only_and_there_is_no_whatsapp_order()
+    {
+        var client = Client();
+        var page = await Page(client, "/product/шампунь-тест");
+        Assert.DoesNotContain("Вы недавно смотрели", page);
+        // Решение пользователя 24.11: заказ только через сайт, кнопки «Заказать в WhatsApp» нет.
+        Assert.DoesNotContain("Заказать в WhatsApp", page);
+        // Главная «недавние» не показывает, страница самого товара себя в них не показывает.
+        Assert.DoesNotContain("Вы недавно смотрели", await Page(client, "/"));
+        Assert.DoesNotContain("Вы недавно смотрели", await Page(client, "/product/шампунь-тест"));
+
+        // Открыли другой товар — на нём внизу «Вы недавно смотрели» с шампунем.
+        string slug;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var other = db.Products.FirstOrDefault(p => p.Name == "Воск Недавний");
+            if (other is null)
+            {
+                var category = db.Categories.First();
+                other = new Product { CategoryId = category.Id, Name = "Воск Недавний", Variants = [new ProductVariant { Article = "300", PackLabel = "1 л", Price = 500m, StockQty = 3 }] };
+                db.Products.Add(other);
+                db.SaveChanges();
+            }
+            slug = other.Slug;
+        }
+        var second = await Page(client, "/product/" + slug);
+        Assert.Contains("Вы недавно смотрели", second);
+        Assert.Contains("Шампунь Тест", second);
+    }
+
+    [Fact]
+    public async Task Cabinet_lists_my_wash_bookings_and_denied_page_has_no_empty_name()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var wash = OnlineShop.Web.Infrastructure.CarWashes.All[0];
+            db.WashBookings.Add(new WashBooking
+            {
+                WashKey = wash.Key, WashName = wash.Name, ServiceKey = "complex", ServiceName = "Комплексная мойка", Minutes = 60,
+                StartsAt = OnlineShop.Web.Services.WashSlots.Now().Date.AddDays(2).AddHours(12), Name = "Иван", Phone = "77010000000",
+                CreatedAt = DateTime.UtcNow, UserId = _factory.BuyerId,
+            });
+            db.SaveChanges();
+        }
+        var mine = await Page(Client(_factory.BuyerId), "/accounts/wash");
+        Assert.Contains("Записи на мойку", mine);
+        Assert.Contains("Комплексная мойка", mine);
+        Assert.Contains("Открыть запись", mine);
+        Assert.DoesNotContain("Комплексная мойка", await Page(Client(_factory.OtherBuyerId), "/accounts/wash"));
+        Assert.Equal(HttpStatusCode.Redirect, (await _factory.Browser().GetAsync("/accounts/wash")).StatusCode);
+
+        var denied = await Page(Client(), "/accounts/denied");
+        Assert.Contains("Нет доступа", denied);
+        Assert.DoesNotContain("Вы вошли как «»", denied);
+    }
+
+    [Fact]
+    public async Task Stores_page_shows_the_car_wash()
+    {
+        var page = await Page(Client(), "/addresses");
+        Assert.Contains(OnlineShop.Web.Infrastructure.CarWashes.All[0].Address, page);
+        Assert.Contains("href=\"/wash\"", page);
     }
 }

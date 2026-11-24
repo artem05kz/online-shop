@@ -2,6 +2,8 @@ using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using OnlineShop.Web;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Models;
@@ -447,6 +449,47 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         Assert.NotEqual(banner.ImagePath, replaced);
         Assert.False(File.Exists(firstFile));
         Assert.True(File.Exists(Path.Combine(mediaRoot, replaced)));
+    }
+
+    [Fact]
+    public async Task Banner_text_goes_to_the_first_screen_only_when_switched_on()
+    {
+        var client = await Manager();
+        var token = await TokenFrom(client, "/admin/banners/add");
+        var png = Path.Combine(_files, "banner-text.png");
+        await File.WriteAllBytesAsync(png, OneCFiles.Png);
+        var title = $"Герои {Guid.NewGuid():N}"[..16];
+        await PostFiles(client, "/admin/banners/add", token, [("Image", png, "banner.png")],
+            ("Input.Title", title), ("Input.Script", "Новинка"), ("Input.Text", "Средства для дома тест-текст"),
+            ("Input.ButtonText", "В каталог"), ("Input.Theme", "red"), ("Input.LinkUrl", "/catalog/ifoam/воски"),
+            ("Input.SortOrder", "0"), ("Input.IsActive", "true"));
+        var banner = Db(db => db.Banners.Single(b => b.Title == title));
+        try
+        {
+            Assert.Equal("red", banner.Theme);
+            Assert.InRange(banner.FocusX, 0, 100);
+            // По умолчанию показ выключен (решение дизайнера): на главной только слайды с товарами.
+            Assert.DoesNotContain(title, await Page(client, "/"));
+            // Когда показ включат, баннер встаёт первым слайдом первого экрана.
+            using var shown = factory.WithWebHostBuilder(b => b.UseSetting("Storefront:ShowBanners", "true"));
+            var html = await Page(shown.CreateClient(), "/");
+            var hero = html[html.IndexOf("id=\"hero\"", StringComparison.Ordinal)..html.IndexOf("</section>", html.IndexOf("id=\"hero\"", StringComparison.Ordinal), StringComparison.Ordinal)];
+            Assert.Contains("hero-slide--banner hero-slide--red", hero);
+            Assert.Contains(title, hero);
+            Assert.Contains("Новинка", hero);
+            Assert.Contains("тест-текст", hero);
+            Assert.Contains(">В каталог</a>", hero);
+            // Отдельной карусели баннеров под разделами больше нет: всё в первом экране.
+            Assert.DoesNotContain("banner-carousel", html);
+
+            // Неизвестный цвет не сохраняется.
+            var bad = await PostFiles(client, $"/admin/banners/{banner.Id}", token, [], ("Input.Title", title), ("Input.Theme", "pink"));
+            Assert.Contains("Выберите цвет из списка", await Text(bad));
+        }
+        finally
+        {
+            Db(db => { db.Banners.Remove(db.Banners.Single(b => b.Id == banner.Id)); db.SaveChanges(); return 0; });
+        }
     }
 
     [Fact]

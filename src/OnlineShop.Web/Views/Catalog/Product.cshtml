@@ -72,7 +72,13 @@
     </div>
 
     <div class="pp-info">
-        <a class="pp-cat" href="@Url.Category(product.Category)">@brand.Name · @CategoryNames.Short(product.Category.Name)</a>
+        <div class="pp-top">
+            <a class="pp-cat" href="@Url.Category(product.Category)">@brand.Name · @CategoryNames.Short(product.Category.Name)</a>
+            @if (HitProducts.IsHit(product))
+            {
+                <span class="badge-hit pp-hit">@Icons.Get("star", 13) Хит продаж</span>
+            }
+        </div>
         <h1 class="pp-h1">@Typo.Text(product.Name)</h1>
         @* Артикул и отзывы слева, «В избранное» справа — одной строкой, с воздухом между ними. *@
         <div class="pp-meta">
@@ -152,7 +158,7 @@
         }
 
         <ul class="pp-perks">
-            <li>@Icons.Get("truck", 20)<span><b>Доставка по Актау</b>Удобное время уточнит менеджер</span></li>
+            <li>@Icons.Get("truck", 20)<span><b>Доставка по Актау — @DeliveryPrices.City</b>Заказ меньше — доплата до @DeliveryPrices.CityMinimumText. По области — @DeliveryPrices.Region</span></li>
             <li>@Icons.Get("check", 20)<span><b>Оплата при получении</b>Наличными или картой</span></li>
             <li>@Icons.Get("star", 20)<span><b>Оригинальная продукция</b>Официальный дилер @brand.Name</span></li>
         </ul>
@@ -315,6 +321,33 @@
             @foreach (var related in Model.Related)
             {
                 <partial name="_ProductCard" model="related" />
+            }
+        </div>
+    </section>
+}
+
+@if (Model.BoughtWith.Count > 0)
+{
+    @* С этим покупают (24.11): из тех же заказов, а пока заказов мало — хиты других разделов. *@
+    <section class="section">
+        <div class="section-head"><h2>С этим покупают</h2></div>
+        <div class="product-grid">
+            @foreach (var item in Model.BoughtWith)
+            {
+                <partial name="_ProductCard" model="item" />
+            }
+        </div>
+    </section>
+}
+
+@if (Model.Recent.Count > 0)
+{
+    <section class="section">
+        <div class="section-head"><h2>Вы недавно смотрели</h2></div>
+        <div class="product-grid">
+            @foreach (var item in Model.Recent)
+            {
+                <partial name="_ProductCard" model="item" />
             }
         </div>
     </section>

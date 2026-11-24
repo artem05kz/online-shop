@@ -31,7 +31,7 @@
                     <label class="choice-tile">
                         <input type="radio" name="Form.IsPickup" value="false" checked="@(!Model.Form.IsPickup)">
                         <span class="choice-ico">@Icons.Get("truck", 22)</span>
-                        <span><b>Доставка</b><span class="muted">Курьер привезёт по Актау</span></span>
+                        <span><b>Доставка</b><span class="muted">По Актау @DeliveryPrices.City, по области<br>@DeliveryPrices.Region</span></span>
                     </label>
                     @if (Model.PickupStores.Count > 0)
                     {
@@ -142,7 +142,18 @@
                         </li>
                     }
                 </ul>
-                <div class="summary-row total"><span>К оплате</span><span>@Format.Money(Model.Cart.Total)</span></div>
+                @{
+                    // Сумма с доставкой меняется скриптом ниже: самовывоз — без доставки; Актау — доплата до 7 000 ₸
+                    // (от 7 000 ₸ бесплатно); область — цену назовёт менеджер.
+                    var goods = Model.Cart.Total;
+                    var deliveryCity = !Model.Form.IsPickup && DeliveryPrices.IsCity(Model.Form.City);
+                    var cityFee = DeliveryPrices.CityFee(goods);
+                }
+                <div class="summary-row"><span>Товары</span><span>@Format.Money(goods)</span></div>
+                <div class="summary-row" id="co-delivery-row"><span>Доставка</span><span id="co-delivery" data-region="@DeliveryPrices.Region">@(Model.Form.IsPickup ? "бесплатно" : deliveryCity ? (cityFee == 0 ? "бесплатно" : Format.Money(cityFee)) : DeliveryPrices.Region)</span></div>
+                <div class="summary-row total"><span>К оплате</span><span id="co-total" data-goods="@goods.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-min="@DeliveryPrices.CityMinimum.ToString(System.Globalization.CultureInfo.InvariantCulture)">@Format.Money(deliveryCity ? goods + cityFee : goods)</span></div>
+                <p class="summary-hint" id="co-city-hint" hidden="@(!deliveryCity || cityFee == 0)">Минимальный заказ с доставкой по Актау — @DeliveryPrices.CityMinimumText: доставка — это доплата до этой суммы.</p>
+                <p class="summary-hint" id="co-region-hint" hidden="@(Model.Form.IsPickup || deliveryCity)">Доставка по области @DeliveryPrices.Region, точную сумму назовёт менеджер.</p>
                 @if (Model.NeedsConsent)
                 {
                     <partial name="_PrivacyConsent" model="@("Form.AcceptPrivacy")" />
@@ -171,7 +182,29 @@
             var isPickup = document.querySelector('input[name="Form.IsPickup"]:checked').value === 'true';
             delivery.hidden = isPickup;
             if (pickup) pickup.hidden = !isPickup;
+            updateTotal();
         }
+        // Итог справа: самовывоз — только товары; Актау — товары + доставка; другой город — товары, цену доставки назовёт менеджер.
+        var city = document.getElementById('Form_City');
+        var totalEl = document.getElementById('co-total');
+        var deliveryEl = document.getElementById('co-delivery');
+        var regionHint = document.getElementById('co-region-hint');
+        var cityHint = document.getElementById('co-city-hint');
+        var money = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+        function updateTotal() {
+            var isPickup = document.querySelector('input[name="Form.IsPickup"]:checked').value === 'true';
+            var c = (city && city.value || '').trim().toLowerCase();
+            var inCity = c === '' || c.indexOf('актау') >= 0 || c.indexOf('aktau') >= 0;
+            // Актау: доплата до минимальной суммы заказа (от неё доставка бесплатная).
+            var goods = parseFloat(totalEl.dataset.goods), min = parseFloat(totalEl.dataset.min);
+            var fee = Math.max(0, min - goods);
+            var sum = goods + (!isPickup && inCity ? fee : 0);
+            deliveryEl.textContent = isPickup || (inCity && fee === 0) ? 'бесплатно' : inCity ? money.format(fee) + ' ₸' : deliveryEl.dataset.region;
+            totalEl.textContent = money.format(sum) + ' ₸';
+            regionHint.hidden = isPickup || inCity;
+            cityHint.hidden = isPickup || !inCity || fee === 0;
+        }
+        if (city) { city.addEventListener('input', updateTotal); city.addEventListener('change', updateTotal); }
         radios.forEach(function (r) { r.addEventListener('change', update); });
         update();
     })();
@@ -214,6 +247,7 @@
             document.getElementById('Form_ContactPhone').value = picked.phone;
             document.getElementById('Form_City').value = picked.city;
             document.getElementById('Form_StreetAndDetails').value = picked.street;
+            document.getElementById('Form_City').dispatchEvent(new Event('change'));
         });
     })();
     </script>

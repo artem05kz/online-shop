@@ -1,13 +1,14 @@
 @model ProductListViewModel
 @*
-    Верх страницы раздела, как в Kaspi: соседние разделы кнопками и быстрые фильтры
-    (фасовка, наличие). Каждая кнопка — обычная ссылка: срабатывает с одного нажатия, без «Показать»,
+    Строка фильтров страницы раздела и поиска: фасовка (только в разделе), наличие, цена и справа сортировка.
+    Соседние категории теперь в цветной шапке (Category.cshtml). Каждая кнопка — обычная ссылка: срабатывает с одного нажатия, без «Показать»,
     и выбранное остаётся в адресе страницы (можно отправить ссылку).
 *@
 @{
-    var category = Model.Category!;
     var filter = Model.Filter;
     var path = Context.Request.Path.ToString();
+    // «Сбросить всё» в поиске оставляет сам запрос.
+    var resetPath = Model.Query is { Length: > 0 } q ? path + "?q=" + Uri.EscapeDataString(q) : path;
 
     // Ссылка на эту же страницу с изменённым параметром; номер страницы сбрасывается.
     string Link(string key, string? value)
@@ -16,18 +17,6 @@
         if (value is not null) rest.Add(new(key, value));
         return rest.Count == 0 ? path : path + new Microsoft.AspNetCore.Http.Extensions.QueryBuilder(rest).ToString();
     }
-}
-@if (Model.SideCategories.Count > 1)
-{
-    <nav class="cat-chips" aria-label="Разделы @category.Brand.Name">
-        @foreach (var tile in Model.SideCategories)
-        {
-            tile.Category.Brand = category.Brand;
-            var active = tile.Category.Id == category.Id;
-            <a class="chip@(active ? " is-active" : "")" href="@Url.Category(tile.Category)" title="@tile.Category.Name"
-               aria-current="@(active ? "page" : null)">@CategoryNames.Short(tile.Category.Name) <span class="chip-n">@tile.ProductCount</span></a>
-        }
-    </nav>
 }
 <div class="quick-bar">
 <div class="quick-filters" role="group" aria-label="Быстрые фильтры">
@@ -46,6 +35,8 @@
     <a class="chip chip-sm chip-check@(filter.InStockOnly ? " is-active" : "")" href="@Link("in_stock", filter.InStockOnly ? null : "1")"
        aria-pressed="@(filter.InStockOnly ? "true" : "false")"><span class="chip-box" aria-hidden="true">@Icons.Get("check", 12)</span>Только в наличии</a>
 </div>
+    @* Правая группа прижата к правому краю: если места мало, сортировка уходит строкой ниже, тоже по правому краю. *@
+    <div class="quick-right">
     <form class="quick-price" method="get" aria-label="Цена">
         @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "price_min", "price_max", "page"))
         {
@@ -58,6 +49,20 @@
     </form>
     @if (filter.HasActiveFilters)
     {
-        <a class="quick-reset" href="@path">Сбросить всё</a>
+        <a class="quick-reset" href="@resetPath">Сбросить всё</a>
     }
+    <form class="quick-sort" method="get">
+        @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "sort", "page"))
+        {
+            <input type="hidden" name="@name" value="@value">
+        }
+        <label class="quick-label" for="sort-select">Сортировка</label>
+        <select class="select" name="sort" id="sort-select">
+            @foreach (var option in CatalogFilter.SortOptions)
+            {
+                <option value="@option.Value" selected="@(option.Value == filter.Sort)">@option.Label</option>
+            }
+        </select>
+    </form>
+    </div>
 </div>

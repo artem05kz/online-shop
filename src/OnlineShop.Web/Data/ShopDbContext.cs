@@ -41,6 +41,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<WashBooking> WashBookings => Set<WashBooking>();
 
     // Ключи, которыми подписаны куки входа. В базе, а не в памяти: иначе после перезапуска сайта
     // всех покупателей и менеджеров выкидывало бы из аккаунта.
@@ -57,6 +58,12 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<WashBooking>(e =>
+        {
+            e.HasIndex(b => b.AccessToken).IsUnique();
+            e.HasIndex(b => new { b.WashKey, b.StartsAt });
+        });
 
         builder.Entity<Brand>(e =>
         {

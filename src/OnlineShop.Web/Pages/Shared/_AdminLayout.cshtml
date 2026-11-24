@@ -23,7 +23,7 @@
 <body class="admin">
 <header class="admin-top">
     <div class="inner">
-        <a class="title" href="/admin">Управление магазином GRASS</a>
+        <a class="title" href="/admin">Управление магазином IFOAM</a>
         <span class="spacer"></span>
         <a href="/" target="_blank" rel="noopener" title="Открыть сайт">@Icons.Get("external", 18) <span class="lbl">Открыть сайт</span></a>
         <span title="Вы вошли как">@Icons.Get("user", 18) <span class="lbl">@User.Identity?.Name</span></span>
@@ -52,6 +52,7 @@
             }
         </a>
         <a class="@Active("reports")" href="/admin/reports">@Icons.Get("chart") Отчёты</a>
+        <a class="@Active("wash")" href="/admin/wash">@Icons.Get("car") Записи на мойку</a>
         <h4>Каталог</h4>
         <a class="@Active("products")" href="/admin/products">@Icons.Get("package") Товары</a>
         <a class="@Active("variants")" href="/admin/variants">@Icons.Get("tag") Цены и остатки</a>

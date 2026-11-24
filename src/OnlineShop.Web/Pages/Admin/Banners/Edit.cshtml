@@ -9,16 +9,32 @@
     <a class="btn btn-ghost" asp-page="Index">К списку</a>
 </div>
 
-<form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
+<form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:760px;">
+    @* Как баннер будет выглядеть на первом экране: слева фото, справа цветной блок с текстом. Обновляется сразу. *@
     <div class="form-row">
-        <label for="Image">Изображение</label>
+        <label>Как будет на сайте</label>
+        <div class="hp" id="hp" data-theme="@Model.Input.Theme">
+            <div class="hp-photo">
+                <img id="hp-img" alt="" src="@(Model.CurrentImage is null ? null : Media.Url(Model.CurrentImage))" hidden="@(Model.CurrentImage is null ? "hidden" : null)">
+            </div>
+            <div class="hp-copy">
+                <span class="hp-script" id="hp-script"></span>
+                <b class="hp-title" id="hp-title"></b>
+                <span class="hp-text" id="hp-text"></span>
+                <span class="hp-btn" id="hp-btn"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <label for="Image">Фото</label>
         <p class="hint" style="margin-top:0;">
-            Размер <b>@BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight</b> точек (пропорция @BannerShape.RatioWidth:@BannerShape.RatioHeight),
-            не меньше @BannerShape.MinWidth × @(BannerShape.MinWidth / BannerShape.RatioWidth). На телефоне баннер показывается целиком, только меньше,
-            поэтому надпись делайте крупной и держите внутри пунктирной рамки: по краям лежат стрелки и точки переключения.
+            Размер <b>@BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight</b> (можно шире или уже: фото само подстраивается),
+            не меньше @BannerShape.MinWidth точек в ширину. Надписи на самом фото не нужны: заголовок и текст пишутся ниже.
+            На сайте видна примерно половина ширины фото. Где на фото товары, сайт находит сам и ставит их посередине;
+            если ошибся, <b>щёлкните по товарам на картинке ниже</b>.
         </p>
-        @* Рамка той же пропорции, что на сайте: что видно здесь, то увидит покупатель. *@
-        <div class="banner-preview" id="banner-preview">
+        <div class="banner-focus" id="banner-focus">
             @if (Model.CurrentImage is not null)
             {
                 <img src="@Media.Url(Model.CurrentImage)" alt="" id="banner-preview-img">
@@ -28,7 +44,7 @@
                 <img alt="" id="banner-preview-img" hidden>
                 <span class="banner-preview-empty">Здесь появится картинка</span>
             }
-            <span class="banner-safe" aria-hidden="true"></span>
+            <span class="banner-focus-frame" id="banner-focus-frame" aria-hidden="true"></span>
         </div>
         <p class="banner-preview-note" id="banner-preview-note">@Model.CurrentImageNote</p>
         @if (Model.CurrentImage is not null)
@@ -36,19 +52,54 @@
             <span class="help">Чтобы заменить, выберите новый файл. Старый удалится сам.</span>
         }
         <input type="file" id="Image" name="Image" accept="image/jpeg,image/png,image/gif,image/webp">
+        <input type="hidden" name="Input.FocusX" id="Input_FocusX" value="@Model.Input.FocusX">
         <span class="errorlist" asp-validation-for="Image"></span>
+    </div>
+
+    <div class="form-grid">
+        <div class="form-row">
+            <label asp-for="Input.Script"></label>
+            <input class="field" asp-for="Input.Script" placeholder="Новинка" data-hp="hp-script">
+            <span class="help">Крупно от руки над заголовком. Одно-два слова. Необязательно.</span>
+            <span class="errorlist" asp-validation-for="Input.Script"></span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.Theme"></label>
+            <select class="select" asp-for="Input.Theme" id="Input_Theme">
+                @foreach (var theme in BannerThemes.All)
+                {
+                    <option value="@theme.Key">@theme.Name</option>
+                }
+            </select>
+            <span class="help">Цвета подобраны так, чтобы текст читался.</span>
+            <span class="errorlist" asp-validation-for="Input.Theme"></span>
+        </div>
     </div>
     <div class="form-row">
         <label asp-for="Input.Title"></label>
-        <input class="field" asp-for="Input.Title">
-        <span class="help">Подпись для незрячих и поисковиков, на картинке не выводится.</span>
+        <input class="field" asp-for="Input.Title" placeholder="Новые герои чистоты" data-hp="hp-title">
+        <span class="help">Коротко, до 6–7 слов.</span>
         <span class="errorlist" asp-validation-for="Input.Title"></span>
     </div>
     <div class="form-row">
-        <label asp-for="Input.LinkUrl"></label>
-        <input class="field" asp-for="Input.LinkUrl" placeholder="/catalog/grass/автошампуни">
-        <span class="help">Куда вести при клике на баннер. Необязательно.</span>
-        <span class="errorlist" asp-validation-for="Input.LinkUrl"></span>
+        <label asp-for="Input.Text"></label>
+        <textarea class="field" asp-for="Input.Text" rows="2" placeholder="Средства Ifoam Home для кухни, ванной и стирки" data-hp="hp-text"></textarea>
+        <span class="help">Одна-две строки. Необязательно.</span>
+        <span class="errorlist" asp-validation-for="Input.Text"></span>
+    </div>
+    <div class="form-grid">
+        <div class="form-row">
+            <label asp-for="Input.LinkUrl"></label>
+            <input class="field" asp-for="Input.LinkUrl" placeholder="/catalog/ifoam/воски">
+            <span class="help">Куда ведёт кнопка и нажатие на фото. Без ссылки кнопки не будет.</span>
+            <span class="errorlist" asp-validation-for="Input.LinkUrl"></span>
+        </div>
+        <div class="form-row">
+            <label asp-for="Input.ButtonText"></label>
+            <input class="field" asp-for="Input.ButtonText" placeholder="Подробнее" data-hp="hp-btn">
+            <span class="help">Пусто: «Подробнее».</span>
+            <span class="errorlist" asp-validation-for="Input.ButtonText"></span>
+        </div>
     </div>
     <div class="form-grid">
         <div class="form-row">
@@ -80,26 +131,72 @@
 
 @section Scripts {
 <script nonce="@HttpContext.CspNonce()">
-// Превью сразу после выбора файла, до сохранения: видно, что обрежется и где лягут стрелки.
+// Превью «как на сайте» и точка, где на фото товары. Щелчок по картинке ставит точку вручную;
+// без щелчка сервер сам найдёт товары на новом фото (поле FocusX пустое).
 (function () {
+    var VISIBLE = @BannerFocus.VisibleRatio.ToString(System.Globalization.CultureInfo.InvariantCulture);
     var input = document.getElementById('Image');
     var img = document.getElementById('banner-preview-img');
+    var frame = document.getElementById('banner-focus-frame');
+    var box = document.getElementById('banner-focus');
     var note = document.getElementById('banner-preview-note');
-    var empty = document.querySelector('.banner-preview-empty');
-    var target = @BannerShape.RatioWidth / @BannerShape.RatioHeight;
+    var focus = document.getElementById('Input_FocusX');
+    var hp = document.getElementById('hp');
+    var hpImg = document.getElementById('hp-img');
+    var theme = document.getElementById('Input_Theme');
+
+    function ratio() { return img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 3; }
+    function position() {
+        var r = ratio(), fx = focus.value === '' ? 50 : Number(focus.value);
+        if (r <= VISIBLE) return { left: 0, width: 1, pos: 50 };
+        var vis = VISIBLE / r, left = Math.min(Math.max(fx / 100 - vis / 2, 0), 1 - vis);
+        return { left: left, width: vis, pos: left / (1 - vis) * 100 };
+    }
+    function update() {
+        var p = position();
+        frame.hidden = img.hidden || focus.value === '';
+        frame.style.left = (p.left * 100) + '%';
+        frame.style.width = (p.width * 100) + '%';
+        hpImg.style.objectPosition = p.pos + '% 50%';
+    }
+    function text() {
+        document.querySelectorAll('[data-hp]').forEach(function (el) {
+            var out = document.getElementById(el.getAttribute('data-hp'));
+            out.textContent = el.value || (el.id === 'Input_ButtonText' ? 'Подробнее' : '');
+        });
+        // Без ссылки кнопки на сайте нет — и в превью тоже.
+        document.getElementById('hp-btn').hidden = !document.getElementById('Input_LinkUrl').value.trim();
+        hp.setAttribute('data-theme', theme.value);
+    }
+    document.querySelectorAll('[data-hp]').forEach(function (el) { el.addEventListener('input', text); });
+    theme.addEventListener('change', text);
+    document.getElementById('Input_LinkUrl').addEventListener('input', text);
+    text();
+
+    box.addEventListener('click', function (e) {
+        if (img.hidden) return;
+        var r = img.getBoundingClientRect();
+        focus.value = Math.round(Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * 100);
+        update();
+    });
+    img.addEventListener('load', update);
+    if (img.complete) update();
+
     input.addEventListener('change', function () {
         var file = input.files && input.files[0];
         if (!file) return;
         var url = URL.createObjectURL(file);
+        focus.value = ''; // новое фото: товары найдёт сервер, если не щёлкнуть
         img.onload = function () {
-            var w = img.naturalWidth, h = img.naturalHeight, ratio = w / h, text = 'Размер ' + w + ' × ' + h + '.';
-            if (ratio > target * 1.03) text += ' Картинка шире нужного: края слева и справа обрежутся.';
-            else if (ratio < target * 0.97) text += ' Картинка выше нужного: верх и низ обрежутся.';
-            if (w < @BannerShape.MinWidth) text += ' Маловато для больших экранов, будет нечётко.';
-            note.textContent = text;
+            var w = img.naturalWidth, h = img.naturalHeight, t = 'Размер ' + w + ' × ' + h + '.';
+            if (w < @BannerShape.MinWidth) t += ' Маловато для больших экранов, будет нечётко.';
+            t += ' Где товары, сайт найдёт сам после сохранения. Можно указать самим: щёлкните по ним на картинке.';
+            note.textContent = t;
+            update();
         };
-        img.src = url;
-        img.hidden = false;
+        img.src = url; img.hidden = false;
+        hpImg.src = url; hpImg.hidden = false;
+        var empty = document.querySelector('.banner-preview-empty');
         if (empty) empty.remove();
     });
 })();

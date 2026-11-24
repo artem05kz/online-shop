@@ -457,63 +457,6 @@ h3 { font-size: 1.1rem; }
 .btn-danger { background: transparent; border-color: var(--line); color: var(--danger); }
 .btn-danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 
-/* ---------- Баннеры ---------- */
-.banner-carousel {
-    position: relative;
-    width: 100%;
-    /* Одна пропорция на всех экранах, как в BannerShape: надпись на картинке не съезжает
-       и не обрезается, на телефоне баннер просто меньше. */
-    aspect-ratio: 3 / 1;
-    overflow: hidden;
-    border-radius: var(--radius-lg);
-    margin: 22px 0;
-    background: var(--bg-soft);
-}
-.banner-slide {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity .45s ease;
-}
-.banner-slide.active { opacity: 1; visibility: visible; }
-.banner-slide a, .banner-slide img { display: block; width: 100%; height: 100%; }
-.banner-slide img { object-fit: cover; }
-
-.banner-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 38px; height: 38px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .9);
-    color: var(--ink);
-    font-size: 1.4rem;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-}
-.banner-nav:hover { background: #fff; }
-.banner-prev { left: 14px; }
-.banner-next { right: 14px; }
-.banner-dots {
-    position: absolute;
-    bottom: 14px; left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 7px;
-}
-.banner-dot {
-    width: 9px; height: 9px;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .65);
-    cursor: pointer;
-}
-.banner-dot.active { background: #fff; width: 22px; border-radius: 5px; }
-
 /* ---------- Первый экран главной: слайды товаров ---------- */
 /* Сетка 12 колонок (поля --hero-pad, промежуток --hero-gap): картинка 1–8, текст 9–12,
    управление в колонках текста. Слайды лежат в одной клетке друг на друге: блок берёт высоту
@@ -1350,10 +1293,6 @@ textarea.field { resize: vertical; }
     .header-link-stores { display: none; }
     .header-link .ico { font-size: 1.3rem; }
 
-    .banner-carousel { border-radius: var(--radius); }
-    .banner-nav { width: 32px; height: 32px; font-size: 1.2rem; }
-    .banner-prev { left: 8px; }
-    .banner-next { right: 8px; }
 
     .tiles { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 10px; }
     .tile { min-height: 100px; padding: 13px; font-size: .9rem; }
@@ -2090,8 +2029,12 @@ body.storefront { --header-h: 84px; }
 .storefront .product-card .price-row { height: 46px; align-items: last baseline; line-height: 1; }
 .storefront .product-card form { margin: 0; }
 .storefront .product-card .btn { display: flex; align-items: center; justify-content: center; line-height: 1.2; }
-/* Телефон в шапке не сжимает поиск: поиск всегда не уже 280px, телефон своей ширины. */
-.storefront .search { min-width: 280px; }
+/* Телефон в шапке не сжимает поиск ниже 200px, телефон своей ширины. С кнопкой «Мойка» и значком «Админка»
+   при 280px значки справа уезжали за край, поэтому поиск теперь уступает место первым. */
+.storefront .search { min-width: 200px; }
+.storefront .header .container { gap: 12px; }
+.storefront .catalog-btn { padding: 0 18px; }
+.storefront .wash-btn { padding: 0 16px; }
 .storefront .header-link { padding: 6px; }
 .header-phone { flex: none; margin-left: 8px; }
 
@@ -2888,3 +2831,394 @@ body.storefront { --green: var(--ink); --green-dark: var(--ink); --green-soft: v
 .storefront .ae-default { margin: 4px 0 0; }
 .storefront .ae-actions { display: flex; align-items: center; gap: 12px; }
 .storefront .ae-actions .btn { padding-left: 28px; padding-right: 28px; }
+
+/* ---------- Страница категории: шапка в цвете раздела и строка фильтров ---------- */
+.storefront .cat-hero {
+    margin: 22px 0 18px;
+    padding: 26px 32px 24px;
+    border-radius: var(--radius-xl);
+    background: var(--cat-color, var(--ink));
+    color: #fff;
+}
+.storefront .cat-crumbs { display: flex; flex-wrap: wrap; gap: 8px; font-size: .86rem; color: rgba(255, 255, 255, .7); }
+.storefront .cat-crumbs a { color: rgba(255, 255, 255, .85); text-decoration: none; }
+.storefront .cat-crumbs a:hover { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.storefront .cat-hero h1 { margin: 14px 0 6px; max-width: 26ch; color: #fff; font-size: 2.3rem; line-height: 1.12; text-wrap: balance; }
+.storefront .cat-count { margin: 0; color: rgba(255, 255, 255, .75); font-size: .95rem; }
+.storefront .cat-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.storefront .cat-tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 40px; padding: 0 16px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+    color: #fff; text-decoration: none;
+    font-size: .9rem; font-weight: 600; white-space: nowrap;
+    transition: background .15s, color .15s;
+}
+.storefront .cat-tab span { opacity: .65; font-weight: 500; font-size: .82rem; font-variant-numeric: tabular-nums; }
+.storefront .cat-tab:hover { background: rgba(255, 255, 255, .26); }
+.storefront .cat-tab.is-active { background: #fff; color: var(--ink); }
+.storefront .cat-tab:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.storefront .quick-bar { margin-bottom: 22px; }
+.storefront .quick-sort { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 0 auto; }
+.storefront .quick-sort .select {
+    width: auto; min-width: 180px; min-height: 36px;
+    padding: 6px 36px 6px 14px;
+    border: 1.5px solid var(--line); border-radius: 999px;
+    background-color: var(--surface);
+    font-size: .86rem; font-weight: 500;
+}
+.storefront .quick-sort .select:hover { border-color: var(--ink); }
+.storefront .quick-sort .select:focus { border-color: var(--ink); }
+@media (max-width: 760px) {
+    .storefront .cat-hero { padding: 20px 18px; }
+    .storefront .cat-hero h1 { font-size: 1.6rem; }
+    .storefront .cat-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -18px; padding-right: 18px; }
+    .storefront .quick-sort { margin-left: 0; }
+}
+
+/* Шапка раздела: светлые круги, как на плитках разделов главной. */
+.storefront .cat-hero { position: relative; overflow: hidden; isolation: isolate; }
+.storefront .cat-hero::before,
+.storefront .cat-hero::after {
+    content: ""; position: absolute; z-index: -1; border-radius: 50%; background: rgba(255, 255, 255, .16);
+}
+.storefront .cat-hero::after { width: 420px; aspect-ratio: 1; right: -90px; bottom: -230px; }
+.storefront .cat-hero::before { width: 170px; aspect-ratio: 1; right: 300px; top: -95px; background: rgba(255, 255, 255, .1); }
+
+/* Строка фильтров: цена и сортировка — группа у правого края, «Показать» по линейке шапки. */
+.storefront .quick-right { flex: 1 0 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 20px; }
+.storefront .quick-right .quick-sort { margin-left: 0; }
+@media (max-width: 760px) { .storefront .quick-right { justify-content: flex-start; } }
+.storefront .quick-bar { align-items: flex-start; }
+.storefront .quick-right .quick-sort .select { min-width: 170px; }
+
+/* ---------- Первый экран: слайды-баннеры из панели ---------- */
+/* Фото занимает колонки 1–8 и уходит в край (поле слева, верх, низ), до середины промежутка перед текстом.
+   object-position по ширине задаёт разметка (BannerFocus): товары стоят посередине видимой части. */
+.hero-slide--navy   { --hero-bg: #0b1a4d; --hero-ink: #fff;    --hero-script: #7fa2ff; --hero-script-hi: #c9d7ff; }
+.hero-slide--ink    { --hero-bg: #0f0f0f; --hero-ink: #fff;    --hero-script: #ff6a5f; --hero-script-hi: #ffc4bf; }
+.hero-slide--red    { --hero-bg: #e0190f; --hero-ink: #fff;    --hero-script: #ffd23f; --hero-script-hi: #fff1b8; }
+.hero-slide--sun    { --hero-bg: #ffd23f; --hero-ink: #0f0f0f; --hero-script: #d98e00; --hero-script-hi: #fff1b8; }
+.hero-slide--banner.hero-slide--blue   { --hero-script: #b9d6ff; }
+.hero-slide--banner.hero-slide--lime   { --hero-script: #5f8a00; }
+.hero-slide--banner.hero-slide--orange { --hero-script: #a63f00; }
+
+.hero-photo {
+    grid-column: 1 / span 8;
+    align-self: stretch;
+    position: relative;
+    margin-left: calc(var(--hero-pad) * -1);
+    margin-right: calc(var(--hero-gap) * -0.5);
+    overflow: hidden;
+    background: rgba(255, 255, 255, .06);
+}
+.hero-photo img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transition: transform .6s ease;
+}
+a.hero-photo:hover img { transform: scale(1.02); }
+.hero-slide--banner .hero-copy { padding-left: 12px; }
+/* Рукописное слово над заголовком: тот же шрифт, что за товарами на других слайдах. */
+.hero-kicker {
+    margin: 0 0 6px;
+    font-family: "Caveat", "Segoe Script", cursive;
+    font-weight: 700;
+    font-size: 3.1rem;
+    line-height: .9;
+    color: var(--hero-script);
+    transform: rotate(-4deg);
+    transform-origin: left center;
+}
+/* Кнопка на тёмном блоке — белая, на светлом — чёрная; при наведении, как все главные, краснеет. */
+.storefront .hero-slide--banner[data-tone="light"] .hero-buy:not(.btn-outline) { background: #fff; border-color: #fff; color: #0f0f0f; }
+.storefront .hero-slide--banner[data-tone="dark"] .hero-buy:not(.btn-outline) { background: #0f0f0f; border-color: #0f0f0f; color: #fff; }
+.storefront .hero-slide--banner .hero-buy:not(.btn-outline):hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+.storefront .hero-slide--red .hero-buy:not(.btn-outline):hover { background: #0f0f0f; border-color: #0f0f0f; }
+
+/* Точки на тёмном блоке — светлые. */
+.hero.is-light .hero-dot { background: rgba(255, 255, 255, .38); }
+.hero.is-light .hero-dot.active { background: #fff; }
+@media (prefers-reduced-motion: reduce) { a.hero-photo:hover img { transform: none; } }
+
+/* ---------- Запись на мойку ---------- */
+/* Кнопка в шапке рядом с «Каталогом»: капсула с обводкой, при наведении чёрная. */
+.storefront .wash-btn {
+    display: inline-flex; align-items: center; gap: 8px; flex: none;
+    height: 52px; padding: 0 20px;
+    border: 1.5px solid var(--ink); border-radius: 999px;
+    color: var(--ink); font-weight: 600; font-size: .95rem; white-space: nowrap; text-decoration: none;
+    transition: background .15s, color .15s;
+}
+.storefront .wash-btn:hover { background: var(--ink); color: #fff; }
+
+/* Тёмная шапка страницы: «без очереди» от руки красным, светлые круги как у шапки раздела. */
+.storefront .wash-hero {
+    position: relative; overflow: hidden; isolation: isolate;
+    margin: 22px 0 24px; padding: 34px 40px 36px;
+    border-radius: var(--radius-xl); background: var(--ink); color: #fff;
+}
+.storefront .wash-hero::before,
+.storefront .wash-hero::after { content: ""; position: absolute; z-index: -1; border-radius: 50%; background: rgba(255, 255, 255, .08); }
+.storefront .wash-hero::after { width: 460px; aspect-ratio: 1; right: -110px; bottom: -260px; }
+.storefront .wash-hero::before { width: 190px; aspect-ratio: 1; right: 320px; top: -110px; background: rgba(255, 255, 255, .06); }
+.storefront .wash-hero .wash-hero-script, .storefront .wash-invite .wash-invite-script {
+    margin: 0 0 4px; font-family: "Caveat", "Segoe Script", cursive; font-weight: 700; font-size: 2.6rem; line-height: .9;
+    color: var(--accent); transform: rotate(-4deg); transform-origin: left center;
+}
+.storefront .wash-hero h1 { margin: 0 0 10px; color: #fff; font-size: 2.4rem; }
+.storefront .wash-hero-lead { margin: 0; max-width: 56ch; color: #d0d0c8; font-size: 1.05rem; line-height: 1.5; }
+/* Лента дней прокручивается вбок внутри карточки, а не растягивает колонку. */
+.storefront .co-main > * { min-width: 0; }
+.storefront .wash-hero-facts { list-style: none; margin: 20px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.storefront .wash-hero-facts li {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
+    border-radius: 999px; background: rgba(255, 255, 255, .1); font-size: .9rem;
+}
+
+/* Шаг 1: мойки — две плитки в ряд. */
+.storefront .wash-places { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.storefront .wash-place b { display: block; margin-bottom: 2px; }
+.storefront .wash-place .muted { display: block; }
+.storefront .wash-hours { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .85rem; color: var(--ink-soft); }
+.storefront .choice-tile input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.storefront .wash-place, .storefront .wash-service { position: relative; }
+.storefront .wash-place:has(input:focus-visible), .storefront .wash-service:has(input:focus-visible),
+.storefront .wash-day:has(input:focus-visible), .storefront .wash-slot:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.storefront .wash-place:has(input:checked) .choice-ico { background: var(--ink); color: #fff; }
+
+/* Шаг 2: услуги — 2×2, справа длительность и цена. */
+.storefront .wash-services { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.storefront .wash-service { align-items: stretch; justify-content: space-between; }
+.storefront .wash-service-text b { display: block; margin-bottom: 4px; }
+.storefront .wash-service-text .muted { display: block; font-size: .88rem; }
+.storefront .wash-service-meta { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; flex: none; font-size: .85rem; text-align: right; }
+.storefront .wash-service-meta span { padding: 3px 10px; border-radius: 999px; background: var(--bg); white-space: nowrap; }
+.storefront .wash-service-meta b { font-weight: 600; color: var(--ink-soft); max-width: 11ch; line-height: 1.25; }
+
+/* Шаг 3: дни лентой, время сеткой. */
+.storefront .wash-days { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin-bottom: 14px; scrollbar-width: thin; }
+.storefront .wash-day {
+    position: relative; flex: none; width: 74px; padding: 10px 0 9px;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    border: 1.5px solid var(--line); border-radius: 18px; background: var(--surface); cursor: pointer;
+    transition: border-color .12s, background .12s, color .12s;
+}
+.storefront .wash-day input { position: absolute; opacity: 0; pointer-events: none; }
+.storefront .wash-day:hover { border-color: var(--ink); }
+.storefront .wash-day-top { font-size: .74rem; color: var(--muted); text-transform: capitalize; }
+.storefront .wash-day-num { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; line-height: 1.1; }
+.storefront .wash-day-month { font-size: .74rem; color: var(--muted); }
+.storefront .wash-day:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+.storefront .wash-day:has(input:checked) span { color: #fff; }
+
+.storefront .wash-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; transition: opacity .15s; }
+.storefront .wash-slots.is-loading { opacity: .45; }
+.storefront .wash-slots.is-invalid { outline: 2px solid var(--accent-strong); outline-offset: 6px; border-radius: 12px; }
+.storefront .wash-slot { position: relative; }
+.storefront .wash-slot input { position: absolute; opacity: 0; pointer-events: none; }
+.storefront .wash-slot span {
+    display: grid; place-items: center; height: 42px;
+    border: 1.5px solid var(--line); border-radius: 999px; background: var(--surface);
+    font-weight: 600; font-size: .92rem; font-variant-numeric: tabular-nums; cursor: pointer;
+    transition: border-color .12s, background .12s, color .12s;
+}
+.storefront .wash-slot span:hover { border-color: var(--ink); }
+.storefront .wash-slot input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.storefront .wash-slot.is-busy span { background: var(--bg); border-color: transparent; color: #b5b5ad; text-decoration: line-through; cursor: not-allowed; }
+.storefront .wash-slots-empty { margin: 4px 0 0; color: var(--ink-soft); }
+.storefront .wash-legend { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: .82rem; color: var(--muted); }
+.storefront .wash-legend-busy { width: 26px; height: 14px; border-radius: 999px; background: var(--bg); }
+
+/* Справа: «Ваша запись». */
+.storefront .wash-summary-list { margin: 0 0 16px; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: .95rem; }
+.storefront .wash-summary-list dt { color: var(--muted); }
+.storefront .wash-summary-list dd { margin: 0; font-weight: 600; text-align: right; }
+.storefront .wash-summary-list dd:first-letter { text-transform: uppercase; }
+
+/* Запись принята: «билет» — когда, где, что. */
+.storefront .wash-ticket { grid-column: 1 / -1; margin: 24px 0 0; padding: 22px 0 0; border-top: 1px solid rgba(255, 255, 255, .15);
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.storefront .wash-ticket dt { font-size: .82rem; color: #a5a59d; margin-bottom: 6px; }
+.storefront .wash-ticket dd { margin: 0; font-size: 1.02rem; line-height: 1.45; }
+.storefront .wash-ticket dd:first-letter { text-transform: uppercase; }
+.storefront .wash-ticket dd b { font-family: var(--font-display); font-size: 1.4rem; color: #fff; }
+.storefront .wash-ticket dd span { color: #a5a59d; font-size: .9rem; }
+.storefront .wash-booked.is-off .placed-ico { background: rgba(255, 255, 255, .18); color: #fff; }
+.storefront .placed-actions form { margin: 0; display: flex; }
+.storefront .placed-cancel { background: none; border: 0; padding: 0 8px; color: #d0d0c8; font: inherit; font-size: .95rem; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.storefront .placed-cancel:hover { color: #fff; }
+.storefront .wash-upsell { margin-top: 8px; }
+.storefront .wash-upsell-lead { margin: -6px 0 18px; color: var(--ink-soft); }
+
+/* Приглашение на главной: тёмная полоса, текст слева, мойки и кнопка справа. */
+.storefront .wash-invite {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: center;
+    margin: 48px 0 8px; padding: 36px 40px;
+    border-radius: var(--radius-xl); background: var(--ink); color: #fff;
+}
+.storefront .wash-invite::after { content: ""; position: absolute; z-index: -1; width: 380px; aspect-ratio: 1; left: -120px; bottom: -250px; border-radius: 50%; background: rgba(255, 255, 255, .07); }
+.storefront .wash-invite h2 { margin: 0 0 10px; color: #fff; font-size: 2rem; line-height: 1.12; }
+.storefront .wash-invite-text > p:last-child { margin: 0; color: #d0d0c8; line-height: 1.5; max-width: 52ch; }
+.storefront .wash-invite-places { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 10px; }
+.storefront .wash-invite-places li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px; background: rgba(255, 255, 255, .08); }
+.storefront .wash-invite-places b { display: block; }
+.storefront .wash-invite-places span span { display: block; color: #a5a59d; font-size: .86rem; }
+.storefront .wash-invite-ico { width: 38px; height: 38px; border-radius: 50%; background: #fff; color: var(--ink); display: grid; place-items: center; flex: none; }
+.storefront .wash-invite-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 28px; border-radius: 999px; background: #fff; border-color: #fff; color: var(--ink); }
+.storefront .btn.wash-invite-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+.storefront .wash-note { margin: 12px 0 0; font-size: .88rem; color: var(--muted); }
+.storefront .section.wash-upsell { margin-top: 44px; }
+
+/* Одна мойка: адрес в шапке страницы и в приглашении на главной, ссылка «в 2ГИС» открывает карту. */
+.storefront .wash-hero-facts a { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.storefront .wash-hero-facts a:hover { color: var(--accent); }
+.storefront .wash-invite-places li > span:nth-child(2) { flex: 1; }
+.storefront .wash-invite-map { flex: none; padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, .12); color: #fff; font-size: .85rem; font-weight: 600; }
+.storefront .wash-invite-map:hover { background: #fff; color: var(--ink); }
+
+/* ---------- Поиск и избранное (компьютер) ---------- */
+/* Шапка как у раздела, только чёрная (--cat-color). Подсказки внутри — светлым по тёмному. */
+.storefront .search-hero h1 { overflow-wrap: anywhere; }
+.storefront .search-hero .search-fixed { margin: 10px 0 0; color: rgba(255, 255, 255, .75); font-size: .95rem; }
+.storefront .search-hero .search-fixed b { color: #fff; }
+.storefront .fav-note { display: flex; align-items: flex-start; gap: 8px; max-width: 70ch; margin: 14px 0 0; color: rgba(255, 255, 255, .75); font-size: .92rem; line-height: 1.5; }
+.storefront .fav-note svg { flex: none; margin-top: 3px; color: var(--accent); }
+.storefront .fav-note a { color: #fff; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.storefront .fav-note a:hover { color: var(--accent); }
+
+/* Ничего не нашлось / пусто: белая карточка, значок в тёплом круге слева, текст и кнопки справа. */
+.storefront .search-empty { display: flex; gap: 24px; align-items: flex-start; max-width: 760px; padding: 32px 36px; }
+.storefront .search-empty-ico { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--ink); }
+.storefront .search-empty h2 { margin: 6px 0 10px; font-size: 1.5rem; }
+.storefront .search-empty p { margin: 0 0 8px; max-width: 58ch; color: var(--ink-soft); line-height: 1.55; }
+.storefront .search-empty-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.storefront .search-empty-actions .btn { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ---------- Логотип IFOAM (24.11: GRASS убран по просьбе заказчицы) ---------- */
+/* Шапка — прежняя сетка логотипа: значок 60 px (жёлтое солнце) и «IFOAM | АКТАУ». Центр солнца — ровно
+   посередине значка, поэтому линия названия на 50 % его высоты (у старого «G» было 62 %). */
+.storefront .logo .logo-mark { width: 52px; height: 52px; margin: 4px; }
+/* Обе строки (подпись и название) вместе стоят по центру солнца и кнопки «Каталог» — правка пользователя 24.11. */
+.storefront .logo-text { display: flex; flex-direction: column; justify-content: center; gap: 7px; }
+.storefront .logo-text .logo-over { position: static; }
+.storefront .logo-text .logo-name { margin-top: 0; }
+/* Подвал: тот же логотип с белой надписью. */
+.storefront .ft-logo { display: block; height: 96px; width: auto; margin-bottom: 6px; }
+/* Мойка: телефон мойки под заметками в «Ваша запись». */
+.storefront .wash-phone { margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: .92rem; color: var(--ink-soft); }
+.storefront .wash-phone a { color: var(--ink); font-weight: 700; white-space: nowrap; }
+.storefront .wash-phone a:hover { color: var(--accent-strong); }
+
+/* ---------- Страницы ошибок (404, 500, 403, 429, 400) ---------- */
+/* Чёрная плашка со светлыми кругами, как шапка раздела; номер ошибки огромным контуром справа. */
+.storefront .err {
+    position: relative; overflow: hidden; isolation: isolate;
+    display: flex; align-items: center; min-height: 380px;
+    margin: 22px 0 40px; padding: 48px 56px;
+    border-radius: var(--radius-xl); background: var(--ink); color: #fff;
+}
+.storefront .err::after { content: ""; position: absolute; z-index: -2; width: 460px; aspect-ratio: 1; right: -120px; bottom: -260px; border-radius: 50%; background: rgba(255, 255, 255, .07); }
+.storefront .err-code {
+    position: absolute; z-index: -1; right: 48px; top: 50%; transform: translateY(-50%);
+    font-family: var(--font-display); font-weight: 700; font-size: 15rem; line-height: 1; letter-spacing: -.04em;
+    color: transparent; -webkit-text-stroke: 2px rgba(255, 255, 255, .22);
+}
+.storefront .err-text { max-width: 560px; }
+.storefront .err h1 { margin: 0 0 12px; color: #fff; font-size: 2.4rem; }
+.storefront .err p { margin: 0; color: #d0d0c8; font-size: 1.05rem; line-height: 1.55; }
+.storefront .err-search { display: flex; align-items: center; height: 56px; margin-top: 24px; padding: 4px; border-radius: 999px; background: #fff; max-width: 460px; }
+.storefront .err-search input { flex: 1; min-width: 0; height: 100%; padding: 0 8px 0 18px; border: 0; background: transparent; font: inherit; font-size: 1rem; color: var(--ink); }
+.storefront .err-search input:focus { outline: none; }
+.storefront .err-search button { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ink); color: #fff; cursor: pointer; }
+.storefront .err-search button:hover { background: var(--accent-strong); }
+.storefront .err-search:focus-within { box-shadow: 0 0 0 3px rgba(255, 255, 255, .35); }
+.storefront .err-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.storefront .btn.err-btn { background: #fff; border-color: #fff; color: var(--ink); }
+.storefront .btn.err-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+.storefront .btn.err-btn-ghost { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 1.5px solid rgba(255, 255, 255, .4); color: #fff; }
+.storefront .btn.err-btn-ghost:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
+
+/* ---------- Политика конфиденциальности ---------- */
+/* Чёрная шапка; ниже слева оглавление (колонки 1–3, едет за прокруткой), справа текст в белой карточке. */
+.storefront .policy-layout { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: start; margin-bottom: 40px; }
+.storefront .policy-toc { grid-column: 1 / span 3; position: sticky; top: calc(var(--header-h) + 24px); }
+.storefront .policy-toc ol { list-style: none; counter-reset: toc; margin: 0; padding: 0; display: grid; gap: 2px; }
+.storefront .policy-toc li { counter-increment: toc; }
+.storefront .policy-toc a { display: flex; gap: 10px; padding: 9px 14px; border-radius: 14px; color: var(--ink-soft); font-size: .92rem; text-decoration: none; }
+.storefront .policy-toc a::before { content: counter(toc); min-width: 1.2em; font-family: var(--font-display); font-weight: 700; color: var(--muted); }
+.storefront .policy-toc a:hover { background: var(--surface); color: var(--ink); }
+.storefront .policy.co-card { grid-column: 4 / -1; max-width: none; margin: 0; padding: 36px 44px; line-height: 1.65; }
+.storefront .policy > p:first-child { font-size: 1.05rem; color: var(--ink); }
+.storefront .policy h2 { margin: 32px 0 10px; font-size: 1.25rem; scroll-margin-top: calc(var(--header-h) + 24px); }
+.storefront .policy ul { padding-left: 20px; }
+.storefront .policy li::marker { color: var(--muted); }
+.storefront .policy a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.storefront .policy a:hover { color: var(--accent-strong); }
+
+/* ---------- Значок «Хит» (временно по списку заказчицы, Infrastructure/HitProducts.cs) ---------- */
+/* Красная капсула со звездой в левом верхнем углу фото; на странице товара — рядом с разделом над названием. */
+.storefront .badge-hit { display: inline-flex; align-items: center; gap: 4px; background: var(--accent-strong); color: #fff; border: 0; font-weight: 700; }
+.storefront .badge-hit svg { fill: currentColor; stroke: none; }
+.storefront .pp-top { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.storefront .pp-hit { padding: 4px 11px; border-radius: 999px; font-size: .8rem; }
+/* Значок на фото («Хит», «Нет в наличии») и сердечко — одной высоты 32 px и на одной линии сверху (правка 24.11). */
+.storefront .product-card .badge { display: inline-flex; align-items: center; height: 32px; padding: 0 12px; font-size: .78rem; line-height: 1; }
+.storefront .product-card .fav-btn { width: 32px; height: 32px; }
+.storefront .product-card .fav-btn svg { width: 17px; height: 17px; }
+.storefront .product-card .fav-form { top: 24px; right: 24px; }
+/* Значки «Хит» и «Нет в наличии» — внизу фото слева (правка 24.11); сердечко остаётся сверху справа. */
+.storefront .product-card .thumb .badge { top: auto; bottom: 12px; left: 12px; }
+
+/* ===== Доработки 24.11: доставка в итоге, почта в кабинете ===== */
+.storefront .summary-hint { margin: 4px 0 14px; font-size: .82rem; line-height: 1.45; color: var(--ink-soft); }
+.storefront .co-card .summary-row.od-sub { padding: 6px 0; font-size: .95rem; border: 0; }
+.storefront .acc-crumbs { display: flex; gap: 8px; margin-bottom: 6px; font-size: .85rem; color: var(--ink-soft); }
+.storefront .acc-crumbs a { color: var(--ink-soft); }
+.storefront .acc-email { max-width: 620px; }
+.storefront .acc-email .email-state { display: flex; align-items: center; gap: 10px; margin: 16px 0 0; }
+.storefront .acc-email-form { margin-top: 24px; }
+.storefront .acc-email .acc-save { margin-top: 8px; }
+
+/* ===== Кабинет: записи на мойку (24.11) ===== */
+.storefront .wb-card { display: grid; grid-template-columns: 220px 1fr auto auto; align-items: center; gap: 28px; padding: 26px 30px; margin-bottom: 16px; }
+.storefront .wb-card.is-next { border: 2px solid var(--ink); }
+.storefront .wb-when { display: grid; gap: 4px; }
+.storefront .wb-day { font-size: .9rem; color: var(--ink-soft); }
+.storefront .wb-day::first-letter { text-transform: uppercase; }
+.storefront .wb-time { font-family: var(--font-display); font-weight: 600; font-size: 1.9rem; line-height: 1; }
+.storefront .wb-time small { font-family: var(--font-body, inherit); font-weight: 400; font-size: .95rem; color: var(--ink-soft); margin-left: 2px; }
+.storefront .wb-what { display: grid; gap: 4px; min-width: 0; }
+.storefront .wb-what b { font-size: 1.05rem; }
+.storefront .wb-what span { color: var(--ink-soft); font-size: .92rem; }
+.storefront .wb-open { white-space: nowrap; }
+.storefront .wb-next-empty { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 30px; margin-bottom: 16px; }
+.storefront .wb-next-empty p { margin: 0; color: var(--ink-soft); }
+.storefront .wb-next-empty .btn { display: inline-flex; align-items: center; gap: 8px; }
+.storefront .wb-past-title { margin: 32px 0 14px; font-size: 1.25rem; }
+.storefront .wb-past { padding: 8px 30px; }
+.storefront .wb-row { display: grid; grid-template-columns: 200px 1fr auto; gap: 20px; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none; }
+.storefront .wb-row:last-child { border-bottom: 0; }
+.storefront .wb-row:hover .wb-row-name { text-decoration: underline; }
+.storefront .wb-row-date { color: var(--ink-soft); font-size: .92rem; }
+.storefront .status-done { background: var(--ink); color: #fff; }
+.storefront .status-cancelled { background: #fdeceb; color: var(--accent-strong); }
+.storefront .st-wash .st-btn { gap: 8px; padding: 0 22px; }
+/* Пустая корзина — одна карточка по центру (24.11) */
+.storefront .search-empty.cart-empty { flex-direction: column; align-items: center; text-align: center; max-width: 620px; margin: 56px auto 24px; padding: 44px 48px; gap: 18px; }
+.storefront .cart-empty h1 { margin: 0 0 10px; font-size: 1.9rem; }
+.storefront .cart-empty p { margin: 0 auto 8px; }
+.storefront .cart-empty .search-empty-actions { justify-content: center; }
+.storefront .cart-empty .search-empty-ico { width: 76px; height: 76px; }
+
+/* Корзина: сколько осталось до бесплатной доставки по Актау (минимум 7 000 ₸) */
+.storefront .free-ship { margin: 6px 0 12px; }
+.storefront .free-ship-bar { height: 6px; border-radius: 3px; background: var(--bg); overflow: hidden; }
+.storefront .free-ship-bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+.storefront .free-ship p { margin: 10px 0 0; font-size: .85rem; line-height: 1.45; color: var(--ink-soft); }
+.storefront .free-ship p b { color: var(--ink); }
+.storefront .free-ship.is-free { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--ink); }

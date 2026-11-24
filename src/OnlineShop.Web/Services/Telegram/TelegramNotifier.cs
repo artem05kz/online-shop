@@ -4,8 +4,11 @@ using OnlineShop.Web.Data;
 
 namespace OnlineShop.Web.Services.Telegram;
 
-/// <summary>Новый заказ для отправки в Telegram. Адрес сайта берётся из запроса покупателя.</summary>
-public record OrderAlert(int OrderId, string SiteUrl);
+/// <summary>
+/// Что отправить в Telegram: новый заказ или запись на мойку (<see cref="BookingId"/>, тогда OrderId = 0).
+/// Адрес сайта берётся из запроса покупателя.
+/// </summary>
+public record OrderAlert(int OrderId, string SiteUrl, int BookingId = 0, bool BookingCancelled = false);
 
 /// <summary>
 /// Очередь уведомлений. Оформление заказа только кладёт в неё номер и сразу отвечает покупателю:
@@ -25,6 +28,15 @@ public sealed class OrderAlerts(TelegramOptions options)
             _queue.Writer.TryWrite(new OrderAlert(orderId, siteUrl.TrimEnd('/')));
         }
     }
+
+    /// <summary>Новая запись на мойку или её отмена клиентом.</summary>
+    public void EnqueueBooking(int bookingId, string siteUrl, bool cancelled = false)
+    {
+        if (options.IsConfigured)
+        {
+            _queue.Writer.TryWrite(new OrderAlert(0, siteUrl.TrimEnd('/'), bookingId, cancelled));
+        }
+    }
 }
 
 public record SendReport(int Sent, int Failed, int Unlinked);
@@ -40,6 +52,16 @@ public class TelegramNotifier(ShopDbContext db, ITelegramApi api, ILogger<Telegr
             return new SendReport(0, 0, 0);
         }
         return await SendToAllAsync(OrderMessage.Build(order, $"{alert.SiteUrl}/admin/orders/{order.Id}"), ct);
+    }
+
+    public async Task<SendReport> SendBookingAsync(OrderAlert alert, CancellationToken ct)
+    {
+        var booking = await db.WashBookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == alert.BookingId, ct);
+        if (booking is null)
+        {
+            return new SendReport(0, 0, 0);
+        }
+        return await SendToAllAsync(BookingMessage.Build(booking, $"{alert.SiteUrl}/admin/wash", alert.BookingCancelled), ct);
     }
 
     public async Task<SendReport> SendToAllAsync(string html, CancellationToken ct)

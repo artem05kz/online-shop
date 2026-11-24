@@ -4,14 +4,18 @@
     ViewData["Title"] = "Электронная почта";
     ViewData["AccountTab"] = "profile";
 }
-<div class="auth">
-<div class="auth-card auth-narrow">
-    <h1>Электронная почта</h1>
-    <p class="auth-lead">На почту приходят статусы заказов и код, если забудете пароль.</p>
+@* Почта — раздел кабинета (24.11): меню слева, справа карточка в стиле «Личных данных». *@
+<div class="acc">
+<partial name="_AccountTabs" />
+<div class="acc-main">
+<nav class="acc-crumbs" aria-label="Вы здесь"><a href="@ShopUrls.Profile">Личные данные</a><span aria-hidden="true">/</span><span>Почта</span></nav>
+<h1 class="acc-title">Электронная почта</h1>
+<div class="co-card acc-card acc-email">
+    <p class="acc-hint">На почту приходят статусы заказов и код, если забудете пароль.</p>
 
     @if (Model.CurrentEmail is not null && Model.IsConfirmed)
     {
-        <p class="email-state ok">@Icons.Get("check", 18) <b>@Model.CurrentEmail</b> подтверждена</p>
+        <p class="email-state ok"><b>@Model.CurrentEmail</b> <span class="acc-badge is-ok">подтверждена</span></p>
     }
     else if (Model.CurrentEmail is not null)
     {
@@ -22,22 +26,23 @@
                 <input class="field code-field" asp-for="Code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" autofocus>
                 <span class="errorlist" asp-validation-for="Code"></span>
             </div>
-            <button class="btn btn-block auth-submit" type="submit">Подтвердить</button>
+            <button class="btn acc-save" type="submit">Подтвердить</button>
         </form>
         <form method="post" asp-page-handler="Resend" asp-route-returnUrl="@Model.ReturnUrl" style="margin-top:10px;">
-            <button class="btn btn-ghost btn-block" type="submit">Письмо не пришло, отправить код ещё раз</button>
+            <button class="btn btn-ghost acc-save" type="submit">Письмо не пришло, отправить код ещё раз</button>
         </form>
     }
 
-    <form method="post" asp-page-handler="Send" asp-route-returnUrl="@Model.ReturnUrl" style="margin-top:24px;">
+    <form method="post" asp-page-handler="Send" asp-route-returnUrl="@Model.ReturnUrl" class="acc-email-form">
         <div class="form-row">
             <label asp-for="NewEmail">@(Model.CurrentEmail is null ? "Электронная почта" : "Другая почта")</label>
             <input class="field" asp-for="NewEmail" type="email" autocomplete="email" placeholder="name@mail.ru">
             <span class="errorlist" asp-validation-for="NewEmail"></span>
         </div>
-        <button class="btn @(Model.CurrentEmail is null ? "" : "btn-ghost") btn-block" type="submit">
+        <button class="btn acc-save" type="submit">
             @(Model.CurrentEmail is null ? "Получить код" : "Сменить почту")
         </button>
     </form>
+</div>
 </div>
 </div>
