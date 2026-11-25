@@ -30,7 +30,7 @@ public class WashSlots(ShopDbContext db)
         var to = from.AddDays(1);
         var taken = await db.WashBookings
             .Where(b => b.WashKey == wash.Key && b.StartsAt < to && b.StartsAt >= from.AddHours(-12)
-                        && (b.Status == WashBookingStatus.New || b.Status == WashBookingStatus.Confirmed))
+                        && (b.Status == WashBookingStatus.New || b.Status == WashBookingStatus.Confirmed || b.Status == WashBookingStatus.Arrived))
             .Select(b => new { b.StartsAt, b.Minutes })
             .ToListAsync(ct);
 
@@ -57,5 +57,39 @@ public class WashSlots(ShopDbContext db)
         var time = TimeOnly.FromDateTime(startsAt);
         var slots = await ForDayAsync(wash, service, day, now, ct);
         return slots.Any(s => s.Time == time && s.Free);
+    }
+
+    /// <summary>
+    /// Свободное место (бокс) на время [start; start + minutes) — CRM, 24.11. preferred — какое место хотели
+    /// (0 — любое). Возвращает номер места или 0, если все заняты. Запись exceptId не учитывается (перенос).
+    /// </summary>
+    public async Task<int> FreeBoxAsync(CarWash wash, DateTime start, int minutes, int preferred = 0, int exceptId = 0, CancellationToken ct = default)
+    {
+        var end = start.AddMinutes(minutes);
+        var taken = await db.WashBookings
+            .Where(b => b.WashKey == wash.Key && b.Id != exceptId && b.StartsAt < end && b.StartsAt >= start.AddHours(-12)
+                        && (b.Status == WashBookingStatus.New || b.Status == WashBookingStatus.Confirmed || b.Status == WashBookingStatus.Arrived))
+            .Select(b => new { b.StartsAt, b.Minutes, b.Box })
+            .ToListAsync(ct);
+        var overlapping = taken.Where(b => b.StartsAt.AddMinutes(b.Minutes) > start).ToList();
+        return PickBox(overlapping.Select(b => b.Box).ToList(), wash.Boxes, preferred);
+    }
+
+    /// <summary>Выбор места по занятым на это время: записи без места (0) занимают любое из свободных.</summary>
+    public static int PickBox(IReadOnlyList<int> busyBoxes, int boxes, int preferred = 0)
+    {
+        if (busyBoxes.Count >= boxes)
+        {
+            return 0;
+        }
+        var used = busyBoxes.Where(b => b > 0).ToHashSet();
+        // Записи без места займут какие-то из оставшихся: оставляем им место.
+        var unplaced = busyBoxes.Count(b => b <= 0);
+        var free = Enumerable.Range(1, boxes).Where(b => !used.Contains(b)).ToList();
+        if (free.Count - unplaced <= 0)
+        {
+            return 0;
+        }
+        return preferred > 0 && free.Contains(preferred) ? preferred : free[0];
     }
 }

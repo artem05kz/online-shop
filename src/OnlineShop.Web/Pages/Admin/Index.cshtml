@@ -3,58 +3,221 @@
 @{
     ViewData["Title"] = "Главная";
     ViewData["AdminSection"] = "home";
+    ViewData["LiveReload"] = true;
+    var ru = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+    var today = DateOnly.FromDateTime(Model.Now);
+    var maxBar = Math.Max(1m, Model.Week.Max(d => d.Revenue));
+    string Ago(DateTime utc)
+    {
+        var minutes = (int)(DateTime.UtcNow - utc).TotalMinutes;
+        if (minutes < 1) return "только что";
+        if (minutes < 60) return $"{minutes} мин назад";
+        if (minutes < 60 * 24) return $"{minutes / 60} ч назад";
+        return Format.DateTimeText(utc);
+    }
+    string Phone(string raw)
+    {
+        var digits = PhoneNumbers.Normalize(raw);
+        return digits.Length > 0 ? PhoneNumbers.Display(digits) : raw;
+    }
 }
-<h1>Что сделать</h1>
-<div class="quick-grid">
-    <a class="quick-card" href="/admin/orders?status=new">
-        <span class="qc-icon">@Icons.Get("orders", 28)</span>
-        <span class="qc-title">Новые заказы</span>
-        @if (Model.NewOrders > 0)
+@*
+    Главная панели (редизайн 24.11). Сверху — день: выручка и заказы сегодня, неделя со столбиками по дням,
+    мойка. Ниже два столбца: слева новые заказы (позвонить, открыть), справа мойка сегодня, что заканчивается
+    и отзывы. Внизу — частые действия и цифры каталога.
+*@
+<header class="dash-head">
+    <p class="dash-date">@Model.Now.ToString("dddd, d MMMM", ru)</p>
+    <h1>Сводка за сегодня</h1>
+</header>
+
+<section class="dash-kpis" aria-label="Цифры дня">
+    <div class="kpi">
+        <span class="kpi-label">Выручка сегодня</span>
+        <span class="kpi-value">@Format.Money(Model.TodayRevenue)</span>
+        <span class="kpi-note">
+            вчера @Format.Money(Model.YesterdayRevenue)
+        </span>
+    </div>
+    <a class="kpi" href="/admin/orders">
+        <span class="kpi-label">Заказов сегодня</span>
+        <span class="kpi-value">@Model.TodayOrders</span>
+        <span class="kpi-note">@(Model.NewOrders > 0 ? $"ждут звонка: {Model.NewOrders}" : "новых нет") · в работе: @Model.InWork</span>
+    </a>
+    <a class="kpi kpi-week" href="/admin/reports?period=7d">
+        <span class="kpi-label">За 7 дней</span>
+        <span class="kpi-value">@Format.Money(Model.WeekRevenue)</span>
+        @{ var change = IndexModel.Change(Model.WeekRevenue, Model.PrevWeekRevenue); }
+        <span class="kpi-note">
+            @Model.WeekOrders @Plural.Choose(Model.WeekOrders, "заказ", "заказа", "заказов")
+            @if (change is { } c)
+            {
+                <b class="kpi-change @(c >= 0 ? "is-up" : "is-down")">@(c >= 0 ? "+" : "−")@Math.Abs(c)% к прошлой неделе</b>
+            }
+        </span>
+        <span class="kpi-bars" aria-hidden="true">
+            @foreach (var d in Model.Week)
+            {
+                <span class="kpi-bar@(d.Day == today ? " is-today" : "")" title="@d.Day.ToString("d MMM", ru): @Format.Money(d.Revenue)">
+                    <i style="height:@((int)Math.Max(4m, d.Revenue / maxBar * 100m))%"></i>
+                    <small>@d.Day.ToString("ddd", ru)</small>
+                </span>
+            }
+        </span>
+    </a>
+    <a class="kpi" href="/admin/wash">
+        <span class="kpi-label">Мойка сегодня</span>
+        <span class="kpi-value">@Model.WashToday.Count</span>
+        <span class="kpi-note">@(Model.WashWaiting > 0 ? $"ждут подтверждения: {Model.WashWaiting}" : "все записи подтверждены")</span>
+    </a>
+</section>
+
+<div class="dash-grid">
+    <div class="dash-side">
+    <section class="dash-card dash-orders">
+        <div class="dash-card-head">
+            <h2>Новые заказы @if (Model.NewOrders > 0) {<span class="dash-count">@Model.NewOrders</span>}</h2>
+            <a href="/admin/orders?status=new">Все новые</a>
+        </div>
+        @if (Model.NewOrderList.Count == 0)
         {
-            <span class="qc-badge">ждут ответа: @Model.NewOrders</span>
+            <p class="dash-empty">@Icons.Get("check", 20) Новых заказов нет — все обработаны.</p>
         }
         else
         {
-            <span class="qc-note">Новых заказов нет.</span>
+            <p class="dash-hint">Позвоните покупателю, подтвердите заказ и смените статус. Сначала самые старые.</p>
+            <ul class="dash-list">
+                @foreach (var o in Model.NewOrderList)
+                {
+                    var digits = PhoneNumbers.Normalize(o.Phone);
+                    <li class="dash-order">
+                        <a class="dash-order-num" href="/admin/orders/@o.Id">№@o.Id</a>
+                        <span class="dash-order-who">
+                            <b>@(string.IsNullOrWhiteSpace(o.Name) ? "Без имени" : o.Name)</b>
+                            <small>@Ago(o.CreatedAt) · @o.Quantity шт. · @(o.IsPickup ? "самовывоз" : "доставка")</small>
+                        </span>
+                        <span class="dash-order-sum">@Format.Money(o.Total)</span>
+                        <span class="dash-order-actions">
+                            @if (digits.Length > 0)
+                            {
+                                <a class="btn btn-ghost btn-sm" href="tel:+@digits">@Icons.Get("phone", 16) @Phone(o.Phone)</a>
+                            }
+                            <a class="btn btn-sm" href="/admin/orders/@o.Id">Открыть</a>
+                        </span>
+                    </li>
+                }
+            </ul>
         }
-    </a>
-    @if (Model.PendingReviews > 0)
-    {
-        <a class="quick-card" href="/admin/reviews">
-            <span class="qc-icon">@Icons.Get("star", 28)</span>
-            <span class="qc-title">Проверить отзывы</span>
-            <span class="qc-badge">ждут проверки: @Model.PendingReviews</span>
-        </a>
-    }
+    </section>
+
+
+
+    </div>
+
+    <div class="dash-side">
+        <section class="dash-card">
+            <div class="dash-card-head">
+                <h2>Мойка сегодня</h2>
+                <a href="/admin/wash">Все записи</a>
+            </div>
+            @if (Model.WashToday.Count == 0)
+            {
+                <p class="dash-empty">На сегодня записей нет.</p>
+            }
+            else
+            {
+                <ul class="dash-list">
+                    @foreach (var b in Model.WashToday)
+                    {
+                        var past = b.EndsAt <= Model.Now;
+                        <li class="dash-wash@(past && !b.IsLate(Model.Now) ? " is-past" : "")">
+                            <span class="dash-wash-time">@b.StartsAt.ToString("H:mm")</span>
+                            <span class="dash-wash-who"><b>@b.Name</b><small>@b.ServiceName</small></span>
+                            @if (b.IsLate(Model.Now))
+                            {
+                                <span class="wash-late">Опоздал на @b.LateMinutes(Model.Now) мин</span>
+                            }
+                            else if (b.IsAwaited(Model.Now))
+                            {
+                                <span class="wash-wait">Ждём · <span data-wait-left="@b.WaitSecondsLeft(Model.Now)">@Math.Ceiling(b.WaitSecondsLeft(Model.Now) / 60.0) мин</span></span>
+                            }
+                            else
+                            {
+                                <span class="a-status a-status-@b.Status.Code()">@b.Status.Text()</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        @if (Model.PendingReviews > 0)
+        {
+            <a class="dash-card dash-alert" href="/admin/reviews">
+                @Icons.Get("star", 22)
+                <span><b>Проверить отзывы: @Model.PendingReviews</b><small>Без проверки они не появятся на сайте</small></span>
+                @Icons.Get("chevron-right", 20)
+            </a>
+        }
+    </div>
+</div>
+
+<h2 class="dash-section">Что сделать</h2>
+<div class="quick-grid">
     <a class="quick-card" href="/admin/variants">
-        <span class="qc-icon">@Icons.Get("tag", 28)</span>
+        <span class="qc-icon">@Icons.Get("tag", 24)</span>
         <span class="qc-title">Поменять цену или остаток</span>
         <span class="qc-note">Все фасовки одним списком.</span>
     </a>
     <a class="quick-card" href="/admin/import/stock">
-        <span class="qc-icon">@Icons.Get("refresh", 28)</span>
+        <span class="qc-icon">@Icons.Get("refresh", 24)</span>
         <span class="qc-title">Обновить остатки из 1С</span>
         <span class="qc-note">Только количество, цены не меняются.</span>
     </a>
     <a class="quick-card" href="/admin/import">
-        <span class="qc-icon">@Icons.Get("upload", 28)</span>
+        <span class="qc-icon">@Icons.Get("upload", 24)</span>
         <span class="qc-title">Загрузить товары из 1С</span>
         <span class="qc-note">Прайс-лист: названия, фото, описания.</span>
     </a>
     <a class="quick-card" href="/admin/products/add">
-        <span class="qc-icon">@Icons.Get("plus", 28)</span>
+        <span class="qc-icon">@Icons.Get("plus", 24)</span>
         <span class="qc-title">Добавить товар вручную</span>
-    </a>
-    <a class="quick-card" href="/admin/banners">
-        <span class="qc-icon">@Icons.Get("image", 28)</span>
-        <span class="qc-title">Баннеры на главной</span>
+        <span class="qc-note">Если товара нет в прайсе 1С.</span>
     </a>
 </div>
 
-<h2>Каталог</h2>
+<section class="dash-card dash-low-wide">
+    <div class="dash-card-head">
+        <h2>Заканчивается</h2>
+        <a href="/admin/variants">Цены и остатки</a>
+    </div>
+    @if (Model.Low.Count == 0)
+    {
+        <p class="dash-empty">Всего хватает: нет фасовок, где осталось @IndexModel.LowStock шт. и меньше.</p>
+    }
+    else
+    {
+        <ul class="dash-list">
+            @foreach (var v in Model.Low)
+            {
+                <li class="dash-low">
+                    <a href="/admin/products/@v.ProductId">@v.Name</a>
+                    <small>@v.Pack · арт. @v.Article</small>
+                    <span class="dash-left@(v.Left == 1 ? " is-last" : "")">@(v.Left == 1 ? "последняя" : $"{v.Left} шт.")</span>
+                </li>
+            }
+        </ul>
+    }
+</section>
+
+<h2 class="dash-section">Каталог</h2>
 <div class="stats">
     <a class="stat" href="/admin/products"><div class="v">@Model.Products</div><div class="l">товаров всего</div></a>
-    <a class="stat" href="/admin/products?filter=nophoto"><div class="v">@Model.NoPhoto</div><div class="l">без фото</div></a>
-    <a class="stat" href="/admin/products?filter=noprice"><div class="v">@Model.NoPrice</div><div class="l">с фасовкой без цены</div></a>
+    <a class="stat@(Model.NoPhoto > 0 ? " is-warn" : "")" href="/admin/products?filter=nophoto"><div class="v">@Model.NoPhoto</div><div class="l">без фото</div></a>
+    <a class="stat@(Model.NoPrice > 0 ? " is-warn" : "")" href="/admin/products?filter=noprice"><div class="v">@Model.NoPrice</div><div class="l">с фасовкой без цены</div></a>
     <a class="stat" href="/admin/products?filter=nostock"><div class="v">@Model.NoStock</div><div class="l">нет в наличии</div></a>
 </div>
+
+@section Scripts {
+    <script src="~/js/admin_wash_wait.js" asp-append-version="true"></script>
+}

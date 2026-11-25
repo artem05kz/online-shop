@@ -97,12 +97,12 @@ public class ImageTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     [Fact]
     public void Banner_shape_warnings_name_what_will_be_cut()
     {
-        Assert.Empty(BannerShape.Check(3840, 1280));
-        Assert.Empty(BannerShape.Check(1920, 640));
-        // Широкое фото — нормально (видна часть, сдвигается к товарам), высокое обрезается сверху и снизу.
-        Assert.Empty(BannerShape.Check(4000, 1000));
-        Assert.Contains("сверху и снизу обрежется примерно по 17%", Assert.Single(BannerShape.Check(1920, 1600)));
-        Assert.Contains("нечётким", Assert.Single(BannerShape.Check(1200, 400)));
+        Assert.Empty(BannerShape.Check(2400, 880));
+        Assert.Empty(BannerShape.Check(1200, 440));
+        // Другая пропорция: лишнее обрезается — сверху и снизу у высокой картинки, по бокам у широкой.
+        Assert.Contains("сверху и снизу обрежется примерно по 28%", Assert.Single(BannerShape.Check(1920, 1600)));
+        Assert.Contains("слева и справа обрежется примерно по 5%", Assert.Single(BannerShape.Check(3840, 1280)));
+        Assert.Contains("нечётким", Assert.Single(BannerShape.Check(1000, 367)));
     }
 
     [Fact]
@@ -130,14 +130,14 @@ public class ImageTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     {
         var client = await Manager();
         var token = await TokenFrom(client, "/admin/banners/add");
-        Assert.Contains("3840 × 1280", await Page(client, "/admin/banners/add"));
+        Assert.Contains("2400 × 880", await Page(client, "/admin/banners/add"));
 
         var big = Path.Combine(_files, "big.png");
-        await File.WriteAllBytesAsync(big, Photo(4800, 1600, SKEncodedImageFormat.Png));
+        await File.WriteAllBytesAsync(big, Photo(4800, 1760, SKEncodedImageFormat.Png));
         var good = await Upload(client, token, big, "Ровный баннер");
         Assert.EndsWith(".webp", good.ImagePath);
         var media = factory.Services.GetRequiredService<MediaStorage>();
-        Assert.Equal((3840, 1280), ImageShrinker.Size(media.FullPath(good.ImagePath)!)!.Value);
+        Assert.Equal((3840, 1408), ImageShrinker.Size(media.FullPath(good.ImagePath)!)!.Value);
         Assert.DoesNotContain("обрежется", await Page(client, "/admin/banners"));
 
         var tall = Path.Combine(_files, "tall.jpg");
@@ -166,6 +166,110 @@ public class ImageTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         var image = scope.ServiceProvider.GetRequiredService<ShopDbContext>().ProductImages.Single(i => i.ProductId == productId);
         var media = factory.Services.GetRequiredService<MediaStorage>();
         Assert.Equal((2000, 1500), ImageShrinker.Size(media.FullPath(image.ImagePath)!)!.Value);
+    }
+
+    /// <summary>«Рендер»: прозрачный фон, белая бутылка и цветная этикетка.</summary>
+    private static byte[] Render(SKColor? label)
+    {
+        using var bitmap = new SKBitmap(new SKImageInfo(400, 300, SKColorType.Rgba8888, SKAlphaType.Premul));
+        using (var canvas = new SKCanvas(bitmap))
+        {
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawRect(140, 30, 120, 250, new SKPaint { Color = SKColors.White });
+            canvas.DrawRect(150, 120, 100, 30, new SKPaint { Color = SKColors.Black });
+            if (label is { } color)
+            {
+                canvas.DrawRect(150, 160, 100, 70, new SKPaint { Color = color });
+            }
+        }
+        using var image = SKImage.FromBitmap(bitmap);
+        return image.Encode(SKEncodedImageFormat.Png, 100).ToArray();
+    }
+
+    private static double Hue(string hex)
+    {
+        var c = SKColor.Parse(hex);
+        c.ToHsl(out var h, out _, out _);
+        return h;
+    }
+
+    [Fact]
+    public void Slide_background_is_taken_from_the_label()
+    {
+        // Синяя этикетка — синий фон, зелёная — зелёный; белый пластик и чёрные надписи не в счёт.
+        var (blueBg, blueScript) = SlideColors.FromImage(Render(new SKColor(30, 90, 220)));
+        Assert.InRange(Hue(blueBg), 210, 235);
+        Assert.True(SlideColors.IsDark(blueBg));
+        Assert.Equal("#ffffff", SlideColors.Ink(blueBg));
+        Assert.InRange(Hue(blueScript), 205, 240);
+        var (greenBg, _) = SlideColors.FromImage(Render(new SKColor(120, 200, 40)));
+        Assert.InRange(Hue(greenBg), 80, 100);
+        Assert.Equal("#0f0f0f", SlideColors.Ink(greenBg));
+        // Ярких цветов нет — запасной синий.
+        Assert.Equal(SlideColors.Fallback, SlideColors.FromImage(Render(null)).Bg);
+    }
+
+    [Fact]
+    public void Slide_text_comes_from_the_product_card()
+    {
+        Assert.Equal("Очиститель стёкол GLASS GLOSS", SlideText.Title("Очиститель стёкол \"GLASS GLOSS\""));
+        Assert.Equal("Glass Gloss", SlideText.Script("Очиститель стёкол «GLASS GLOSS»"));
+        Assert.Equal("", SlideText.Script("Очиститель стёкол"));
+        Assert.Equal("Готов к применению.", SlideText.Text("Готов к применению.  Стёкла без разводов."));
+    }
+
+    [Fact]
+    public async Task Slide_constructor_fills_text_from_product_and_color_from_label()
+    {
+        var client = await Manager();
+        int productId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var product = new Product
+            {
+                Category = new Category { Brand = new Brand { Name = $"Бренд {Guid.NewGuid():N}"[..14] }, Name = "Категория" },
+                Name = "Автошампунь \"NANO SOFT\"", Slug = $"nano-{Guid.NewGuid():N}",
+                Description = "Для ручной мойки. Бережёт лак.",
+                Variants = [new ProductVariant { Article = "S" + Guid.NewGuid().ToString("N")[..8], Price = 280m, StockQty = 5 }],
+            };
+            db.Products.Add(product);
+            db.SaveChanges();
+            productId = product.Id;
+        }
+        var page = await Page(client, "/admin/slides/add");
+        Assert.Contains("data-script=\"Nano Soft\"", page);
+
+        var render = Path.Combine(_files, "nano.png");
+        await File.WriteAllBytesAsync(render, Render(new SKColor(120, 200, 40)));
+        var token = await TokenFrom(client, "/admin/slides/add");
+        // Только товар и рендер: надписи и цвет сайт подставляет сам.
+        await PostFiles(client, "/admin/slides/add", token, [("Image", render, "nano.png")],
+            ("Input.ProductId", productId.ToString()), ("Input.Script", "Nano Soft"), ("Input.IsActive", "true"));
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var slide = db.ProductSlides.Single(s => s.ProductId == productId);
+            Assert.Equal("Автошампунь NANO SOFT", slide.Title);
+            Assert.Equal("Для ручной мойки.", slide.Text);
+            Assert.InRange(Hue(slide.BgColor), 80, 100);
+            Assert.StartsWith("slides/", slide.ImagePath);
+            var html = await Page(client, "/");
+            Assert.Contains("Автошампунь NANO SOFT", html);
+            Assert.Contains($"--hero-bg: {slide.BgColor}", html);
+            Assert.Contains("280", await Page(client, "/admin/banners"));
+
+            // Удалить из списка — слайд и файл рендера пропадают, товар остаётся.
+            var listToken = await TokenFrom(client, "/admin/banners");
+            await Post(client, $"/admin/banners?handler=DeleteSlide&id={slide.Id}", listToken);
+        }
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            Assert.False(db.ProductSlides.Any(s => s.ProductId == productId));
+            Assert.True(db.Products.Any(p => p.Id == productId));
+        }
     }
 
     private async Task<Banner> Upload(HttpClient client, string token, string path, string title)

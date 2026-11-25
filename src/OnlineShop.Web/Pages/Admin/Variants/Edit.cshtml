@@ -10,7 +10,7 @@
     {
         <a class="btn btn-ghost" href="/admin/products/@productId">К товару</a>
     }
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" asp-page="Index">@Icons.Get("arrow-left", 18) К списку</a>
 </div>
 
 <form method="post">
@@ -86,8 +86,8 @@
                 <span class="errorlist" asp-validation-for="Input.StockQty"></span>
             </div>
         </div>
-        <label class="check">
-            <input asp-for="Input.IsActive">
+        <label class="pe-switch-row fe-switch">
+            <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
             <span>Показывать на сайте</span>
         </label>
         @if (Model.Existing is { } v)
@@ -107,6 +107,6 @@
 @if (Model.Id is not null)
 {
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" data-confirm="Удалить артикул?">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить артикул</button>
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить артикул</button>
     </form>
 }

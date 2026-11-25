@@ -3222,3 +3222,21 @@ a.hero-photo:hover img { transform: scale(1.02); }
 .storefront .free-ship p { margin: 10px 0 0; font-size: .85rem; line-height: 1.45; color: var(--ink-soft); }
 .storefront .free-ship p b { color: var(--ink); }
 .storefront .free-ship.is-free { display: flex; align-items: center; gap: 8px; font-size: .9rem; font-weight: 600; color: var(--ink); }
+
+/* ---------- Первый экран: баннер из панели — готовая картинка во весь блок (25.11.2026) ---------- */
+/* Картинка 2400 × 880 ложится на весь первый экран (1200 × 440), лишнее при другой пропорции обрезается по краям.
+   Высоту блока задают слайды с товарами, баннер её не меняет. Под точками и стрелками — лёгкая тень справа снизу. */
+.storefront .hero-slide--banner { display: block; position: relative; padding: 0; background: #0f0f0f; }
+.storefront .hero-banner { position: absolute; inset: 0; display: block; overflow: hidden; }
+.storefront .hero-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.storefront a.hero-banner:focus-visible { outline: 4px solid var(--accent-strong); outline-offset: -4px; }
+.storefront .hero-slide--banner::after {
+    content: ""; position: absolute; right: 0; bottom: 0; width: 46%; height: 140px; pointer-events: none;
+    background: radial-gradient(ellipse at 100% 100%, rgba(0, 0, 0, .38), rgba(0, 0, 0, 0) 70%);
+}
+
+/* ---------- Первый экран: слайд с товаром из панели (25.11.2026) ---------- */
+/* Цвета (--hero-bg, --hero-ink, --hero-script, --hero-script-hi) приходят из базы в style у слайда. Кнопка «Купить» чёрная на любом фоне. */
+.storefront .hero-slide--product .hero-buy:not(.btn-outline) { background: #0f0f0f; border-color: #0f0f0f; color: #fff; }
+.storefront .hero-slide--product .hero-buy:not(.btn-outline):hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+.storefront .hero-slide--product[data-tone="light"] .hero-buy.btn-outline { border-color: #fff; color: #fff; }

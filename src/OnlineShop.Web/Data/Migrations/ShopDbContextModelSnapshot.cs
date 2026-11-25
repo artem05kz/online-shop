@@ -713,6 +713,60 @@ namespace OnlineShop.Web.Data.Migrations
                     b.ToTable("ProductImages");
                 });
 
+            modelBuilder.Entity("OnlineShop.Web.Models.ProductSlide", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BgColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImagePath")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Script")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ScriptColor")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SortOrder");
+
+                    b.ToTable("ProductSlides");
+                });
+
             modelBuilder.Entity("OnlineShop.Web.Models.ProductVariant", b =>
                 {
                     b.Property<int>("Id")
@@ -1001,17 +1055,36 @@ namespace OnlineShop.Web.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Box")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Car")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("ClientReminderSent")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Comment")
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ConfirmedBy")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ManagerNote")
+                        .IsRequired()
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Minutes")
@@ -1022,10 +1095,18 @@ namespace OnlineShop.Web.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("Price")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("ServiceKey")
                         .IsRequired()
@@ -1037,6 +1118,11 @@ namespace OnlineShop.Web.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("StartsAt")
                         .HasColumnType("TEXT");
 
@@ -1044,6 +1130,9 @@ namespace OnlineShop.Web.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("WaitReminderSent")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("WashKey")
@@ -1227,6 +1316,17 @@ namespace OnlineShop.Web.Data.Migrations
                 {
                     b.HasOne("OnlineShop.Web.Models.Product", "Product")
                         .WithMany("Images")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("OnlineShop.Web.Models.ProductSlide", b =>
+                {
+                    b.HasOne("OnlineShop.Web.Models.Product", "Product")
+                        .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

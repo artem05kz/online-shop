@@ -1,0 +1,149 @@
+@model OnlineShop.Web.Pages.Admin.Wash.WashInput
+@using System.Globalization
+@{
+    var wash = CarWashes.All[0];
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var today = DateOnly.FromDateTime(WashSlots.Now());
+    var days = Enumerable.Range(0, 7).Select(today.AddDays).ToList();
+    var picked = DateOnly.TryParseExact(Model.Date, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var pd) ? pd : today;
+    if (!days.Contains(picked))
+    {
+        days.Insert(0, picked);
+    }
+}
+@*
+    Поля записи на мойку (CRM, 24.11) — для «Новой записи» и карточки записи. Всё, что выбирается из списка,
+    выбирается кнопками-плашками (как статус заказа): день, время, услуга, место, откуда клиент, способ оплаты.
+*@
+<fieldset class="od-statuses wf-group">
+    <legend>Когда</legend>
+    <div class="od-chips" role="radiogroup" aria-label="День">
+        @foreach (var d in days)
+        {
+            var v = d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            <label class="od-chip wf-chip">
+                <input type="radio" name="Input.Date" value="@v" @(v == Model.Date ? "checked" : "")>
+                <span>@(d == today ? "Сегодня" : d == today.AddDays(1) ? "Завтра" : d.ToString("ddd, d MMM", ru))</span>
+            </label>
+        }
+        <label class="wf-date">
+            <span>другой день</span>
+            <input type="date" class="field" data-date-pick value="@Model.Date" min="@today.ToString("yyyy-MM-dd")">
+        </label>
+    </div>
+    <span class="errorlist" asp-validation-for="Date"></span>
+    <div class="wf-times" role="radiogroup" aria-label="Время">
+        @foreach (var t in OnlineShop.Web.Pages.Admin.Wash.WashInput.Times(wash))
+        {
+            var v = t.ToString("HH:mm", CultureInfo.InvariantCulture);
+            <label class="wf-time">
+                <input type="radio" name="Input.Time" value="@v" @(v == Model.Time ? "checked" : "")>
+                <span>@t.ToString("H:mm")</span>
+            </label>
+        }
+    </div>
+    <span class="errorlist" asp-validation-for="Time"></span>
+</fieldset>
+
+<div class="od-form-cols">
+    <fieldset class="wf-group">
+        <legend>Услуга</legend>
+        <div class="wf-services">
+            @foreach (var s in CarWashes.Services)
+            {
+                <label class="wf-service">
+                    <input type="radio" name="Input.Service" value="@s.Key" @(s.Key == Model.Service ? "checked" : "") data-price="@(s.PriceFrom?.ToString(CultureInfo.InvariantCulture))">
+                    <span><b>@s.Name</b><small>@s.Minutes мин@(s.PriceFrom is { } p ? " · от " + Format.Money(p) : "")</small></span>
+                </label>
+            }
+        </div>
+        <span class="errorlist" asp-validation-for="Service"></span>
+    </fieldset>
+    <fieldset class="wf-group">
+        <legend>Место</legend>
+        <div class="od-chips">
+            <label class="od-chip wf-chip">
+                <input type="radio" name="Input.Box" value="0" @(Model.Box == 0 ? "checked" : "")>
+                <span>Любое свободное</span>
+            </label>
+            @for (var n = 1; n <= wash.Boxes; n++)
+            {
+                <label class="od-chip wf-chip">
+                    <input type="radio" name="Input.Box" value="@n" @(Model.Box == n ? "checked" : "")>
+                    <span>Место @n</span>
+                </label>
+            }
+        </div>
+        <span class="errorlist" asp-validation-for="Box"></span>
+    </fieldset>
+</div>
+
+<div class="od-form-cols">
+    <fieldset class="wf-group">
+        <legend>Клиент</legend>
+        <div class="form-row">
+            <label asp-for="Name">Имя</label>
+            <input class="field" asp-for="Name" name="Input.Name" id="Input_Name" autocomplete="off">
+            <span class="errorlist" asp-validation-for="Name"></span>
+        </div>
+        <div class="form-row">
+            <label for="Input_Phone">Телефон</label>
+            <input class="field" asp-for="Phone" name="Input.Phone" id="Input_Phone" type="tel" placeholder="+7 701 123-45-67">
+            <span class="errorlist" asp-validation-for="Phone"></span>
+        </div>
+        <div class="form-row">
+            <label for="Input_Car">Машина</label>
+            <input class="field" asp-for="Car" name="Input.Car" id="Input_Car" placeholder="Например: Toyota Camry, 123 ABC 12">
+        </div>
+        <div class="form-row">
+            <span class="wf-label">Откуда клиент</span>
+            <div class="od-chips">
+                @foreach (var (code, text) in WashSources.All)
+                {
+                    <label class="od-chip wf-chip">
+                        <input type="radio" name="Input.Source" value="@code" @(code == Model.Source || (Model.Source.Length == 0 && code == WashSources.Site) ? "checked" : "")>
+                        <span>@text</span>
+                    </label>
+                }
+            </div>
+        </div>
+    </fieldset>
+    <fieldset class="wf-group">
+        <legend>Оплата</legend>
+        <div class="form-row">
+            <label for="Input_Price">Цена, ₸</label>
+            <input class="field wf-price" name="Input.Price" id="Input_Price" type="text" inputmode="numeric" value="@(Model.Price?.ToString("0", CultureInfo.InvariantCulture))" placeholder="Например: 5000">
+            <span class="errorlist" asp-validation-for="Price"></span>
+        </div>
+        <div class="form-row">
+            <label class="wf-paid">
+                <input type="checkbox" name="Input.IsPaid" value="true" @(Model.IsPaid ? "checked" : "") data-paid>
+                <span>Оплачено</span>
+            </label>
+            <input type="hidden" name="Input.IsPaid" value="false">
+        </div>
+        <div class="form-row wf-methods" data-methods @(Model.IsPaid ? "" : "hidden")>
+            <span class="wf-label">Как оплатили</span>
+            <div class="od-chips">
+                @foreach (var (code, text) in WashPayments.All)
+                {
+                    <label class="od-chip wf-chip">
+                        <input type="radio" name="Input.PaymentMethod" value="@code" @(code == Model.PaymentMethod ? "checked" : "")>
+                        <span>@text</span>
+                    </label>
+                }
+            </div>
+        </div>
+    </fieldset>
+</div>
+
+<div class="od-form-cols">
+    <div class="form-row">
+        <label for="Input_Comment">Комментарий клиента</label>
+        <textarea class="field" asp-for="Comment" name="Input.Comment" id="Input_Comment" rows="2"></textarea>
+    </div>
+    <div class="form-row">
+        <label for="Input_ManagerNote">Заметка администратора <small>клиент её не видит</small></label>
+        <textarea class="field" asp-for="ManagerNote" name="Input.ManagerNote" id="Input_ManagerNote" rows="2" placeholder="Например: постоянный клиент, скидка 10 %"></textarea>
+    </div>
+</div>

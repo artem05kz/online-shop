@@ -30,11 +30,36 @@ public static class BookingMessage
         }
         if (!cancelled)
         {
-            text.Append("\nПодтвердите запись клиенту звонком или в WhatsApp.");
+            text.Append("\nПозвоните клиенту и нажмите «Подтвердить» ниже — запись подтвердится и в панели.");
         }
-        text.Append("\nВсе записи: ").Append(h(adminUrl));
+        text.Append("\nОткрыть запись: ").Append(h(adminUrl));
         return text.ToString();
     }
+
+    /// <summary>
+    /// Текст напоминания клиенту накануне (CRM, шаг 2, 25.11). Бот не может написать клиенту сам —
+    /// у клиента нет чата с ботом, — поэтому администратор отправляет этот текст в WhatsApp одной кнопкой.
+    /// </summary>
+    public static string ClientReminder(WashBooking booking)
+    {
+        var address = CarWashes.Find(booking.WashKey)?.Address;
+        return $"Здравствуйте, {booking.Name}! Напоминаем: {booking.StartsAt.ToString("d MMMM", Russian)} в {booking.StartsAt:HH:mm} " +
+            $"вы записаны на мойку ({booking.ServiceName.ToLowerInvariant()})" +
+            (string.IsNullOrEmpty(address) ? "" : $", адрес: {address}") +
+            ". Если планы изменились, напишите нам, пожалуйста.";
+    }
+
+    /// <summary>Ссылка WhatsApp с готовым текстом напоминания.</summary>
+    public static string WhatsAppReminder(WashBooking booking) =>
+        $"https://wa.me/{booking.Phone}?text={Uri.EscapeDataString(ClientReminder(booking))}";
+
+    /// <summary>Сообщение клиенту, когда машину помыли (25.11): администратор отправляет его в WhatsApp одной кнопкой.</summary>
+    public static string CarReady(WashBooking booking) =>
+        $"Здравствуйте, {booking.Name}! Ваша машина помыта и готова, можете забирать. Спасибо, что выбрали нас!";
+
+    /// <summary>Ссылка WhatsApp с готовым текстом «машина готова».</summary>
+    public static string WhatsAppCarReady(WashBooking booking) =>
+        $"https://wa.me/{booking.Phone}?text={Uri.EscapeDataString(CarReady(booking))}";
 
     /// <summary>«чт, 26 ноября, 14:30–15:30».</summary>
     public static string When(WashBooking booking) =>

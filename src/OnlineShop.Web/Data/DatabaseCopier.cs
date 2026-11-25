@@ -56,6 +56,7 @@ public static class DatabaseCopier
         await Copy<ProductVariant>("фасовок");
         await Copy<ProductImage>("фото");
         await Copy<Banner>("баннеров");
+        await Copy<ProductSlide>("слайдов с товарами");
         await Copy<Store>("магазинов");
         await Copy<SiteContact>("");
         await Copy<Address>("адресов");

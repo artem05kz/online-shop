@@ -10,7 +10,7 @@
 </div>
 <p class="admin-count">О каждом новом заказе бот пишет на все подключённые телефоны из списка: состав, сумма, телефон и адрес покупателя.</p>
 
-<div class="admin-box" style="max-width:760px;">
+<div class="admin-box fe-form">
     <h3>Бот</h3>
     @if (!Model.IsConfigured)
     {
@@ -35,16 +35,16 @@
     }
 </div>
 
-<div class="admin-box" style="max-width:760px;">
+<div class="admin-box fe-form">
     <h3>Как подключить телефон</h3>
-    <ol style="font-size:1.05rem; line-height:1.7; margin:0; padding-left:1.4em;">
+    <ol class="tg-steps">
         <li>Добавьте номер в список ниже.</li>
         <li>На этом телефоне откройте в Telegram @botName и нажмите «Старт».</li>
         <li>Нажмите кнопку «Отправить мой номер». Напротив номера в списке появится «Подключён».</li>
     </ol>
 </div>
 
-<form method="post" asp-page-handler="Add" class="admin-box" style="max-width:760px;">
+<form method="post" asp-page-handler="Add" class="admin-box fe-form">
     <h3>Добавить номер</h3>
     <div class="form-grid">
         <div class="form-row">
@@ -61,47 +61,35 @@
     <button class="btn" type="submit">@Icons.Get("plus", 18) Добавить</button>
 </form>
 
-<h2>Номера (@Model.Recipients.Count)</h2>
+<h2 class="tg-title">Номера <span>@Model.Recipients.Count</span></h2>
 @if (Model.Recipients.Count == 0)
 {
-    <p class="admin-count">Список пуст: уведомления никуда не приходят.</p>
+    <div class="admin-box o-empty fe-form"><p>Список пуст: уведомления никуда не приходят.</p></div>
 }
 else
 {
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead><tr><th>Телефон</th><th>Состояние</th><th></th></tr></thead>
-            <tbody>
-                @foreach (var row in Model.Recipients)
+    <ul class="o-list fe-form">
+        @foreach (var row in Model.Recipients)
+        {
+            <li class="ad-row tg-row@(row.LinkedAt is null ? " is-waiting" : "")">
+                <span class="ct-ico">@Icons.Get("phone", 20)</span>
+                <div class="ct-main">
+                    <b class="ct-title">@PhoneNumbers.Display(row.Phone)</b>
+                    <small>@(row.Name.Length > 0 ? row.Name : "без подписи")</small>
+                </div>
+                @if (row.LinkedAt is { } linkedAt)
                 {
-                    <tr>
-                        <td>
-                            <b style="white-space:nowrap;">@PhoneNumbers.Display(row.Phone)</b>
-                            @if (row.Name.Length > 0)
-                            {
-                                <div class="muted">@row.Name</div>
-                            }
-                        </td>
-                        <td>
-                            @if (row.LinkedAt is { } linkedAt)
-                            {
-                                <span class="pill ok">@Icons.Get("check", 16) Подключён</span>
-                                <div class="muted">с @Format.ToLocal(linkedAt).ToString("dd.MM.yyyy")</div>
-                            }
-                            else
-                            {
-                                <span class="pill warn" style="white-space:normal;">@Icons.Get("clock", 16) Ждёт «Старт» в боте</span>
-                            }
-                        </td>
-                        <td>
-                            <form method="post" asp-page-handler="Delete" asp-route-id="@row.Id"
-                                  data-confirm="Удалить номер @PhoneNumbers.Display(row.Phone)? Заказы туда больше не будут приходить.">
-                                <button class="btn btn-ghost btn-sm" type="submit" title="Удалить номер">@Icons.Get("trash", 16) <span class="narrow-hide">Удалить</span></button>
-                            </form>
-                        </td>
-                    </tr>
+                    <span class="tg-state is-on">@Icons.Get("check", 15) Подключён с @Format.ToLocal(linkedAt).ToString("dd.MM.yyyy")</span>
                 }
-            </tbody>
-        </table>
-    </div>
+                else
+                {
+                    <span class="tg-state">@Icons.Get("clock", 15) Ждёт «Старт» в боте</span>
+                }
+                <form method="post" asp-page-handler="Delete" asp-route-id="@row.Id"
+                      data-confirm="Удалить номер @PhoneNumbers.Display(row.Phone)? Заказы туда больше не будут приходить.">
+                    <button class="btn btn-sm wash-second is-cancel" type="submit" title="Удалить номер">@Icons.Get("trash", 16) Удалить</button>
+                </form>
+            </li>
+        }
+    </ul>
 }

@@ -1,0 +1,159 @@
+@page "/admin/wash/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Wash.EditModel
+@using System.Globalization
+@{
+    var b = Model.Booking;
+    ViewData["Title"] = $"Запись: {b.Name}";
+    ViewData["AdminSection"] = "wash";
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var day = b.StartsAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    var done = Model.History.Count(h => h.Status == WashBookingStatus.Done);
+    var noShow = Model.History.Count(h => h.Status == WashBookingStatus.NoShow);
+    var paidSum = Model.History.Where(h => h.IsPaid && h.Price is not null).Sum(h => h.Price!.Value);
+    (WashBookingStatus Status, string Label)[] flow =
+        [(WashBookingStatus.New, "Ждёт"), (WashBookingStatus.Confirmed, "Подтверждена"), (WashBookingStatus.Arrived, "Приехал"), (WashBookingStatus.Done, "Помыли")];
+    var current = Array.FindIndex(flow, f => f.Status == b.Status);
+    var now = WashSlots.Now();
+    var late = b.IsLate(now);
+    var awaited = b.IsAwaited(now);
+}
+@*
+    Карточка записи на мойку (CRM, 24.11). Шапка: имя, статус, когда и откуда. Полоса шагов и кнопки:
+    следующий шаг крупно, «Не приехал» и «Отменить» рядом. Справа клиент: телефон, WhatsApp, история визитов
+    по этому номеру. Ниже форма «Изменить запись».
+*@
+<div class="admin-head od-head">
+    <div class="od-title">
+        <h1>@b.Name</h1>
+        <span class="a-status a-status-@b.Status.Code()">@b.Status.Text()</span>
+        <p class="od-when">@b.StartsAt.ToString("dddd, d MMMM, H:mm", ru)–@b.EndsAt.ToString("H:mm") · @b.ServiceName@(b.Box > 0 ? $" · место {b.Box}" : "") · @WashSources.Text(b.Source)@(b.ConfirmedBy.Length > 0 ? $" · подтвердил(а) {b.ConfirmedBy}" : "")</p>
+    </div>
+    <a class="btn btn-ghost" href="/admin/wash?date=@day#b-@b.Id">К расписанию</a>
+</div>
+
+<section class="admin-box od-flow">
+    @if (b.Status is WashBookingStatus.Cancelled or WashBookingStatus.NoShow)
+    {
+        <p class="od-canceled">@Icons.Get("x", 18) @(b.Status == WashBookingStatus.NoShow ? "Клиент не приехал." : "Запись отменена, время свободно.")</p>
+        <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Confirmed" class="od-next">
+            <button class="btn btn-ghost" type="submit">Вернуть запись</button>
+        </form>
+    }
+    else
+    {
+        <ol class="od-steps">
+            @for (var i = 0; i < flow.Length; i++)
+            {
+                <li class="@(i < current ? "is-done" : i == current ? "is-now" : "")"><i></i>@flow[i].Label</li>
+            }
+        </ol>
+        @if (late)
+        {
+            <p class="wash-rule is-late">@Icons.Get("alert", 18) Клиент опоздал на @b.LateMinutes(now) мин. <small>По правилу мойки после 15 минут запись отменяется — отметьте «Не приехал».</small></p>
+        }
+        else if (awaited)
+        {
+            <p class="wash-rule is-wait">@Icons.Get("clock", 18) Ждём клиента, осталось <span data-wait-left="@b.WaitSecondsLeft(now)">@Math.Ceiling(b.WaitSecondsLeft(now) / 60.0) мин</span> <small>Если не приедет за 15 минут, запись отменяется.</small></p>
+        }
+        <div class="wash-flow-actions">
+            @if (late)
+            {
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="NoShow"><button class="btn wash-noshow" type="submit">Не приехал</button></form>
+            }
+            @if (b.Status == WashBookingStatus.New)
+            {
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Confirmed"><button class="btn" type="submit">@Icons.Get("check", 18) Подтвердить</button></form>
+            }
+            else if (b.Status == WashBookingStatus.Confirmed)
+            {
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Arrived"><button class="btn@(late ? " btn-ghost" : "")" type="submit">@Icons.Get("car", 18) Клиент приехал</button></form>
+            }
+            else if (b.Status == WashBookingStatus.Arrived)
+            {
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Done"><button class="btn" type="submit">@Icons.Get("check", 18) Помыли</button></form>
+            }
+            @if (b.Status is WashBookingStatus.New or WashBookingStatus.Confirmed)
+            {
+                if (!late)
+                {
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="NoShow" data-confirm="Отметить, что клиент не приехал?"><button class="btn btn-ghost" type="submit">Не приехал</button></form>
+                }
+                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Cancelled" data-confirm="Отменить запись? Время освободится для других."><button class="btn btn-sm wash-cancel-lg" type="submit">Отменить</button></form>
+            }
+            @if (b.Status == WashBookingStatus.Done)
+            {
+                <p class="od-done">@Icons.Get("check", 18) Помыли@(b.IsPaid ? (b.PaymentMethod.Length > 0 ? $", оплачено: {WashPayments.Text(b.PaymentMethod)}" : ", оплачено") : " — не забудьте отметить оплату ниже").</p>
+            }
+        </div>
+    }
+</section>
+
+<div class="od-grid">
+    <section class="admin-box">
+        <h2>Запись</h2>
+        <dl class="wash-facts">
+            <dt>Когда</dt><dd>@b.StartsAt.ToString("d MMMM, H:mm", ru)–@b.EndsAt.ToString("H:mm")</dd>
+            <dt>Услуга</dt><dd>@b.ServiceName, @b.Minutes мин</dd>
+            <dt>Место</dt><dd>@(b.Box > 0 ? $"Место {b.Box}" : "не назначено")</dd>
+            <dt>Цена</dt><dd>@(b.Price is { } p ? Format.Money(p) : "не указана") @(b.IsPaid ? (b.PaymentMethod.Length > 0 ? $"· оплачено ({WashPayments.Text(b.PaymentMethod)})" : "· оплачено") : b.Price is not null ? "· не оплачено" : "")</dd>
+            @if (b.Car.Length > 0) { <dt>Машина</dt><dd>@b.Car</dd> }
+            @if (b.Comment.Length > 0) { <dt>Комментарий</dt><dd>«@b.Comment»</dd> }
+            @if (b.ManagerNote.Length > 0) { <dt>Заметка</dt><dd class="wash-note">@b.ManagerNote</dd> }
+            <dt>Записался</dt><dd>@Format.DateTimeText(b.CreatedAt) · @WashSources.Text(b.Source)</dd>
+        </dl>
+    </section>
+    <aside class="od-side">
+        <section class="admin-box od-buyer">
+            <h2>Клиент</h2>
+            <p class="od-name">@b.Name</p>
+            <p class="od-phone">@PhoneNumbers.Display(b.Phone)</p>
+            <div class="od-call">
+                <a class="btn" href="tel:+@b.Phone">@Icons.Get("phone", 18) Позвонить</a>
+                <a class="btn btn-ghost" href="https://wa.me/@b.Phone" target="_blank" rel="noopener">@Icons.Get("whatsapp", 18) WhatsApp</a>
+            </div>
+            @if (b.Status == WashBookingStatus.Done)
+            {
+                @* Помыли — написать клиенту, что машина готова: готовый текст в WhatsApp. *@
+                <a class="btn wash-ready wash-ready-wide" href="@OnlineShop.Web.Services.Telegram.BookingMessage.WhatsAppCarReady(b)" target="_blank" rel="noopener">@Icons.Get("whatsapp", 18) Написать: машина готова</a>
+            }
+            @if (b.Status is WashBookingStatus.New or WashBookingStatus.Confirmed && b.StartsAt > WashSlots.Now())
+            {
+                <a class="btn btn-ghost wc-remind" href="@OnlineShop.Web.Services.Telegram.BookingMessage.WhatsAppReminder(b)" target="_blank" rel="noopener">@Icons.Get("send", 18) Напомнить о записи в WhatsApp</a>
+                <p class="wc-remind-note">Откроется WhatsApp с готовым текстом: день, время, услуга и адрес.</p>
+            }
+        </section>
+        <section class="admin-box wash-history">
+            <h2>Визиты по этому номеру <a class="wc-link" href="/admin/wash/clients/@b.Phone">Карточка клиента</a></h2>
+            @if (Model.History.Count == 0)
+            {
+                <p class="muted">Первая запись этого клиента.</p>
+            }
+            else
+            {
+                <p class="wash-history-sum">Помыли: <b>@done</b> · не приехал: <b class="@(noShow > 0 ? "is-bad" : "")">@noShow</b>@(paidSum > 0 ? $" · оплатил всего {Format.Money(paidSum)}" : "")</p>
+                <ul>
+                    @foreach (var h in Model.History.Take(6))
+                    {
+                        <li><a href="/admin/wash/@h.Id">@h.StartsAt.ToString("d MMM yyyy, H:mm", ru)</a> <span>@h.ServiceName</span> <span class="a-status a-status-@h.Status.Code()">@h.Status.Text()</span></li>
+                    }
+                </ul>
+            }
+        </section>
+    </aside>
+</div>
+
+<form method="post" class="od-edit" data-wash-form>
+    <h2 class="od-edit-title">Изменить запись</h2>
+    <div class="admin-box od-form">
+        <partial name="_WashFields" for="Input" />
+    </div>
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+        <a class="btn btn-ghost" href="/admin/wash/@b.Id">Отмена</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/admin_wash_form.js" asp-append-version="true"></script>
+    <script src="~/js/admin_wash_wait.js" asp-append-version="true"></script>
+}

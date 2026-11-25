@@ -363,6 +363,57 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     }
 
     [Fact]
+    public async Task Live_endpoint_gives_counts_to_managers_only()
+    {
+        var manager = await Manager();
+        var response = await manager.GetAsync("/admin/live");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType!.MediaType);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"newOrders\"", json);
+        Assert.Contains("\"stamp\"", json);
+        Assert.Contains("\"waitingBookingIds\"", json);
+        // Панель подключает автообновление.
+        Assert.Contains("admin_live.js", await Page(manager, "/admin"));
+
+        var guest = await factory.Browser().GetAsync("/admin/live");
+        Assert.NotEqual(HttpStatusCode.OK, guest.StatusCode);
+    }
+
+    [Fact]
+    public async Task Next_step_button_moves_the_order_along_and_page_shows_delivery_fee()
+    {
+        var client = await Manager();
+        var (_, variantId) = SeedProduct($"N{Guid.NewGuid():N}"[..12]);
+        var orderId = Db(db =>
+        {
+            var order = new Order
+            {
+                ContactName = "Шаг", ContactPhone = "+7 701 222 33 44", City = "Актау", StreetAndDetails = "5 мкр",
+                Items = [new OrderItem { VariantId = variantId, ProductName = "Товар", Article = "Ш-1", Price = 1000m, Quantity = 1 }],
+            };
+            db.Orders.Add(order);
+            db.SaveChanges();
+            return order.Id;
+        });
+        var card = await Page(client, $"/admin/orders/{orderId}");
+        Assert.Contains("Подтвердить", card);
+        Assert.Contains("tel:+77012223344", card);
+        Assert.Contains("6 000", card.Replace(' ', ' '));   // доставка: доплата до 7 000 ₸
+        Assert.Contains("Новые", await Page(client, "/admin/orders"));
+
+        var token = await TokenFrom(client, "/admin/orders");
+        Assert.Equal(HttpStatusCode.Redirect, (await Post(client, $"/admin/orders?handler=Next&id={orderId}", token)).StatusCode);
+        Assert.Equal(OrderStatus.Confirmed, Db(db => db.Orders.Single(o => o.Id == orderId).Status));
+        token = await TokenFrom(client, $"/admin/orders/{orderId}");
+        await Post(client, $"/admin/orders/{orderId}?handler=Next", token);
+        Assert.Equal(OrderStatus.Delivering, Db(db => db.Orders.Single(o => o.Id == orderId).Status));
+        await Post(client, $"/admin/orders/{orderId}?handler=Next", token);
+        await Post(client, $"/admin/orders/{orderId}?handler=Next", token);   // дальше «Выполнен» не двигается
+        Assert.Equal(OrderStatus.Completed, Db(db => db.Orders.Single(o => o.Id == orderId).Status));
+    }
+
+    [Fact]
     public async Task Import_through_the_browser_applies_only_checked_rows_with_edits()
     {
         var client = await Manager();
@@ -452,7 +503,7 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     }
 
     [Fact]
-    public async Task Banner_text_goes_to_the_first_screen_only_when_switched_on()
+    public async Task Banner_is_a_whole_picture_on_the_first_screen_and_list_manages_it()
     {
         var client = await Manager();
         var token = await TokenFrom(client, "/admin/banners/add");
@@ -460,35 +511,47 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
         await File.WriteAllBytesAsync(png, OneCFiles.Png);
         var title = $"Герои {Guid.NewGuid():N}"[..16];
         await PostFiles(client, "/admin/banners/add", token, [("Image", png, "banner.png")],
-            ("Input.Title", title), ("Input.Script", "Новинка"), ("Input.Text", "Средства для дома тест-текст"),
-            ("Input.ButtonText", "В каталог"), ("Input.Theme", "red"), ("Input.LinkUrl", "/catalog/ifoam/воски"),
-            ("Input.SortOrder", "0"), ("Input.IsActive", "true"));
+            ("Input.Title", title), ("Input.LinkUrl", "/catalog/ifoam/воски"), ("Input.IsActive", "true"));
         var banner = Db(db => db.Banners.Single(b => b.Title == title));
         try
         {
-            Assert.Equal("red", banner.Theme);
-            Assert.InRange(banner.FocusX, 0, 100);
-            // По умолчанию показ выключен (решение дизайнера): на главной только слайды с товарами.
-            Assert.DoesNotContain(title, await Page(client, "/"));
-            // Когда показ включат, баннер встаёт первым слайдом первого экрана.
-            using var shown = factory.WithWebHostBuilder(b => b.UseSetting("Storefront:ShowBanners", "true"));
-            var html = await Page(shown.CreateClient(), "/");
-            var hero = html[html.IndexOf("id=\"hero\"", StringComparison.Ordinal)..html.IndexOf("</section>", html.IndexOf("id=\"hero\"", StringComparison.Ordinal), StringComparison.Ordinal)];
-            Assert.Contains("hero-slide--banner hero-slide--red", hero);
-            Assert.Contains(title, hero);
-            Assert.Contains("Новинка", hero);
-            Assert.Contains("тест-текст", hero);
-            Assert.Contains(">В каталог</a>", hero);
-            // Отдельной карусели баннеров под разделами больше нет: всё в первом экране.
-            Assert.DoesNotContain("banner-carousel", html);
+            // Новый баннер встаёт последним, а на главной — картинкой во весь первый экран, с названием в alt и ссылкой.
+            Assert.Equal(Db(db => db.Banners.Max(b => b.SortOrder)), banner.SortOrder);
+            string Hero(string html) => html[html.IndexOf("id=\"hero\"", StringComparison.Ordinal)..html.IndexOf("</section>", html.IndexOf("id=\"hero\"", StringComparison.Ordinal), StringComparison.Ordinal)];
+            var hero = Hero(await Page(client, "/"));
+            Assert.Contains("hero-slide--banner", hero);
+            Assert.Contains($"alt=\"{title}\"", hero);
+            Assert.Contains("class=\"hero-banner\" href=\"/catalog/ifoam/", hero);
+            // Настройкой показ можно выключить целиком.
+            using var hidden = factory.WithWebHostBuilder(b => b.UseSetting("Storefront:ShowBanners", "false"));
+            Assert.DoesNotContain(title, await Page(hidden.CreateClient(), "/"));
 
-            // Неизвестный цвет не сохраняется.
-            var bad = await PostFiles(client, $"/admin/banners/{banner.Id}", token, [], ("Input.Title", title), ("Input.Theme", "pink"));
-            Assert.Contains("Выберите цвет из списка", await Text(bad));
+            // Список: карточка в «На сайте»; выключить — сразу, баннер уходит во «Выключены» и пропадает с главной.
+            Assert.Contains(title, await Page(client, "/admin/banners?show=live"));
+            var listToken = await TokenFrom(client, "/admin/banners");
+            await Post(client, $"/admin/banners?handler=Toggle&id={banner.Id}", listToken);
+            Assert.False(Db(db => db.Banners.Single(b => b.Id == banner.Id)).IsActive);
+            Assert.Contains(title, await Page(client, "/admin/banners?show=off"));
+            Assert.DoesNotContain(title, await Page(client, "/"));
+
+            // «Раньше» ставит его перед соседом, очерёдность у всех становится 1, 2, 3…
+            await Post(client, $"/admin/banners?handler=Move&id={banner.Id}&step=-1", listToken);
+            var order = Db(db => db.Banners.OrderBy(b => b.SortOrder).Select(b => new { b.Id, b.SortOrder }).ToList());
+            Assert.Equal(Enumerable.Range(1, order.Count), order.Select(o => o.SortOrder));
+            if (order.Count > 1)
+            {
+                Assert.Equal(banner.Id, order[^2].Id);
+            }
+
+            // «Удалить» в списке убирает баннер вместе с картинкой.
+            var file = Path.Combine(factory.Services.GetRequiredService<Web.Services.MediaStorage>().Root, banner.ImagePath);
+            await Post(client, $"/admin/banners?handler=Delete&id={banner.Id}", listToken);
+            Assert.False(Db(db => db.Banners.Any(b => b.Id == banner.Id)));
+            Assert.False(File.Exists(file));
         }
         finally
         {
-            Db(db => { db.Banners.Remove(db.Banners.Single(b => b.Id == banner.Id)); db.SaveChanges(); return 0; });
+            Db(db => { db.Banners.RemoveRange(db.Banners.Where(b => b.Id == banner.Id)); db.SaveChanges(); return 0; });
         }
     }
 
@@ -552,5 +615,17 @@ public class AdminTests(TempShopFactory factory) : IClassFixture<TempShopFactory
 
         var guest = await factory.Browser().GetAsync($"/admin/orders/{orderId}/print");
         Assert.Equal(HttpStatusCode.Redirect, guest.StatusCode);
+    }
+
+    [Fact]
+    public async Task Products_and_prices_have_low_stock_tabs()
+    {
+        var manager = await Manager();
+        foreach (var url in new[] { "/admin/products", "/admin/products?filter=low", "/admin/variants", "/admin/variants?show=low", "/admin/variants?show=out" })
+        {
+            var html = await Page(manager, url);
+            Assert.Contains("Мало осталось", html);
+            Assert.Contains("Нет в наличии", html);
+        }
     }
 }

@@ -5,19 +5,22 @@
     ViewData["AdminSection"] = "import";
     var s = Model.Stats;
 }
-<h1>Готово</h1>
-<div class="admin-box form-narrow" style="max-width:520px;">
-    <ul class="spec-list">
-        <li><span>Новых брендов</span><span>@s.Brands</span></li>
-        <li><span>Новых категорий</span><span>@s.Categories</span></li>
-        <li><span>Новых товаров</span><span>@s.ProductsCreated</span></li>
-        <li><span>Обновлено товаров</span><span>@s.ProductsUpdated</span></li>
-        <li><span>Новых артикулов</span><span>@s.VariantsCreated</span></li>
-        <li><span>Обновлено артикулов</span><span>@s.VariantsUpdated</span></li>
-        <li><span>Добавлено фотографий</span><span>@s.ImagesAdded</span></li>
-        <li><span>Остатков сопоставлено</span><span>@s.StockMatched</span></li>
-    </ul>
-</div>
+<div class="admin-head"><h1>Загрузка завершена</h1></div>
+<ol class="im-steps" aria-label="Шаги">
+    <li class="is-done"><b>1</b>Выберите файлы</li>
+    <li class="is-done"><b>2</b>Проверьте, что получится</li>
+    <li class="is-now"><b>3</b>Готово: каталог обновлён</li>
+</ol>
+<ul class="im-stats">
+    <li class="@(s.ProductsCreated > 0 ? "is-new" : "")"><b>@s.ProductsCreated</b><span>новых товаров</span></li>
+    <li><b>@s.ProductsUpdated</b><span>обновлено товаров</span></li>
+    <li class="@(s.VariantsCreated > 0 ? "is-new" : "")"><b>@s.VariantsCreated</b><span>новых артикулов</span></li>
+    <li><b>@s.VariantsUpdated</b><span>обновлено артикулов</span></li>
+    <li><b>@s.StockMatched</b><span>остатков сопоставлено</span></li>
+    <li><b>@s.ImagesAdded</b><span>добавлено фото</span></li>
+    <li><b>@s.Brands</b><span>новых брендов</span></li>
+    <li><b>@s.Categories</b><span>новых категорий</span></li>
+</ul>
 
 @if (s.StockUnmatched.Count > 0)
 {
@@ -31,11 +34,11 @@
 
 @if (s.VariantsCreated > 0)
 {
-    <p class="admin-count">Новые артикулы пришли без розничной цены: из 1С приходит только оптовая. Пока цены нет, на сайте
-        у них «цена уточняется» и купить их нельзя. Цены можно проставить в разделе <a href="/admin/variants">«Цены и остатки»</a>.</p>
+    <p class="vl-hint im-warn">@Icons.Get("alert", 16) <span>Новые артикулы пришли без розничной цены: из 1С приходит только оптовая. Пока цены нет, на сайте
+        у них «цена уточняется» и купить их нельзя. Цены можно проставить в разделе <a href="/admin/variants">«Цены и остатки»</a>.</span></p>
 }
 
-<div class="admin-actions">
-    <a class="btn btn-ghost" href="/admin/import">Загрузить ещё файл</a>
-    <a class="btn" href="/admin/products">К товарам</a>
+<div class="im-foot">
+    <a class="btn btn-ghost" href="/admin/import">@Icons.Get("upload", 18) Загрузить ещё файл</a>
+    <a class="btn" href="/admin/products">@Icons.Get("package", 18) К товарам</a>
 </div>

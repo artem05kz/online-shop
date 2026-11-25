@@ -2,66 +2,46 @@
 @inject MediaStorage MediaStorage
 @*
     Первый экран главной. Слайды двух видов в одной карусели:
-    1) баннеры из панели (Банеры): слева фото, сдвинутое так, чтобы товары были посередине своей части
-       (Banner.FocusX, см. BannerFocus), справа цветной блок с текстом, который пишет менеджер;
-    2) товары с 3D-рендером (HeroSlides.cs): рукописное название за товаром, цена и «Купить».
-    Баннеры идут первыми (акции важнее), по «Очерёдности» из панели.
+    1) баннеры из панели (25.11.2026): готовая картинка во весь блок, надписи нарисованы на ней самой.
+       Размер 2400 × 880 (блок на компьютере 1200 × 440); другая пропорция обрезается по краям.
+       Если у баннера есть ссылка — нажать можно на весь баннер. Название баннера — подпись для незрячих (alt);
+    2) слайды с товарами из панели (ProductSlide): 3D-рендер, рукописное слово за товаром, цена и «Купить».
+       Цвета слайда (фон, текст, рукописное слово и блик на нём) приходят переменными из базы (SlideColors).
+    Баннеры идут первыми (акции важнее), по очерёдности из панели.
     Сменяются сами только на компьютере (мышь), раз в 7 секунд, с паузой; на телефоне листаются пальцем.
-    Текст настоящий, не на картинке: читается на любом экране и виден поисковикам.
 *@
 @{
     var total = Model.Banners.Count + Model.Hero.Count;
     var n = 0;
     // Тон первого слайда: светлые точки и стрелки на тёмном блоке (дальше переключает hero.js).
-    var firstLight = Model.Banners.Count > 0 ? BannerThemes.Get(Model.Banners[0].Theme).Light
-        : Model.Hero.Count > 0 && Model.Hero[0].Slide.Theme == "blue";
+    var firstLight = Model.Banners.Count > 0 || Model.Hero.Count > 0 && SlideColors.IsDark(Model.Hero[0].Slide.BgColor);
 }
 <section class="hero@(firstLight ? " is-light" : "")" id="hero" aria-roledescription="carousel" aria-label="Акции и популярные товары">
     <div class="hero-track">
         @foreach (var banner in Model.Banners)
         {
             var i = n++;
-            var theme = BannerThemes.Get(banner.Theme);
             var link = SafeLinks.OrNull(banner.LinkUrl);
-            var size = MediaStorage.FullPath(banner.ImagePath) is { } full && File.Exists(full) ? ImageShrinker.Size(full) : null;
-            var ratio = size is { Width: > 0, Height: > 0 } s ? (double)s.Width / s.Height : 3.0;
-            var posX = BannerFocus.ObjectPositionX(banner.FocusX, ratio).ToString(System.Globalization.CultureInfo.InvariantCulture);
             var srcset = BannerShape.SrcSet(MediaStorage, banner.ImagePath);
-            <article class="hero-slide hero-slide--banner hero-slide--@theme.Key@(i == 0 ? " active" : "")" data-tone="@(theme.Light ? "light" : "dark")"
+            var alt = banner.Title.Length > 0 ? banner.Title : "Акция";
+            @* Точки и стрелки на баннере светлые, под ними лёгкая тень (картинка может быть любой). *@
+            <article class="hero-slide hero-slide--banner@(i == 0 ? " active" : "")" data-tone="light"
                      aria-roledescription="slide" aria-label="@(i + 1) из @total"
                      aria-hidden="@(i == 0 ? "false" : "true")" inert="@(i == 0 ? null : "inert")">
                 @if (link is not null)
                 {
-                    <a class="hero-photo" href="@link" tabindex="-1" aria-hidden="true">
+                    <a class="hero-banner" href="@link">
                         <img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.HeroSizes"
-                             alt="" style="object-position: @posX% 50%" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                             alt="@alt" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
                     </a>
                 }
                 else
                 {
-                    <div class="hero-photo" aria-hidden="true">
+                    <div class="hero-banner">
                         <img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.HeroSizes"
-                             alt="" style="object-position: @posX% 50%" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                             alt="@alt" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
                     </div>
                 }
-                <div class="hero-copy">
-                    @if (banner.Script.Length > 0)
-                    {
-                        <p class="hero-kicker">@banner.Script</p>
-                    }
-                    @if (banner.Title.Length > 0)
-                    {
-                        <h2 class="hero-title">@Typo.Text(banner.Title)</h2>
-                    }
-                    @if (banner.Text.Length > 0)
-                    {
-                        <p class="hero-text">@Typo.Text(banner.Text)</p>
-                    }
-                    @if (link is not null)
-                    {
-                        <a class="btn hero-buy" href="@link">@(banner.ButtonText.Length > 0 ? banner.ButtonText : "Подробнее")</a>
-                    }
-                </div>
             </article>
         }
         @foreach (var item in Model.Hero)
@@ -70,12 +50,14 @@
             var slide = item.Slide;
             var product = item.Product;
             var url = Url.Product(product);
-            <article class="hero-slide hero-slide--@slide.Theme@(i == 0 ? " active" : "")" data-tone="@(slide.Theme == "blue" ? "light" : "dark")"
+            var dark = SlideColors.IsDark(slide.BgColor);
+            var colors = $"--hero-bg: {slide.BgColor}; --hero-ink: {SlideColors.Ink(slide.BgColor)}; --hero-script: {slide.ScriptColor}; --hero-script-hi: {SlideColors.Highlight(slide.ScriptColor)}";
+            <article class="hero-slide hero-slide--product@(i == 0 ? " active" : "")" data-tone="@(dark ? "light" : "dark")" style="@colors"
                      aria-roledescription="slide" aria-label="@(i + 1) из @total"
                      aria-hidden="@(i == 0 ? "false" : "true")" inert="@(i == 0 ? null : "inert")">
                 <a class="hero-visual" href="@url" tabindex="-1" aria-hidden="true">
                     <span class="hero-script">@slide.Script</span>
-                    <img src="~/img/hero/@slide.Image" alt="" width="1360" height="800"
+                    <img src="@(slide.IsSiteImage ? Url.Content("~" + slide.ImagePath) : Media.Url(slide.ImagePath))" alt="" width="1360" height="800"
                          loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
                 </a>
                 <div class="hero-copy">

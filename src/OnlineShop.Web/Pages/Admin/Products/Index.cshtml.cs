@@ -60,9 +60,10 @@ public class IndexModel(ShopDbContext db) : PageModel
         Shows =
         [
             new("", "Все", await scope.CountAsync()),
+            new("low", "Мало осталось", await Low(scope).CountAsync()),
+            new("nostock", "Нет в наличии", await NoStock(scope).CountAsync()),
             new("nophoto", "Без фото", await NoPhoto(scope).CountAsync()),
             new("noprice", "Без цены", await NoPrice(scope).CountAsync()),
-            new("nostock", "Нет в наличии", await NoStock(scope).CountAsync()),
             new("hidden", "Скрытые", await scope.CountAsync(x => !x.IsActive)),
         ];
 
@@ -71,6 +72,7 @@ public class IndexModel(ShopDbContext db) : PageModel
             "nophoto" => NoPhoto(scope),
             "noprice" => NoPrice(scope),
             "nostock" => NoStock(scope),
+            "low" => Low(scope),
             "hidden" => scope.Where(x => !x.IsActive),
             _ => scope,
         };
@@ -100,6 +102,10 @@ public class IndexModel(ShopDbContext db) : PageModel
 
     private static IQueryable<Product> NoPrice(IQueryable<Product> q) =>
         q.Where(x => x.Variants.Any(v => v.IsActive && v.Price == null));
+
+    /// <summary>Мало осталось (этап 5, 25.11): есть фасовка, где на сайте можно заказать 1–3 шт.</summary>
+    private static IQueryable<Product> Low(IQueryable<Product> q) =>
+        q.Where(x => x.Variants.Any(v => v.IsActive && v.StockQty - v.ReservedQty > 0 && v.StockQty - v.ReservedQty <= OnlineShop.Web.Pages.Admin.IndexModel.LowStock));
 
     private static IQueryable<Product> NoStock(IQueryable<Product> q) =>
         q.Where(x => !x.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));

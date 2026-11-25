@@ -18,9 +18,9 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling, IConfi
     [HttpGet("/")]
     public async Task<IActionResult> Home()
     {
-        // Баннеры из панели в первом экране пока выключены (решение дизайнера 24.11): на сайте только слайды
-        // с рендерами. В панели баннеры можно готовить заранее; включить показ — Storefront:ShowBanners = true.
-        var banners = config.GetValue("Storefront:ShowBanners", false)
+        // Баннеры из панели — первыми слайдами первого экрана (решение дизайнера 25.11: готовые картинки 2400 × 880).
+        // Выключить их все разом можно настройкой Storefront:ShowBanners = false.
+        var banners = config.GetValue("Storefront:ShowBanners", true)
             ? await db.Banners.VisibleAt(DateTime.UtcNow).Ordered().AsNoTracking().ToListAsync()
             : [];
 
@@ -75,15 +75,17 @@ public class CatalogController(ShopDbContext db, SearchSpelling spelling, IConfi
             .Take(FeaturedCount)
             .ToList();
 
-        // Первый экран: товары слайдов по slug. Скрытый или переименованный товар просто выпадает из слайдов.
-        var heroSlugs = HeroSlides.All.Select(s => s.ProductSlug).ToList();
+        // Первый экран: слайды с товарами из панели. Скрытый товар просто выпадает из слайдов.
+        var slides = await db.ProductSlides.Where(s => s.IsActive).OrderBy(s => s.SortOrder).ThenBy(s => s.Id)
+            .AsNoTracking().ToListAsync();
+        var slideProductIds = slides.Select(s => s.ProductId).ToList();
         var heroProducts = await db.Products.ForListing()
-            .Where(p => heroSlugs.Contains(p.Slug))
+            .Where(p => slideProductIds.Contains(p.Id))
             .AsNoTracking()
-            .ToDictionaryAsync(p => p.Slug);
-        var hero = HeroSlides.All
-            .Where(s => heroProducts.ContainsKey(s.ProductSlug))
-            .Select(s => new HeroSlideView(s, heroProducts[s.ProductSlug]))
+            .ToDictionaryAsync(p => p.Id);
+        var hero = slides
+            .Where(s => heroProducts.ContainsKey(s.ProductId))
+            .Select(s => new HeroSlideView(s, heroProducts[s.ProductId]))
             .ToList();
 
         // «Где нас найти»: первые точки из «Адресов», которые магазин ведёт в панели управления.

@@ -61,10 +61,12 @@ public class TelegramNotifier(ShopDbContext db, ITelegramApi api, ILogger<Telegr
         {
             return new SendReport(0, 0, 0);
         }
-        return await SendToAllAsync(BookingMessage.Build(booking, $"{alert.SiteUrl}/admin/wash", alert.BookingCancelled), ct);
+        // Под новой записью — кнопки «Подтвердить / Отменить» (CRM, 24.11). Ссылка ведёт прямо в карточку записи.
+        var markup = alert.BookingCancelled || booking.Status != Models.WashBookingStatus.New ? null : TelegramKeyboards.Booking(booking.Id);
+        return await SendToAllAsync(BookingMessage.Build(booking, $"{alert.SiteUrl}/admin/wash/{booking.Id}", alert.BookingCancelled), ct, markup);
     }
 
-    public async Task<SendReport> SendToAllAsync(string html, CancellationToken ct)
+    public async Task<SendReport> SendToAllAsync(string html, CancellationToken ct, object? markup = null)
     {
         int sent = 0, failed = 0, unlinked = 0;
         var recipients = await db.TelegramRecipients.Where(r => r.ChatId != null).ToListAsync(ct);
@@ -72,7 +74,7 @@ public class TelegramNotifier(ShopDbContext db, ITelegramApi api, ILogger<Telegr
         {
             try
             {
-                await api.SendMessageAsync(recipient.ChatId!.Value, html, null, ct);
+                await api.SendMessageAsync(recipient.ChatId!.Value, html, markup, ct);
                 sent++;
             }
             catch (TelegramException e) when (e.Code is 400 or 403)

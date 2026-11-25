@@ -16,7 +16,7 @@
     // Число предстоящих записей на мойку (отменённые и прошедшие не считаем).
     var washNow = OnlineShop.Web.Services.WashSlots.Now();
     var washes = await Db.WashBookings.CountAsync(b => b.UserId == userId
-        && (b.Status == OnlineShop.Web.Models.WashBookingStatus.New || b.Status == OnlineShop.Web.Models.WashBookingStatus.Confirmed)
+        && (b.Status == OnlineShop.Web.Models.WashBookingStatus.New || b.Status == OnlineShop.Web.Models.WashBookingStatus.Confirmed || b.Status == OnlineShop.Web.Models.WashBookingStatus.Arrived)
         && b.StartsAt > washNow.AddHours(-3));
     var name = me is null ? "" : $"{me.FirstName} {me.LastName}".Trim();
     var shown = name.Length > 0 ? name : me?.UserName ?? "";

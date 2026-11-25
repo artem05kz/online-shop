@@ -6,21 +6,21 @@
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новый набор контактов" : Model.Input.Title)</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" asp-page="Index">@Icons.Get("arrow-left", 18) К списку</a>
 </div>
 
-<form method="post" style="max-width:760px;">
+<form method="post" class="fe-form">
     <div class="admin-box">
         <h3>Что это</h3>
-        <p class="hint">Эти контакты показываются в шапке и внизу каждой страницы сайта. Оставьте галочку «Использовать на сайте» только у одного набора.</p>
+        <p class="hint">Эти контакты показываются в шапке и внизу каждой страницы сайта. На сайте всегда один набор: если включить этот, остальные станут запасными.</p>
         <div class="form-row form-narrow">
             <label asp-for="Input.Title"></label>
             <input class="field" asp-for="Input.Title">
             <span class="help">Только для вас, на сайте не показывается.</span>
             <span class="errorlist" asp-validation-for="Input.Title"></span>
         </div>
-        <label class="check">
-            <input asp-for="Input.IsActive">
+        <label class="pe-switch-row fe-switch">
+            <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
             <span>Использовать на сайте</span>
         </label>
     </div>
@@ -115,6 +115,6 @@
 @if (Model.Id is not null)
 {
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" data-confirm="Удалить этот набор контактов?">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить набор</button>
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить набор</button>
     </form>
 }

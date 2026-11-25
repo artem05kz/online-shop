@@ -1,0 +1,30 @@
+@page "/admin/wash/add"
+@model OnlineShop.Web.Pages.Admin.Wash.AddModel
+@{
+    ViewData["Title"] = "Новая запись на мойку";
+    ViewData["AdminSection"] = "wash";
+    var generalErrors = ViewData.ModelState[""]?.Errors ?? [];
+}
+@*
+    «Новая запись» (CRM, 24.11): клиент позвонил, написал или приехал сам. Запись сразу подтверждена.
+    Если пришли из календаря — день, время и место уже выбраны.
+*@
+<div class="admin-head">
+    <h1>Новая запись на мойку</h1>
+    <a class="btn btn-ghost" href="/admin/wash?date=@Model.Input.Date">К расписанию</a>
+</div>
+
+<form method="post" class="od-edit" data-wash-form>
+    <div class="admin-box od-form">
+        <partial name="_WashFields" for="Input" />
+    </div>
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Записать клиента</button>
+        <a class="btn btn-ghost" href="/admin/wash?date=@Model.Input.Date">Отмена</a>
+        <span class="note">Запись сразу будет подтверждённой: с клиентом уже договорились.</span>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/js/admin_wash_form.js" asp-append-version="true"></script>
+}

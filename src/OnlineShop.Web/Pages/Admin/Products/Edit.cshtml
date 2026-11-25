@@ -7,19 +7,56 @@
     var generalErrors = ViewData.ModelState[""]?.Errors ?? [];
     var primary = Model.Images.FirstOrDefault(i => i.IsPrimary) ?? Model.Images.FirstOrDefault();
 }
-<div class="admin-head">
-    <h1>@(Model.Id is null ? "Новый товар" : Model.Input.Name)
-        @if (Model.Variants.Any(v => !string.IsNullOrWhiteSpace(v.Article)))
-        {
-            <span class="h1-article">арт. @string.Join(", ", Model.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Article)).Select(v => v.Article))</span>
-        }
-    </h1>
+@{
+    const int low = OnlineShop.Web.Pages.Admin.IndexModel.LowStock;
+    var saved = existing?.Variants.OrderBy(v => v.SortVolume).ThenBy(v => v.Id).ToList() ?? [];
+}
+@*
+    Карточка товара (этап 5 админки, 25.11). Шапка: название, показывается ли на сайте, артикулы и сводка остатков
+    по фасовкам (красная — нет, жёлтая — 1–3 шт.). Ниже фото и основное, фасовки с остатком на кнопках − и +,
+    переключатели «На сайте» и «Убрать». Сохранить — в плашке внизу экрана.
+*@
+<div class="admin-head od-head">
+    <div class="od-title pe-title">
+        <h1>@(Model.Id is null ? "Новый товар" : Model.Input.Name)</h1>
+        <div class="pe-meta">
+            @if (existing is not null)
+            {
+                <span class="pe-visible @(existing.IsActive ? "is-on" : "is-off")">
+                    @Icons.Get(existing.IsActive ? "check" : "eye-off", 16)
+                    @(existing.IsActive ? "Виден покупателям на сайте" : "Скрыт: покупатели его не видят")
+                </span>
+            }
+            @if (Model.Variants.Any(v => !string.IsNullOrWhiteSpace(v.Article)))
+            {
+                <span class="pe-art">арт. @string.Join(", ", Model.Variants.Where(v => !string.IsNullOrWhiteSpace(v.Article)).Select(v => v.Article))</span>
+            }
+        </div>
+    </div>
     @if (existing is { IsActive: true })
     {
-        <a class="btn btn-ghost" href="@Url.Product(existing)" target="_blank" rel="noopener">@Icons.Get("external") Как на сайте</a>
+        <a class="btn btn-ghost" href="@Url.Product(existing)" target="_blank" rel="noopener">@Icons.Get("external", 18) Как на сайте</a>
     }
-    <a class="btn btn-ghost" href="/admin/products">@Icons.Get("arrow-left") Ко всем товарам</a>
+    <a class="btn btn-ghost" href="/admin/products">@Icons.Get("arrow-left", 18) Все товары</a>
 </div>
+
+@if (saved.Count > 0)
+{
+    <ul class="pe-packs" aria-label="Фасовки: цена и сколько можно купить">
+        @foreach (var v in saved)
+        {
+            var state = !v.IsActive ? "is-off" : v.AvailableQty == 0 ? "is-out" : v.AvailableQty <= low ? "is-low" : "is-ok";
+            <li class="pe-pack @state">
+                <span class="pe-pack-head"><b>@(string.IsNullOrEmpty(v.PackLabel) ? v.Article : v.PackLabel)</b><span>@(v.Price is { } price ? Format.Money(price) : "нет цены")</span></span>
+                <span class="pe-pack-state"><i aria-hidden="true"></i>@(!v.IsActive ? "фасовка скрыта" : v.AvailableQty == 0 ? "нет в наличии" : v.AvailableQty <= low ? $"мало: {v.AvailableQty} шт." : $"в наличии: {v.AvailableQty} шт.")</span>
+                @if (v.ReservedQty > 0)
+                {
+                    <small>ещё @v.ReservedQty в резерве</small>
+                }
+            </li>
+        }
+    </ul>
+}
 
 @if (generalErrors.Count > 0)
 {
@@ -43,31 +80,34 @@
                 <div class="photo-main empty">Фото пока нет</div>
             }
 
-            @if (Model.Images.Count > 0)
-            {
-                <div class="photo-list">
-                    @for (var i = 0; i < Model.Images.Count; i++)
-                    {
-                        var image = Model.Images[i];
-                        <div class="photo-tile @(image == primary ? "primary" : "")">
-                            <input type="hidden" asp-for="Images[i].Id">
-                            <input type="hidden" asp-for="Images[i].ImagePath">
-                            <input type="hidden" asp-for="Images[i].IsPrimary">
-                            <input type="hidden" asp-for="Images[i].SortOrder">
-                            <img src="@Media.Thumb(image.ImagePath, Media.Small)" alt="">
-                            <label><input type="radio" name="PrimaryImageId" value="@image.Id" checked="@(image == primary)" data-src="@Media.Thumb(image.ImagePath, Media.Large)"> Главное</label>
-                            <label><input asp-for="Images[i].Delete"> Удалить</label>
-                        </div>
-                    }
-                </div>
-            }
-
-            <label class="upload-box" for="new-images">
-                @Icons.Get("upload", 28)
-                <strong>Добавить фото</strong>
-                <span class="admin-count">JPG или PNG, можно несколько сразу</span>
-                <input id="new-images" class="visually-hidden" type="file" name="NewImages" multiple accept="image/jpeg,image/png,image/gif,image/webp">
-            </label>
+            @* Фото (этап 5, 25.11): плитки с кнопками на самом фото — звёздочка «сделать главным» и корзина «удалить при сохранении». *@
+            <div class="pe-photos">
+                @for (var i = 0; i < Model.Images.Count; i++)
+                {
+                    var image = Model.Images[i];
+                    <div class="pe-tile @(image == primary ? "primary" : "")">
+                        <input type="hidden" asp-for="Images[i].Id">
+                        <input type="hidden" asp-for="Images[i].ImagePath">
+                        <input type="hidden" asp-for="Images[i].IsPrimary">
+                        <input type="hidden" asp-for="Images[i].SortOrder">
+                        <img src="@Media.Thumb(image.ImagePath, Media.Small)" alt="">
+                        <label class="pe-star" title="Сделать главным фото">
+                            <input type="radio" name="PrimaryImageId" value="@image.Id" checked="@(image == primary)" data-src="@Media.Thumb(image.ImagePath, Media.Large)">
+                            <span>@Icons.Get("star", 14)<em>Главное</em></span>
+                        </label>
+                        <label class="pe-del" title="Удалить фото при сохранении">
+                            <input asp-for="Images[i].Delete" aria-label="Удалить фото">
+                            <span>@Icons.Get("trash", 14)</span>
+                        </label>
+                    </div>
+                }
+                <label class="pe-add upload-box" for="new-images">
+                    @Icons.Get("plus", 22)
+                    <span>Добавить</span>
+                    <input id="new-images" class="visually-hidden" type="file" name="NewImages" multiple accept="image/jpeg,image/png,image/gif,image/webp">
+                </label>
+            </div>
+            <p class="pe-photos-note admin-count" id="photo-count">@(Model.Images.Count > 1 ? "Звёздочка — сделать главным (жёлтая рамка), корзина — удалить при сохранении." : "Жёлтая рамка — главное фото. JPG или PNG, можно несколько сразу.")</p>
             <span class="errorlist" asp-validation-for="NewImages" style="display:block; margin-top:8px; font-weight:600; color:var(--a-danger);"></span>
         </div>
 
@@ -90,8 +130,8 @@
                     <span class="help">Нужной категории нет? Её можно добавить в разделе <a href="/admin/categories">«Бренды и категории»</a>.</span>
                     <span class="errorlist" asp-validation-for="Input.CategoryId"></span>
                 </div>
-                <label class="check">
-                    <input asp-for="Input.IsActive">
+                <label class="pe-switch-row">
+                    <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
                     <span>Показывать на сайте</span>
                 </label>
             </div>
@@ -104,11 +144,11 @@
 
     <div class="admin-box">
         <h3>Фасовки и цены</h3>
-        <p class="hint">Цену можно писать с запятой. Новая фасовка: заполните пустую строку внизу.</p>
+        <p class="hint">Цену можно писать с запятой. «Старая цена» — зачёркнутая на сайте, если товар со скидкой. Новая фасовка: заполните пустую строку внизу.</p>
         <div class="admin-table-wrap">
             <table class="admin-table pack-table" id="result_list">
                 <thead>
-                    <tr><th>Фасовка</th><th>Артикул</th><th>Цена, ₸</th><th>Старая цена</th><th>Опт, ₸</th><th>Остаток</th><th>На сайте</th><th>Удалить</th></tr>
+                    <tr><th>Фасовка</th><th>Артикул</th><th>Цена, ₸</th><th>Старая цена</th><th>Опт, ₸</th><th>Остаток</th><th>На сайте</th><th></th></tr>
                 </thead>
                 <tbody id="variant-rows">
                     @for (var i = 0; i < Model.Variants.Count; i++)
@@ -123,12 +163,22 @@
                             <td><input class="field small" asp-for="Variants[i].Price" inputmode="decimal" style="font-weight:700;"><span class="errorlist" asp-validation-for="Variants[i].Price"></span></td>
                             <td><input class="field small" asp-for="Variants[i].OldPrice" inputmode="decimal" placeholder="нет"><span class="errorlist" asp-validation-for="Variants[i].OldPrice"></span></td>
                             <td><input class="field small" asp-for="Variants[i].WholesalePrice" inputmode="decimal"><span class="errorlist" asp-validation-for="Variants[i].WholesalePrice"></span></td>
-                            <td><input class="field tiny" asp-for="Variants[i].StockQty" inputmode="numeric"><span class="errorlist" asp-validation-for="Variants[i].StockQty"></span></td>
-                            <td><input asp-for="Variants[i].IsActive" title="Показывать на сайте"></td>
+                            <td>
+                                <span class="qty-step vl-step">
+                                    <button type="button" data-step="-1" aria-label="Меньше">−</button>
+                                    <input asp-for="Variants[i].StockQty" type="number" min="0" inputmode="numeric">
+                                    <button type="button" data-step="1" aria-label="Больше">+</button>
+                                </span>
+                                <span class="errorlist" asp-validation-for="Variants[i].StockQty"></span>
+                            </td>
+                            <td><label class="vl-switch" title="Показывать на сайте"><input asp-for="Variants[i].IsActive" aria-label="Показывать фасовку на сайте"><span aria-hidden="true"></span></label></td>
                             <td>
                                 @if (Model.Variants[i].Id != 0)
                                 {
-                                    <input asp-for="Variants[i].Delete" title="Удалить фасовку">
+                                    <label class="od-del" title="Удалить фасовку при сохранении">
+                                        <input asp-for="Variants[i].Delete">
+                                        <span>@Icons.Get("x", 16) Убрать</span>
+                                    </label>
                                 }
                             </td>
                         </tr>
@@ -217,8 +267,8 @@
         var main = document.getElementById('photo-main');
         document.querySelectorAll('input[name=PrimaryImageId]').forEach(function (radio) {
             radio.addEventListener('change', function () {
-                document.querySelectorAll('.photo-tile').forEach(function (t) { t.classList.remove('primary'); });
-                radio.closest('.photo-tile').classList.add('primary');
+                document.querySelectorAll('.pe-tile').forEach(function (t) { t.classList.remove('primary'); });
+                radio.closest('.pe-tile').classList.add('primary');
                 if (main) main.src = radio.getAttribute('data-src');
             });
         });
@@ -227,8 +277,8 @@
         var files = document.getElementById('new-images');
         if (files) {
             files.addEventListener('change', function () {
-                var box = files.closest('.upload-box').querySelector('.admin-count');
-                box.textContent = files.files.length ? 'Выбрано файлов: ' + files.files.length + '. Нажмите «Сохранить».' : 'JPG или PNG, можно несколько сразу';
+                var box = document.getElementById('photo-count');
+                box.textContent = files.files.length ? 'Выбрано новых фото: ' + files.files.length + '. Нажмите «Сохранить».' : 'JPG или PNG, можно несколько сразу.';
             });
         }
     })();

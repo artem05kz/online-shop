@@ -5,61 +5,78 @@
     ViewData["AdminSection"] = "reviews";
     var tabs = new[] { ReviewStatus.Pending, ReviewStatus.Approved, ReviewStatus.Rejected };
 }
-<div class="admin-head">
-    <h1>Отзывы</h1>
-</div>
-<p class="admin-count">Отзывы оставляют покупатели, получившие товар. На сайте видны только опубликованные.</p>
+@*
+    Отзывы (этап 6, 25.11). Вкладки со счётчиками (жёлтый — ждут проверки). Отзыв — карточка: фото и товар,
+    звёзды крупно, кто и когда, текст; справа «Опубликовать» (чёрная), «Отклонить», «Удалить» (белые).
+*@
+<div class="admin-head"><h1>Отзывы</h1></div>
 
-<div class="chips" style="margin-bottom:16px;">
-    @foreach (var tab in tabs)
-    {
-        <a class="chip-link @(Model.Status == tab.ToCode() ? "on" : "")" href="/admin/reviews?status=@tab.ToCode()">
-            @tab.Label() <span class="n">@Model.Counts.GetValueOrDefault(tab)</span>
-        </a>
-    }
+<div class="o-bar pl-bar">
+    <nav class="o-tabs" aria-label="Отзывы">
+        @foreach (var tab in tabs)
+        {
+            var count = Model.Counts.GetValueOrDefault(tab);
+            <a class="o-tab@(Model.Status == tab.ToCode() ? " is-on" : "")@(tab == ReviewStatus.Pending && count > 0 ? " is-hot" : "")" href="/admin/reviews?status=@tab.ToCode()">@tab.Label() <span>@count</span></a>
+        }
+    </nav>
 </div>
+<p class="vl-hint">@Icons.Get("info", 16) <span>Отзыв может оставить только покупатель, который получил товар. На сайте видны только опубликованные.</span></p>
 
 @if (Model.List.Items.Count == 0)
 {
-    <p class="admin-count">Здесь пусто.</p>
+    <div class="admin-box o-empty">
+        <p>@Icons.Get("check", 20) @(Model.Status == ReviewStatus.Pending.ToCode() ? "Все отзывы проверены — новых нет." : "Здесь пока пусто.")</p>
+    </div>
 }
-<div class="item-list">
-    @foreach (var review in Model.List.Items)
-    {
-        <div class="item">
-            <img class="thumb" src="@Media.PhotoUrl(review.Product, Media.Small)" alt="">
-            <div style="flex:1; min-width:0;">
-                <div>
-                    <a href="@Url.Product(review.Product)" target="_blank" rel="noopener"><b>@review.Product.Name</b></a>
+else
+{
+    <ul class="o-list rv-list">
+        @foreach (var review in Model.List.Items)
+        {
+            <li class="rv-card is-@review.Status.ToCode()">
+                <img class="pl-thumb" src="@Media.PhotoUrl(review.Product, Media.Small)" alt="">
+                <div class="rv-body">
+                    <a class="rv-product" href="@Url.Product(review.Product)" target="_blank" rel="noopener">@review.Product.Name</a>
+                    <div class="rv-meta">
+                        <span class="rv-stars" aria-label="Оценка @review.Rating из 5">@for (var s = 1; s <= 5; s++) {<i class="@(s <= review.Rating ? "on" : "")">★</i>}</span>
+                        <span>@review.User.UserName · @Format.DateTimeText(review.UpdatedAt)</span>
+                    </div>
+                    @if (review.Text.Length > 360)
+                    {
+                        @* Длинный отзыв: сначала начало, весь текст — по нажатию. *@
+                        <details class="rv-more">
+                            <summary><p class="rv-text">@review.Text[..340].TrimEnd()…</p><span>Показать весь отзыв</span></summary>
+                            <p class="rv-text">@review.Text</p>
+                        </details>
+                    }
+                    else if (review.Text.Length > 0)
+                    {
+                        <p class="rv-text">@review.Text</p>
+                    }
+                    else
+                    {
+                        <p class="rv-text is-empty">Только оценка, без текста.</p>
+                    }
                 </div>
-                <div style="margin:4px 0;"><partial name="_Stars" model="review.Rating" /> <span class="muted">@review.User.UserName, @Format.DateTimeText(review.UpdatedAt)</span></div>
-                @if (review.Text.Length > 0)
-                {
-                    <p style="margin:6px 0 0; white-space:pre-line;">@review.Text</p>
-                }
-                else
-                {
-                    <p class="muted" style="margin:6px 0 0;">Только оценка, без текста.</p>
-                }
-            </div>
-            <div class="side" style="display:flex; flex-direction:column; gap:8px;">
-                @if (review.Status != ReviewStatus.Approved)
-                {
-                    <form method="post" asp-page-handler="Approve" asp-route-id="@review.Id" asp-route-status="@Model.Status">
-                        <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Опубликовать</button>
+                <div class="rv-actions">
+                    @if (review.Status != ReviewStatus.Approved)
+                    {
+                        <form method="post" asp-page-handler="Approve" asp-route-id="@review.Id" asp-route-status="@Model.Status">
+                            <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Опубликовать</button>
+                        </form>
+                    }
+                    @if (review.Status != ReviewStatus.Rejected)
+                    {
+                        <form method="post" asp-page-handler="Reject" asp-route-id="@review.Id" asp-route-status="@Model.Status">
+                            <button class="btn btn-sm wash-second" type="submit">@Icons.Get("x", 16) Отклонить</button>
+                        </form>
+                    }
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@review.Id" asp-route-status="@Model.Status" data-confirm="Удалить отзыв насовсем?">
+                        <button class="btn btn-sm wash-second is-cancel" type="submit">@Icons.Get("trash", 16) Удалить</button>
                     </form>
-                }
-                @if (review.Status != ReviewStatus.Rejected)
-                {
-                    <form method="post" asp-page-handler="Reject" asp-route-id="@review.Id" asp-route-status="@Model.Status">
-                        <button class="btn btn-ghost btn-sm" type="submit">@Icons.Get("x", 16) Отклонить</button>
-                    </form>
-                }
-                <form method="post" asp-page-handler="Delete" asp-route-id="@review.Id" asp-route-status="@Model.Status" data-confirm="Удалить отзыв насовсем?">
-                    <button class="btn btn-ghost btn-sm" type="submit">@Icons.Get("trash", 16) Удалить</button>
-                </form>
-            </div>
-        </div>
-    }
-</div>
+                </div>
+            </li>
+        }
+    </ul>
+}
 <partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

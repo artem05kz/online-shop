@@ -4,37 +4,46 @@
     ViewData["Title"] = "Покупатели и доступ";
     ViewData["AdminSection"] = "users";
 }
-<div class="admin-head">
-    <h1>Покупатели и доступ</h1>
-</div>
-<p class="admin-count">Менеджеры видят панель управления. Пароль покупателя здесь не меняется: он сам задаёт его при регистрации.</p>
-
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Логин, имя или почта">
-    <button class="btn btn-ghost" type="submit">Найти</button>
+<div class="admin-head"><h1>Покупатели и доступ</h1></div>
+<form class="pl-filters" method="get" role="search">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Логин, имя или почта" aria-label="Поиск покупателя">
+    <button class="btn btn-ghost" type="submit">@Icons.Get("search", 18) Найти</button>
 </form>
+<p class="vl-hint">@Icons.Get("info", 16) <span>Менеджеры видят эту панель управления. Пароль покупателя здесь не меняется: он сам задаёт его при регистрации.</span></p>
 
-<div class="admin-table-wrap">
-    <table class="admin-table">
-        <thead><tr><th>Логин</th><th>Имя</th><th>Почта</th><th class="num">Заказов</th><th>Менеджер</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var row in Model.List.Items)
-            {
-                <tr>
-                    <td>@row.UserName</td>
-                    <td>@row.FullName</td>
-                    <td>@row.Email</td>
-                    <td class="num">@if (row.Orders > 0) { <a href="/admin/orders?q=@Uri.EscapeDataString(row.UserName)">@row.Orders</a> } else { <span class="muted">0</span> }</td>
-                    <td>@(row.IsManager ? "да" : "")</td>
-                    <td>
-                        <form method="post" asp-page-handler="ToggleManager" asp-route-id="@row.Id" asp-route-q="@Model.Q"
-                              data-confirm="@(row.IsManager ? "Снять доступ в панель?" : "Дать доступ в панель управления?")">
-                            <button class="btn btn-ghost btn-sm" type="submit">@(row.IsManager ? "Снять доступ" : "Сделать менеджером")</button>
-                        </form>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@if (Model.List.Items.Count == 0)
+{
+    <div class="admin-box o-empty"><p>Никого не нашлось. Проверьте логин или почту.</p></div>
+}
+else
+{
+    <ul class="o-list">
+        @foreach (var row in Model.List.Items)
+        {
+            var name = string.IsNullOrEmpty(row.FullName) ? row.UserName : row.FullName;
+            <li class="ad-row ad-user@(row.IsManager ? " is-manager" : "")">
+                <span class="wc-ava" aria-hidden="true">@name[..1].ToUpperInvariant()</span>
+                <div class="ct-main">
+                    <b class="ct-title">@name</b>
+                    <small>@row.UserName@(string.IsNullOrEmpty(row.Email) ? "" : " · " + row.Email)</small>
+                </div>
+                <div class="ad-orders">
+                    @if (row.Orders > 0)
+                    {
+                        <a href="/admin/orders?q=@Uri.EscapeDataString(row.UserName)"><b>@row.Orders</b> @Plural.Choose(row.Orders, "заказ", "заказа", "заказов")</a>
+                    }
+                    else
+                    {
+                        <span class="muted">заказов нет</span>
+                    }
+                </div>
+                <span class="ad-role">@(row.IsManager ? "Менеджер" : "Покупатель")</span>
+                <form method="post" asp-page-handler="ToggleManager" asp-route-id="@row.Id" asp-route-q="@Model.Q"
+                      data-confirm="@(row.IsManager ? "Снять доступ в панель?" : "Дать доступ в панель управления?")">
+                    <button class="btn btn-sm wash-second@(row.IsManager ? " is-cancel" : "")" type="submit">@(row.IsManager ? "Снять доступ" : "Сделать менеджером")</button>
+                </form>
+            </li>
+        }
+    </ul>
+}
 <partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

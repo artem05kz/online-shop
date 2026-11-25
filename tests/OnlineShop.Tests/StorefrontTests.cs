@@ -450,7 +450,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     [Fact]
     public async Task Hero_shows_only_slides_whose_product_is_on_sale()
     {
-        // Ни одного товара из слайдов в базе: первого экрана нет, страница открывается как раньше.
+        // Слайдов нет: первого экрана нет, страница открывается как раньше.
         Assert.DoesNotContain("class=\"hero\"", await Page(Client(), "/"));
 
         int id;
@@ -466,6 +466,12 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             db.Products.Add(wax);
             db.SaveChanges();
             id = wax.Id;
+            db.ProductSlides.Add(new ProductSlide
+            {
+                ProductId = id, Script = "Top Wax", Title = "Холодный воск TOP WAX", Text = "Блеск после мойки.",
+                ImagePath = "/img/hero/top-wax.webp", BgColor = "#ff9447", ScriptColor = "#ec6a18", SortOrder = 1,
+            });
+            db.SaveChanges();
         }
         try
         {
@@ -473,10 +479,20 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
             Assert.Contains("class=\"hero\"", html);
             Assert.Contains("Холодный воск TOP WAX", html);
             Assert.Contains("img/hero/top-wax.webp", html);
+            // Цвета слайда приходят из базы; светлый фон — тёмный текст.
+            Assert.Contains("--hero-bg: #ff9447; --hero-ink: #0f0f0f; --hero-script: #ec6a18", html);
             Assert.Contains(">Купить</a>", html);
             // Один слайд: листать нечего, стрелок нет.
             Assert.DoesNotContain("class=\"hero-controls\"", html);
-            Assert.DoesNotContain("glass-gloss.webp", html);
+
+            // Товар скрыли — слайд пропал.
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+                db.Products.Single(p => p.Id == id).IsActive = false;
+                db.SaveChanges();
+            }
+            Assert.DoesNotContain("class=\"hero\"", await Page(Client(), "/"));
         }
         finally
         {

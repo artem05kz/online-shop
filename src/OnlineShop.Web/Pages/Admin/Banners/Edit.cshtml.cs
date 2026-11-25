@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
@@ -8,7 +9,10 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Banners;
 
-/// <summary>Баннер: картинку и сроки показа менеджер задаёт сам, для новой акции код менять не нужно.</summary>
+/// <summary>
+/// Баннер (25.11.2026): готовая картинка 2400 × 880 во весь первый экран, название (подпись для незрячих),
+/// ссылка и сроки показа. Старые поля (рукописное слово, текст, кнопка, цвет, центр фото) в базе остались, форма их не трогает.
+/// </summary>
 [RequestSizeLimit(40 * 1024 * 1024)]
 [RequestFormLimits(MultipartBodyLengthLimit = 40 * 1024 * 1024)]
 public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
@@ -18,36 +22,14 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
 
     public class InputModel
     {
-        [Display(Name = "Заголовок")]
+        // Название — для панели и подпись картинки для незрячих (alt). Сами надписи нарисованы на картинке.
+        [Display(Name = "Название")]
         [StringLength(200, ErrorMessage = "Не длиннее {1} символов.")]
         public string? Title { get; set; }
-
-        [Display(Name = "Рукописное слово")]
-        [StringLength(40, ErrorMessage = "Не длиннее {1} символов.")]
-        public string? Script { get; set; }
-
-        [Display(Name = "Текст")]
-        [StringLength(300, ErrorMessage = "Не длиннее {1} символов.")]
-        public string? Text { get; set; }
-
-        [Display(Name = "Надпись на кнопке")]
-        [StringLength(40, ErrorMessage = "Не длиннее {1} символов.")]
-        public string? ButtonText { get; set; }
-
-        [Display(Name = "Цвет блока с текстом")]
-        public string Theme { get; set; } = BannerThemes.All[0].Key;
-
-        /// <summary>Где на фото товары, % ширины. Пусто — определить самим по картинке.</summary>
-        [Range(0, 100)]
-        public int? FocusX { get; set; }
 
         [Display(Name = "Ссылка при нажатии")]
         [StringLength(300, ErrorMessage = "Не длиннее {1} символов.")]
         public string? LinkUrl { get; set; }
-
-        [Display(Name = "Очерёдность в слайдере")]
-        [Range(0, int.MaxValue, ErrorMessage = "Число не меньше 0.")]
-        public int SortOrder { get; set; }
 
         [Display(Name = "Показывать на сайте")]
         public bool IsActive { get; set; } = true;
@@ -86,7 +68,7 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         Input = new InputModel
         {
             Title = banner.Title, LinkUrl = banner.LinkUrl,
-            Script = banner.Script, Text = banner.Text, ButtonText = banner.ButtonText, Theme = banner.Theme, FocusX = banner.FocusX, SortOrder = banner.SortOrder, IsActive = banner.IsActive,
+            IsActive = banner.IsActive,
             StartsAt = banner.StartsAt is { } s ? Format.ToLocal(s) : null,
             EndsAt = banner.EndsAt is { } e ? Format.ToLocal(e) : null,
         };
@@ -126,10 +108,6 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         {
             ModelState.AddModelError("Input.LinkUrl", "Укажите адрес на этом сайте (например, /catalog/grass/) или ссылку, которая начинается с https://.");
         }
-        if (!BannerThemes.IsKnown(Input.Theme))
-        {
-            ModelState.AddModelError("Input.Theme", "Выберите цвет из списка.");
-        }
         if (Input.StartsAt is { } from && Input.EndsAt is { } to && to < from)
         {
             ModelState.AddModelError("Input.EndsAt", "Конец показа раньше начала.");
@@ -149,28 +127,16 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
             newImage = await media.SaveAsync(shrunk.Content, "banners", Path.ChangeExtension(Image.FileName, shrunk.Extension));
             banner.ImagePath = newImage;
             warnings.AddRange(BannerShape.Check(shrunk.Width, shrunk.Height));
-            // Центр товаров: если менеджер не отметил его сам на превью, ищем по картинке.
-            if (Input.FocusX is null)
-            {
-                banner.FocusX = BannerFocus.Detect(shrunk.Content);
-            }
-        }
-        if (Input.FocusX is { } focus)
-        {
-            banner.FocusX = Math.Clamp(focus, 0, 100);
         }
         banner.Title = Input.Title?.Trim() ?? "";
         banner.LinkUrl = Input.LinkUrl?.Trim() ?? "";
-        banner.Script = Input.Script?.Trim() ?? "";
-        banner.Text = Input.Text?.Trim() ?? "";
-        banner.ButtonText = Input.ButtonText?.Trim() ?? "";
-        banner.Theme = Input.Theme;
-        banner.SortOrder = Input.SortOrder;
         banner.IsActive = Input.IsActive;
         banner.StartsAt = Input.StartsAt is { } start ? Format.FromLocal(start) : null;
         banner.EndsAt = Input.EndsAt is { } end ? Format.FromLocal(end) : null;
         if (banner.Id == 0)
         {
+            // Новый баннер встаёт последним среди баннеров (перед слайдами с товарами).
+            banner.SortOrder = (await db.Banners.MaxAsync(b => (int?)b.SortOrder) ?? 0) + 1;
             db.Banners.Add(banner);
         }
         try

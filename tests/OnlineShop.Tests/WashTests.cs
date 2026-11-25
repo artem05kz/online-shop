@@ -94,6 +94,11 @@ public class WashTests(TempShopFactory factory) : IClassFixture<TempShopFactory>
         Assert.Contains("10:00–11:00", message.Text);
         Assert.Contains("+7 701 555-44-33", message.Text);
         Assert.Contains("Camry 123ABC", message.Text);
+        // Под сообщением — кнопки «Подтвердить / Отменить» (CRM, 24.11).
+        var bookingId = Db(db => db.WashBookings.Single(b => b.Name == name).Id);
+        Assert.Contains($"wash:ok:{bookingId}", message.Markup);
+        Assert.Contains($"wash:ask:{bookingId}", message.Markup);
+        Assert.Contains($"/admin/wash/{bookingId}", message.Text);
 
         // Отмена по ссылке освобождает время и сообщает администратору.
         var cancelToken = await TokenFrom(client, link);
@@ -139,6 +144,10 @@ public class WashTests(TempShopFactory factory) : IClassFixture<TempShopFactory>
         var list = await Page(manager, $"/admin/wash?date={Tomorrow}");
         Assert.Contains(name, list);
         Assert.Contains("Ждёт подтверждения", list);
+        // Календарь недели (редизайн 24.11): запись видна блоком в своём дне.
+        var week = await Page(manager, "/admin/wash?view=week");
+        Assert.Contains(name, week);
+        Assert.Contains("wash-block is-new", week);
 
         var adminToken = await TokenFrom(manager, $"/admin/wash?date={Tomorrow}");
         await Post(manager, $"/admin/wash?handler=Status&id={id}&status=Confirmed", adminToken);
@@ -164,5 +173,113 @@ public class WashTests(TempShopFactory factory) : IClassFixture<TempShopFactory>
         var token = await TokenFrom(client, "/accounts/login");
         await Post(client, "/accounts/login", token, ("Input.UserName", login), ("Input.Password", password));
         return client;
+    }
+
+    [Fact]
+    public async Task Booking_is_confirmed_from_telegram_button_by_a_recipient_only()
+    {
+        var name = $"Кнопка-{Interlocked.Increment(ref _counter)}";
+        var client = factory.Browser();
+        var token = await TokenFrom(client, "/wash");
+        await Book(client, token, CarWashes.All[0].Key, "16:00", name, Tomorrow, service: "express");
+        var id = Db(db => db.WashBookings.Single(b => b.Name == name).Id);
+        Assert.True(Db(db => db.WashBookings.Single(b => b.Id == id).Box) > 0);
+
+        // Чужой чат нажать не может.
+        factory.Telegram.Press(9_999_001, $"wash:ok:{id}");
+        await Task.Delay(300);
+        Assert.Equal(WashBookingStatus.New, Db(db => db.WashBookings.Single(b => b.Id == id).Status));
+
+        factory.Telegram.Press(WashAdminChat, $"wash:ok:{id}");
+        await factory.Telegram.WaitForMessage(WashAdminChat, m => m.Text.Contains("Подтверждена") && m.Text.Contains(name));
+        var booking = Db(db => db.WashBookings.Single(b => b.Id == id));
+        Assert.Equal(WashBookingStatus.Confirmed, booking.Status);
+        Assert.Equal("Мойка", booking.ConfirmedBy);
+    }
+
+    [Fact]
+    public async Task Manager_adds_booking_by_phone_and_edits_price_and_payment()
+    {
+        var name = $"Звонок-{Interlocked.Increment(ref _counter)}";
+        var manager = await Manager();
+        var token = await TokenFrom(manager, $"/admin/wash/add?date={Tomorrow}&time=18:00&box=2");
+        var added = await Post(manager, "/admin/wash/add", token,
+            ("Input.Date", Tomorrow), ("Input.Time", "18:00"), ("Input.Service", "express"), ("Input.Box", "2"),
+            ("Input.Name", name), ("Input.Phone", "+7 701 222-33-44"), ("Input.Source", "phone"), ("Input.Price", "4000"));
+        Assert.Equal(HttpStatusCode.Redirect, added.StatusCode);
+        var booking = Db(db => db.WashBookings.Single(b => b.Name == name));
+        Assert.Equal(WashBookingStatus.Confirmed, booking.Status);
+        Assert.Equal(2, booking.Box);
+        Assert.Equal(4000m, booking.Price);
+        Assert.Equal("phone", booking.Source);
+
+        // Второй клиент на то же место и время не встанет.
+        var busy = await Post(manager, "/admin/wash/add", token,
+            ("Input.Date", Tomorrow), ("Input.Time", "18:00"), ("Input.Service", "express"), ("Input.Box", "2"),
+            ("Input.Name", name + "-2"), ("Input.Phone", "+7 701 222-33-45"), ("Input.Source", "phone"));
+        Assert.Equal(HttpStatusCode.OK, busy.StatusCode);
+        Assert.Contains("Место 2 в это время занято", await Text(busy));
+
+        // Карточка: календарь дня показывает запись, отметка оплаты и статус «Приехал».
+        Assert.Contains(name, await Page(manager, $"/admin/wash?date={Tomorrow}"));
+        var card = await Page(manager, $"/admin/wash/{booking.Id}");
+        Assert.Contains("Визиты по этому номеру", card);
+        token = await TokenFrom(manager, $"/admin/wash/{booking.Id}");
+        await Post(manager, $"/admin/wash/{booking.Id}", token,
+            ("Input.Date", Tomorrow), ("Input.Time", "18:00"), ("Input.Service", "express"), ("Input.Box", "2"),
+            ("Input.Name", name), ("Input.Phone", "+7 701 222-33-44"), ("Input.Source", "phone"), ("Input.Price", "4500"),
+            ("Input.IsPaid", "true"), ("Input.PaymentMethod", "kaspi"), ("Input.ManagerNote", "постоянный"));
+        await Post(manager, $"/admin/wash/{booking.Id}?handler=Status&status=Arrived", token);
+        booking = Db(db => db.WashBookings.Single(b => b.Id == booking.Id));
+        Assert.Equal(4500m, booking.Price);
+        Assert.True(booking.IsPaid);
+        Assert.Equal("kaspi", booking.PaymentMethod);
+        Assert.Equal(WashBookingStatus.Arrived, booking.Status);
+    }
+
+    [Fact]
+    public async Task Clients_page_groups_bookings_by_phone_and_report_counts_money()
+    {
+        var name = $"Клиент-{Interlocked.Increment(ref _counter)}";
+        var phone = $"7701{Random.Shared.Next(1_000_000, 9_999_999)}";
+        var past = DateOnly.FromDateTime(WashSlots.Now()).AddDays(-3).ToDateTime(new TimeOnly(11, 0));
+        Db(db =>
+        {
+            WashBooking B(DateTime at, WashBookingStatus status, decimal? price, bool paid, string method = "") => new()
+            {
+                WashKey = CarWashes.All[0].Key, WashName = CarWashes.All[0].Name, ServiceKey = "complex", ServiceName = "Комплекс",
+                Minutes = 60, StartsAt = at, Name = name, Phone = phone, Car = "Kia Rio", Status = status, CreatedAt = DateTime.UtcNow,
+                Price = price, IsPaid = paid, PaymentMethod = method, Source = WashSources.WhatsApp,
+            };
+            db.WashBookings.AddRange(
+                B(past, WashBookingStatus.Done, 5000m, true, "kaspi"),
+                B(past.AddDays(1), WashBookingStatus.Done, 5000m, true, "cash"),
+                B(past.AddDays(2), WashBookingStatus.Done, 6000m, true, "kaspi"),
+                B(past.AddDays(-1), WashBookingStatus.NoShow, null, false));
+            return db.SaveChanges();
+        });
+        var manager = await Manager();
+
+        var list = await Page(manager, "/admin/wash/clients?show=regular&q=" + Uri.EscapeDataString(name));
+        Assert.Contains(name, list);
+        Assert.Contains("постоянный", list);
+        Assert.Contains($"/admin/wash/clients/{phone}", list);
+        Assert.Contains(name, await Page(manager, "/admin/wash/clients?q=" + phone[^4..]));
+
+        var card = await Page(manager, $"/admin/wash/clients/{phone}");
+        Assert.Contains("Постоянный клиент", card);
+        Assert.Contains("Не приехал 1 раз", card);
+        Assert.Contains("Kia Rio", card);
+        Assert.Contains($"/admin/wash/add?name={Uri.EscapeDataString(name)}&phone={phone}", card);
+
+        var again = await Page(manager, $"/admin/wash/add?name={Uri.EscapeDataString(name)}&phone={phone}&car=Kia");
+        Assert.Contains($"value=\"{name}\"", again);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await manager.GetAsync("/admin/wash/clients/70000000000")).StatusCode);
+
+        var report = await Page(manager, "/admin/reports?period=30d");
+        Assert.Contains("оплачено за мойку", report);
+        Assert.Contains("Как платят", report);
+        Assert.Contains("WhatsApp", report);
     }
 }

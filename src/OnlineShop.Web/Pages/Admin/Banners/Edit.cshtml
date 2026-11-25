@@ -4,208 +4,93 @@
     ViewData["Title"] = Model.Id is null ? "Новый баннер" : "Баннер";
     ViewData["AdminSection"] = "banners";
 }
+@*
+    Баннер (25.11.2026). Баннер — готовая картинка во весь первый экран главной, надписи нарисованы на ней.
+    Сверху большое поле в форме первого экрана: сюда перетаскивают картинку, и она сразу видна так, как будет
+    на сайте (с пунктиром «здесь точки и стрелки»). Ниже — название, ссылка и когда показывать.
+*@
 <div class="admin-head">
-    <h1>@(Model.Id is null ? "Новый баннер" : "Баннер")</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <h1>@(Model.Id is null ? "Новый баннер" : string.IsNullOrEmpty(Model.Input.Title) ? $"Баннер №{Model.Id}" : Model.Input.Title)</h1>
+    <a class="btn btn-ghost" asp-page="Index">@Icons.Get("arrow-left", 18) Все баннеры</a>
 </div>
 
-<form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:760px;">
-    @* Как баннер будет выглядеть на первом экране: слева фото, справа цветной блок с текстом. Обновляется сразу. *@
-    <div class="form-row">
-        <label>Как будет на сайте</label>
-        <div class="hp" id="hp" data-theme="@Model.Input.Theme">
-            <div class="hp-photo">
-                <img id="hp-img" alt="" src="@(Model.CurrentImage is null ? null : Media.Url(Model.CurrentImage))" hidden="@(Model.CurrentImage is null ? "hidden" : null)">
-            </div>
-            <div class="hp-copy">
-                <span class="hp-script" id="hp-script"></span>
-                <b class="hp-title" id="hp-title"></b>
-                <span class="hp-text" id="hp-text"></span>
-                <span class="hp-btn" id="hp-btn"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="form-row">
-        <label for="Image">Фото</label>
-        <p class="hint" style="margin-top:0;">
-            Размер <b>@BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight</b> (можно шире или уже: фото само подстраивается),
-            не меньше @BannerShape.MinWidth точек в ширину. Надписи на самом фото не нужны: заголовок и текст пишутся ниже.
-            На сайте видна примерно половина ширины фото. Где на фото товары, сайт находит сам и ставит их посередине;
-            если ошибся, <b>щёлкните по товарам на картинке ниже</b>.
+<form method="post" enctype="multipart/form-data" class="bn-form">
+    <section class="admin-box">
+        <h3>Картинка</h3>
+        <p class="hint">
+            Размер <b>@BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight</b> — это первый экран главной (1200 × 440) в два раза крупнее, чтобы было чётко.
+            Все надписи и кнопки рисуйте прямо на картинке. JPG, PNG или WEBP.
         </p>
-        <div class="banner-focus" id="banner-focus">
-            @if (Model.CurrentImage is not null)
-            {
-                <img src="@Media.Url(Model.CurrentImage)" alt="" id="banner-preview-img">
-            }
-            else
-            {
-                <img alt="" id="banner-preview-img" hidden>
-                <span class="banner-preview-empty">Здесь появится картинка</span>
-            }
-            <span class="banner-focus-frame" id="banner-focus-frame" aria-hidden="true"></span>
-        </div>
-        <p class="banner-preview-note" id="banner-preview-note">@Model.CurrentImageNote</p>
-        @if (Model.CurrentImage is not null)
-        {
-            <span class="help">Чтобы заменить, выберите новый файл. Старый удалится сам.</span>
-        }
-        <input type="file" id="Image" name="Image" accept="image/jpeg,image/png,image/gif,image/webp">
-        <input type="hidden" name="Input.FocusX" id="Input_FocusX" value="@Model.Input.FocusX">
+        <label class="fx-drop bn-drop@(Model.CurrentImage is not null ? " has-file" : "")" data-banner-drop
+               data-ratio="@BannerShape.Ratio.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+               data-min="@BannerShape.MinWidth" data-w="@BannerShape.RecommendedWidth" data-h="@BannerShape.RecommendedHeight">
+            <img class="bn-drop-img" src="@(Model.CurrentImage is not null ? Media.Url(Model.CurrentImage) : "")" alt="" @(Model.CurrentImage is null ? "hidden" : "")>
+            <span class="bn-safe" aria-hidden="true"><span>здесь точки и стрелки</span></span>
+            <span class="bn-drop-empty">
+                <span class="fx-drop-icon">@Icons.Get("image", 24)</span>
+                <b>Перетащите картинку сюда</b>
+                <small>или нажмите, чтобы выбрать файл</small>
+            </span>
+            <span class="bn-drop-change">@Icons.Get("upload", 16) Заменить картинку</span>
+            <input class="visually-hidden" type="file" asp-for="Image" accept="image/jpeg,image/png,image/gif,image/webp">
+        </label>
+        <p class="bn-drop-note" id="banner-note" data-start="@Model.CurrentImageNote">@(Model.CurrentImageNote.Length > 0 ? Model.CurrentImageNote : "Картинка не выбрана.")</p>
         <span class="errorlist" asp-validation-for="Image"></span>
+    </section>
+
+    <div class="bn-form-grid">
+        <section class="admin-box">
+            <h3>Название и ссылка</h3>
+            <div class="form-row">
+                <label asp-for="Input.Title"></label>
+                <input class="field" asp-for="Input.Title" placeholder="Например: Скидки на воски, декабрь">
+                <span class="help">Покупатель его не видит: оно для списка баннеров и для программ, которые читают сайт вслух.</span>
+                <span class="errorlist" asp-validation-for="Input.Title"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.LinkUrl"></label>
+                <input class="field" asp-for="Input.LinkUrl" placeholder="/catalog/ifoam/воски">
+                <span class="help">Куда попадёт покупатель, если нажмёт на баннер. Пусто — баннер просто картинка.</span>
+                <span class="errorlist" asp-validation-for="Input.LinkUrl"></span>
+            </div>
+        </section>
+
+        <section class="admin-box">
+            <h3>Когда показывать</h3>
+            <div class="form-grid">
+                <div class="form-row">
+                    <label asp-for="Input.StartsAt"></label>
+                    <input class="field" asp-for="Input.StartsAt" type="datetime-local">
+                    <span class="help">Пусто — сразу.</span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.EndsAt"></label>
+                    <input class="field" asp-for="Input.EndsAt" type="datetime-local">
+                    <span class="help">Пусто — без срока.</span>
+                    <span class="errorlist" asp-validation-for="Input.EndsAt"></span>
+                </div>
+            </div>
+            <label class="pe-switch-row fe-switch">
+                <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
+                <span>Показывать на сайте</span>
+            </label>
+            <p class="help">Время — по Актау. Когда срок закончится, баннер сам пропадёт с сайта, а в списке будет во вкладке «Закончились».</p>
+        </section>
     </div>
 
-    <div class="form-grid">
-        <div class="form-row">
-            <label asp-for="Input.Script"></label>
-            <input class="field" asp-for="Input.Script" placeholder="Новинка" data-hp="hp-script">
-            <span class="help">Крупно от руки над заголовком. Одно-два слова. Необязательно.</span>
-            <span class="errorlist" asp-validation-for="Input.Script"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.Theme"></label>
-            <select class="select" asp-for="Input.Theme" id="Input_Theme">
-                @foreach (var theme in BannerThemes.All)
-                {
-                    <option value="@theme.Key">@theme.Name</option>
-                }
-            </select>
-            <span class="help">Цвета подобраны так, чтобы текст читался.</span>
-            <span class="errorlist" asp-validation-for="Input.Theme"></span>
-        </div>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.Title"></label>
-        <input class="field" asp-for="Input.Title" placeholder="Новые герои чистоты" data-hp="hp-title">
-        <span class="help">Коротко, до 6–7 слов.</span>
-        <span class="errorlist" asp-validation-for="Input.Title"></span>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.Text"></label>
-        <textarea class="field" asp-for="Input.Text" rows="2" placeholder="Средства Ifoam Home для кухни, ванной и стирки" data-hp="hp-text"></textarea>
-        <span class="help">Одна-две строки. Необязательно.</span>
-        <span class="errorlist" asp-validation-for="Input.Text"></span>
-    </div>
-    <div class="form-grid">
-        <div class="form-row">
-            <label asp-for="Input.LinkUrl"></label>
-            <input class="field" asp-for="Input.LinkUrl" placeholder="/catalog/ifoam/воски">
-            <span class="help">Куда ведёт кнопка и нажатие на фото. Без ссылки кнопки не будет.</span>
-            <span class="errorlist" asp-validation-for="Input.LinkUrl"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.ButtonText"></label>
-            <input class="field" asp-for="Input.ButtonText" placeholder="Подробнее" data-hp="hp-btn">
-            <span class="help">Пусто: «Подробнее».</span>
-            <span class="errorlist" asp-validation-for="Input.ButtonText"></span>
-        </div>
-    </div>
-    <div class="form-grid">
-        <div class="form-row">
-            <label asp-for="Input.StartsAt"></label>
-            <input class="field" type="datetime-local" name="Input.StartsAt" id="Input_StartsAt" value="@(Model.Input.StartsAt?.ToString("yyyy-MM-ddTHH:mm"))">
-            <span class="help">Время по Актау. Пусто: сразу.</span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.EndsAt"></label>
-            <input class="field" type="datetime-local" name="Input.EndsAt" id="Input_EndsAt" value="@(Model.Input.EndsAt?.ToString("yyyy-MM-ddTHH:mm"))">
-            <span class="help">Пусто: без срока.</span>
-            <span class="errorlist" asp-validation-for="Input.EndsAt"></span>
-        </div>
-    </div>
-    <div class="form-row">
-        <label asp-for="Input.SortOrder"></label>
-        <input class="field" asp-for="Input.SortOrder" type="number" min="0">
-        <span class="help">Баннер с числом 1 покажется первым.</span>
-    </div>
-    <label class="check" style="margin-bottom:16px;">
-        <input asp-for="Input.IsActive">
-        <span>Показывать на сайте</span>
-    </label>
     <div class="savebar">
         <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
         <a class="btn btn-ghost" href="/admin/banners">Отмена</a>
     </div>
 </form>
 
-@section Scripts {
-<script nonce="@HttpContext.CspNonce()">
-// Превью «как на сайте» и точка, где на фото товары. Щелчок по картинке ставит точку вручную;
-// без щелчка сервер сам найдёт товары на новом фото (поле FocusX пустое).
-(function () {
-    var VISIBLE = @BannerFocus.VisibleRatio.ToString(System.Globalization.CultureInfo.InvariantCulture);
-    var input = document.getElementById('Image');
-    var img = document.getElementById('banner-preview-img');
-    var frame = document.getElementById('banner-focus-frame');
-    var box = document.getElementById('banner-focus');
-    var note = document.getElementById('banner-preview-note');
-    var focus = document.getElementById('Input_FocusX');
-    var hp = document.getElementById('hp');
-    var hpImg = document.getElementById('hp-img');
-    var theme = document.getElementById('Input_Theme');
-
-    function ratio() { return img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 3; }
-    function position() {
-        var r = ratio(), fx = focus.value === '' ? 50 : Number(focus.value);
-        if (r <= VISIBLE) return { left: 0, width: 1, pos: 50 };
-        var vis = VISIBLE / r, left = Math.min(Math.max(fx / 100 - vis / 2, 0), 1 - vis);
-        return { left: left, width: vis, pos: left / (1 - vis) * 100 };
-    }
-    function update() {
-        var p = position();
-        frame.hidden = img.hidden || focus.value === '';
-        frame.style.left = (p.left * 100) + '%';
-        frame.style.width = (p.width * 100) + '%';
-        hpImg.style.objectPosition = p.pos + '% 50%';
-    }
-    function text() {
-        document.querySelectorAll('[data-hp]').forEach(function (el) {
-            var out = document.getElementById(el.getAttribute('data-hp'));
-            out.textContent = el.value || (el.id === 'Input_ButtonText' ? 'Подробнее' : '');
-        });
-        // Без ссылки кнопки на сайте нет — и в превью тоже.
-        document.getElementById('hp-btn').hidden = !document.getElementById('Input_LinkUrl').value.trim();
-        hp.setAttribute('data-theme', theme.value);
-    }
-    document.querySelectorAll('[data-hp]').forEach(function (el) { el.addEventListener('input', text); });
-    theme.addEventListener('change', text);
-    document.getElementById('Input_LinkUrl').addEventListener('input', text);
-    text();
-
-    box.addEventListener('click', function (e) {
-        if (img.hidden) return;
-        var r = img.getBoundingClientRect();
-        focus.value = Math.round(Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * 100);
-        update();
-    });
-    img.addEventListener('load', update);
-    if (img.complete) update();
-
-    input.addEventListener('change', function () {
-        var file = input.files && input.files[0];
-        if (!file) return;
-        var url = URL.createObjectURL(file);
-        focus.value = ''; // новое фото: товары найдёт сервер, если не щёлкнуть
-        img.onload = function () {
-            var w = img.naturalWidth, h = img.naturalHeight, t = 'Размер ' + w + ' × ' + h + '.';
-            if (w < @BannerShape.MinWidth) t += ' Маловато для больших экранов, будет нечётко.';
-            t += ' Где товары, сайт найдёт сам после сохранения. Можно указать самим: щёлкните по ним на картинке.';
-            note.textContent = t;
-            update();
-        };
-        img.src = url; img.hidden = false;
-        hpImg.src = url; hpImg.hidden = false;
-        var empty = document.querySelector('.banner-preview-empty');
-        if (empty) empty.remove();
-    });
-})();
-</script>
-}
-
 @if (Model.Id is not null)
 {
-    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" data-confirm="Удалить баннер?">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить баннер</button>
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" class="bn-delete" data-confirm="Удалить баннер насовсем? Картинка тоже удалится.">
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить баннер</button>
     </form>
+}
+
+@section Scripts {
+    <script src="~/js/admin_banner_edit.js" asp-append-version="true"></script>
 }

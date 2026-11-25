@@ -32,6 +32,11 @@ public class IndexModel(ShopDbContext db) : PageModel
     [BindProperty(SupportsGet = true)] public int? Brand { get; set; }
     [BindProperty(SupportsGet = true)] public string? Active { get; set; }
     [BindProperty(SupportsGet = true)] public string? O { get; set; }
+    /// <summary>Вкладка (этап 5, 25.11): low — мало осталось, out — нет в наличии, hidden — скрытые.</summary>
+    [BindProperty(SupportsGet = true)] public string? Show { get; set; }
+
+    public record Tab(string Value, string Label, int Count);
+    public IReadOnlyList<Tab> Tabs { get; private set; } = [];
 
     [BindProperty] public List<Row> Rows { get; set; } = [];
 
@@ -58,6 +63,21 @@ public class IndexModel(ShopDbContext db) : PageModel
             var active = Active == "1";
             query = query.Where(v => v.IsActive == active);
         }
+        const int low = OnlineShop.Web.Pages.Admin.IndexModel.LowStock;
+        Tabs =
+        [
+            new("", "Все", await query.CountAsync()),
+            new("low", "Мало осталось", await query.CountAsync(v => v.IsActive && v.StockQty - v.ReservedQty > 0 && v.StockQty - v.ReservedQty <= low)),
+            new("out", "Нет в наличии", await query.CountAsync(v => v.IsActive && v.StockQty - v.ReservedQty <= 0)),
+            new("hidden", "Скрытые", await query.CountAsync(v => !v.IsActive)),
+        ];
+        query = Show switch
+        {
+            "low" => query.Where(v => v.IsActive && v.StockQty - v.ReservedQty > 0 && v.StockQty - v.ReservedQty <= low),
+            "out" => query.Where(v => v.IsActive && v.StockQty - v.ReservedQty <= 0),
+            "hidden" => query.Where(v => !v.IsActive),
+            _ => query,
+        };
         query = O switch
         {
             "article" => query.OrderBy(v => v.Article),
@@ -102,7 +122,7 @@ public class IndexModel(ShopDbContext db) : PageModel
         {
             // Ничего не сохраняем, пока не исправлены все строки: иначе часть правок молча потерялась бы.
             TempData.Flash("Не сохранено, исправьте строки: " + string.Join("; ", errors) + ".", FlashLevel.Error);
-            return RedirectToPage(new { q = Q, brand = Brand, active = Active, o = O });
+            return RedirectToPage(new { q = Q, brand = Brand, active = Active, o = O, show = Show });
         }
 
         var variants = await db.ProductVariants.Where(v => parsed.Keys.Contains(v.Id)).ToListAsync();
@@ -112,6 +132,6 @@ public class IndexModel(ShopDbContext db) : PageModel
         }
         await db.SaveChangesAsync();
         TempData.Flash($"Сохранено строк: {variants.Count}.");
-        return RedirectToPage(new { q = Q, brand = Brand, active = Active, o = O, p = Request.Query["p"].ToString() });
+        return RedirectToPage(new { q = Q, brand = Brand, active = Active, o = O, show = Show, p = Request.Query["p"].ToString() });
     }
 }

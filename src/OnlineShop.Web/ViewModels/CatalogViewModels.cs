@@ -7,7 +7,7 @@ namespace OnlineShop.Web.ViewModels;
 public record CategoryTile(Category Category, int ProductCount, string? ImagePath, string? Render = null);
 
 /// <summary>Слайд первого экрана вместе с товаром из базы (цена, ссылка, наличие).</summary>
-public record HeroSlideView(OnlineShop.Web.Infrastructure.HeroSlide Slide, Product Product);
+public record HeroSlideView(ProductSlide Slide, Product Product);
 
 public class HomeViewModel
 {

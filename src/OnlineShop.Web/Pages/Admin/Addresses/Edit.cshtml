@@ -6,10 +6,10 @@
 }
 <div class="admin-head">
     <h1>Адрес покупателя @Model.Address.User.UserName</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" asp-page="Index">@Icons.Get("arrow-left", 18) К списку</a>
 </div>
 
-<form method="post" style="max-width:760px;">
+<form method="post" class="fe-form">
     <div class="admin-box">
         <h3>Получатель</h3>
         <div class="form-grid">
@@ -67,8 +67,8 @@
             <label asp-for="Input.Comment"></label>
             <textarea class="field" asp-for="Input.Comment" rows="3"></textarea>
         </div>
-        <label class="check">
-            <input asp-for="Input.IsDefault">
+        <label class="pe-switch-row fe-switch">
+            <span class="vl-switch"><input asp-for="Input.IsDefault"><span aria-hidden="true"></span></span>
             <span>Использовать по умолчанию</span>
         </label>
     </div>
@@ -79,5 +79,5 @@
 </form>
 
 <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Address.Id" style="margin-top:24px;" data-confirm="Удалить адрес покупателя?">
-    <button class="btn btn-danger btn-sm" type="submit">Удалить адрес</button>
+    <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить адрес</button>
 </form>

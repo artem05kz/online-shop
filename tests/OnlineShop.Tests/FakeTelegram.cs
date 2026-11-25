@@ -44,6 +44,45 @@ public sealed class FakeTelegramApi : ITelegramApi
         return Task.CompletedTask;
     }
 
+    public record Edit(long ChatId, long MessageId, string Markup);
+    private readonly List<Edit> _edits = [];
+    private readonly List<string> _answers = [];
+
+    public Task AnswerCallbackAsync(string callbackId, string text, CancellationToken ct)
+    {
+        lock (_answers)
+        {
+            _answers.Add(text);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task EditReplyMarkupAsync(long chatId, long messageId, object? replyMarkup, CancellationToken ct)
+    {
+        lock (_edits)
+        {
+            _edits.Add(new Edit(chatId, messageId, replyMarkup is null ? "" : JsonSerializer.Serialize(replyMarkup)));
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Человек нажимает кнопку под сообщением бота (callback_data).</summary>
+    public void Press(long chatId, string data, long messageId = 1) =>
+        _incoming.Writer.TryWrite(new TelegramUpdate(Interlocked.Increment(ref _updateId), null,
+            new TelegramCallbackQuery(Guid.NewGuid().ToString("N"), new TelegramUser(chatId, null, "Тест"),
+                new TelegramMessage(messageId, new TelegramChat(chatId, "private"), null, null, null), data)));
+
+    public IReadOnlyList<string> Answers
+    {
+        get
+        {
+            lock (_answers)
+            {
+                return _answers.ToList();
+            }
+        }
+    }
+
     /// <summary>Человек пишет боту в личный чат. userId по умолчанию совпадает с номером чата, как в Telegram.</summary>
     public void Write(long chatId, string? text = null, TelegramContact? contact = null, string chatType = "private") =>
         _incoming.Writer.TryWrite(new TelegramUpdate(Interlocked.Increment(ref _updateId),

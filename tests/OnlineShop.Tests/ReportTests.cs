@@ -63,6 +63,11 @@ public class ReportTests(TempShopFactory factory) : IClassFixture<TempShopFactor
         Assert.Contains("<div class=\"v\">1</div><div class=\"l\">отменено</div>", page);
         Assert.Contains("Шампунь отчётный", page);
         Assert.Contains("Выручка по дням", page);
+        // Сравнение с прошлым периодом и разбивки (редизайн 24.11).
+        Assert.Contains("сравниваем с", page);
+        Assert.Contains("раньше не было", page);
+        Assert.Contains("Доставка по Актау", page);
+        Assert.Contains("Шампуни", page);
     }
 
     [Fact]
@@ -82,7 +87,14 @@ public class ReportTests(TempShopFactory factory) : IClassFixture<TempShopFactor
         var response = await (await Manager()).GetAsync($"/admin/reports?handler=Excel&from={today}&to={today}");
         Assert.Equal("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", response.Content.Headers.ContentType!.MediaType);
 
-        using var book = new XLWorkbook(await response.Content.ReadAsStreamAsync());
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        // Без пустого формата числа, на котором спотыкается старый Excel.
+        using (var zip = new System.IO.Compression.ZipArchive(new MemoryStream(bytes)))
+        using (var styles = new StreamReader(zip.GetEntry("xl/styles.xml")!.Open()))
+        {
+            Assert.DoesNotContain("formatCode=\"\"", styles.ReadToEnd());
+        }
+        using var book = new XLWorkbook(new MemoryStream(bytes));
         var orders = book.Worksheet("Заказы");
         Assert.Equal("Номер", orders.Cell(1, 1).GetString());
         Assert.Equal(3, orders.RowsUsed().Count() - 1);

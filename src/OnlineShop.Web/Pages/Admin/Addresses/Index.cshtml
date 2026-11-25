@@ -4,31 +4,32 @@
     ViewData["Title"] = "Адреса покупателей";
     ViewData["AdminSection"] = "addresses";
 }
-<div class="admin-head">
-    <h1>Адреса покупателей</h1>
-</div>
-
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Имя, телефон или логин">
-    <button class="btn btn-ghost" type="submit">Найти</button>
+<div class="admin-head"><h1>Адреса покупателей</h1></div>
+<form class="pl-filters" method="get" role="search">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Имя, телефон или логин" aria-label="Поиск адреса">
+    <button class="btn btn-ghost" type="submit">@Icons.Get("search", 18) Найти</button>
 </form>
 
-<div class="admin-table-wrap">
-    <table class="admin-table">
-        <thead><tr><th>Покупатель</th><th>Имя получателя</th><th>Телефон</th><th>Город</th><th>Улица</th><th>По умолчанию</th></tr></thead>
-        <tbody>
-            @foreach (var row in Model.List.Items)
-            {
-                <tr>
-                    <td>@row.UserName</td>
-                    <td><a asp-page="Edit" asp-route-id="@row.Id">@row.FullName</a></td>
-                    <td>@row.Phone</td>
-                    <td>@row.City</td>
-                    <td>@row.Street</td>
-                    <td>@(row.IsDefault ? "да" : "")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+@if (Model.List.Items.Count == 0)
+{
+    <div class="admin-box o-empty"><p>Адресов не нашлось.</p></div>
+}
+else
+{
+    <ul class="o-list">
+        @foreach (var row in Model.List.Items)
+        {
+            <li class="ad-row ad-address">
+                <a class="o-open" asp-page="Edit" asp-route-id="@row.Id" aria-label="Открыть адрес: @row.FullName"></a>
+                <span class="ct-ico">@Icons.Get("pin", 20)</span>
+                <div class="ct-main">
+                    <b class="ct-title">@row.City@(string.IsNullOrEmpty(row.Street) ? "" : ", " + row.Street)</b>
+                    <small>Получатель: @row.FullName · @row.Phone</small>
+                </div>
+                <span class="ad-owner">@Icons.Get("user", 15) @row.UserName</span>
+                <span class="ad-role@(row.IsDefault ? " is-default" : " is-none")">@(row.IsDefault ? "основной" : "")</span>
+            </li>
+        }
+    </ul>
+}
 <partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

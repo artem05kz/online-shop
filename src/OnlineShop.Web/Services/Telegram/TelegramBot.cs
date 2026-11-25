@@ -58,6 +58,12 @@ public sealed class TelegramBot(
         try
         {
             using var scope = scopes.CreateScope();
+            if (update.CallbackQuery is { } query)
+            {
+                // Кнопки «Подтвердить / Отменить» под записью на мойку.
+                await scope.ServiceProvider.GetRequiredService<WashTelegramActions>().HandleAsync(query, ct);
+                return;
+            }
             await scope.ServiceProvider.GetRequiredService<TelegramLinker>().HandleAsync(update, ct);
         }
         catch (Exception e) when (!ct.IsCancellationRequested)

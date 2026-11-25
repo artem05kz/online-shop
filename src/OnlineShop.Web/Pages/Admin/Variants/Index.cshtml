@@ -3,82 +3,140 @@
 @{
     ViewData["Title"] = "Цены и остатки";
     ViewData["AdminSection"] = "variants";
+    const int low = OnlineShop.Web.Pages.Admin.IndexModel.LowStock;
+    string Tab(string value) => QueryStrings.With(Request.Query, "show", value);
 }
+@*
+    Цены и остатки (этап 5 админки, 25.11). Вкладки: «Мало осталось» (1–3 шт.), «Нет в наличии», «Скрытые».
+    Фасовки сгруппированы по товару: фото и название один раз, ниже строки фасовок. Остаток — с кнопками − и +,
+    рядом отметка «нет» (красная), «мало» (жёлтая) и сколько в резерве. Изменённая строка подсвечивается жёлтым,
+    «Сохранить» — в плашке внизу экрана.
+*@
 <div class="admin-head">
     <h1>Цены и остатки</h1>
-    <a class="btn btn-ghost" href="/admin/import/stock">@Icons.Get("refresh") Обновить остатки из 1С</a>
+    <a class="btn btn-ghost" href="/admin/products">@Icons.Get("package", 18) Товары</a>
+    <a class="btn" href="/admin/import/stock">@Icons.Get("refresh", 18) Обновить остатки из 1С</a>
 </div>
 
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Артикул или название товара">
-    <select class="select" name="brand" data-autosubmit>
+<div class="o-bar pl-bar">
+    <nav class="o-tabs" aria-label="Фасовки">
+        @foreach (var t in Model.Tabs)
+        {
+            <a class="o-tab@((Model.Show ?? "") == t.Value ? " is-on" : "")@(t.Value is "low" or "out" && t.Count > 0 ? " is-hot" : "")" href="@Tab(t.Value)">@t.Label <span>@t.Count</span></a>
+        }
+    </nav>
+</div>
+<form class="pl-filters vl-filters" method="get" role="search">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Артикул или название товара" aria-label="Поиск">
+    <select class="select" name="brand" data-autosubmit aria-label="Бренд">
         <option value="">Все бренды</option>
         @foreach (var brand in Model.Brands)
         {
             <option value="@brand.Id" selected="@(Model.Brand == brand.Id)">@brand.Name</option>
         }
     </select>
-    <select class="select" name="active" data-autosubmit>
-        <option value="">Показ: все</option>
-        <option value="1" selected="@(Model.Active == "1")">Показываются</option>
-        <option value="0" selected="@(Model.Active == "0")">Скрыты</option>
-    </select>
-    @if (!string.IsNullOrEmpty(Model.O))
-    {
-        <input type="hidden" name="o" value="@Model.O">
-    }
-    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
+    @if (!string.IsNullOrEmpty(Model.Show)) { <input type="hidden" name="show" value="@Model.Show"> }
+    @if (!string.IsNullOrEmpty(Model.O)) { <input type="hidden" name="o" value="@Model.O"> }
+    <button class="btn btn-ghost" type="submit">@Icons.Get("search", 18) Найти</button>
 </form>
+<p class="vl-hint">@Icons.Get("info", 16) <span>«В резерве» — уже заказано на сайте, заказ ещё в работе. Покупатели могут взять остаток без резерва. Резерв снимается сам, когда заказ выполнен или отменён.</span></p>
 
-<form id="changelist-form" method="post" asp-page-handler="SaveList"
-      asp-route-q="@Model.Q" asp-route-brand="@Model.Brand" asp-route-active="@Model.Active" asp-route-o="@Model.O" asp-route-p="@Request.Query["p"]">
-    <div class="admin-table-wrap">
-        <p class="hint" style="margin:0 0 10px;">«В резерве»: сколько штук заказано на сайте в заказах, которые ещё не выполнены. На сайте можно заказать остаток минус резерв. Когда заказ выполнен или отменён, резерв снимается сам: выполненный заказ к этому времени проведите в 1С.</p>
-    <table class="admin-table" id="result_list">
-            <thead>
-                <tr>
-                    <th>@AdminList.SortHeader(Request, "product", "Товар")</th>
-                    <th>Фасовка</th>
-                    <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
-                    <th>@AdminList.SortHeader(Request, "price", "Розничная цена")</th>
-                    <th>@AdminList.SortHeader(Request, "stock", "Остаток")</th>
-                    <th title="Заказано на сайте, заказ ещё не выполнен">В резерве</th>
-                    <th>На сайте</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Rows.Count; i++)
-                {
-                    var row = Model.Rows[i];
+@if (Model.Rows.Count == 0)
+{
+    <div class="admin-box o-empty"><p>@(Model.Show is "low" or "out" ? "Здесь пусто — всего хватает." : "Ничего не нашлось. Проверьте артикул или название.")</p></div>
+}
+else
+{
+    <form id="changelist-form" method="post" asp-page-handler="SaveList"
+          asp-route-q="@Model.Q" asp-route-brand="@Model.Brand" asp-route-active="@Model.Active" asp-route-o="@Model.O" asp-route-show="@Model.Show" asp-route-p="@Request.Query["p"]">
+        <div class="vl-wrap">
+            <table class="vl-table" id="result_list">
+                <thead>
                     <tr>
-                        <td>
-                            <input type="hidden" asp-for="Rows[i].Id">
-                            <input type="hidden" asp-for="Rows[i].Article">
-                            <span class="cell-product">
-                                @if (row.ImagePath is not null)
-                                {
-                                    <img class="thumb" src="@Media.Thumb(row.ImagePath, Media.Small)" alt="" loading="lazy">
-                                }
-                                <a href="/admin/products/@row.ProductId">@row.ProductName</a>
-                            </span>
-                        </td>
-                        <td><strong>@row.PackLabel</strong></td>
-                        <td><a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a></td>
-                        <td><input class="field small" asp-for="Rows[i].Price" inputmode="decimal"></td>
-                        <td><input class="field tiny" asp-for="Rows[i].StockQty" inputmode="numeric"></td>
-                        <td class="num">@(Model.Rows[i].ReservedQty > 0 ? Model.Rows[i].ReservedQty.ToString() : "")</td>
-                        <td><input asp-for="Rows[i].IsActive"></td>
+                        <th>Фасовка</th>
+                        <th>@AdminList.SortHeader(Request, "article", "Артикул")</th>
+                        <th>@AdminList.SortHeader(Request, "price", "Цена, ₸")</th>
+                        <th>@AdminList.SortHeader(Request, "stock", "Остаток")</th>
+                        <th>Можно купить</th>
+                        <th>На сайте</th>
                     </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-    @if (Model.Rows.Count > 0)
-    {
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < Model.Rows.Count; i++)
+                    {
+                        var row = Model.Rows[i];
+                        var stock = int.TryParse(row.StockQty, out var s) ? s : 0;
+                        var free = Math.Max(0, stock - row.ReservedQty);
+                        if (i == 0 || Model.Rows[i - 1].ProductId != row.ProductId)
+                        {
+                            <tr class="vl-group">
+                                <th colspan="6" scope="rowgroup">
+                                    <a href="/admin/products/@row.ProductId">
+                                        @if (row.ImagePath is not null)
+                                        {
+                                            <img src="@Media.Thumb(row.ImagePath, Media.Small)" alt="" loading="lazy">
+                                        }
+                                        else
+                                        {
+                                            <span class="vl-noimg"></span>
+                                        }
+                                        <span>@row.ProductName</span>
+                                    </a>
+                                </th>
+                            </tr>
+                        }
+                        <tr class="vl-row@(row.IsActive ? "" : " is-off")">
+                            <td class="vl-pack">
+                                <input type="hidden" asp-for="Rows[i].Id">
+                                <input type="hidden" asp-for="Rows[i].Article">
+                                <b>@(string.IsNullOrEmpty(row.PackLabel) ? "—" : row.PackLabel)</b>
+                            </td>
+                            <td class="vl-art"><a asp-page="Edit" asp-route-id="@row.Id">@row.Article</a></td>
+                            <td><input class="field vl-price" asp-for="Rows[i].Price" inputmode="decimal" aria-label="Цена: @row.ProductName @row.PackLabel"></td>
+                            <td>
+                                <span class="qty-step vl-step">
+                                    <button type="button" data-step="-1" aria-label="Меньше">−</button>
+                                    <input asp-for="Rows[i].StockQty" type="number" min="0" inputmode="numeric" aria-label="Остаток: @row.ProductName @row.PackLabel">
+                                    <button type="button" data-step="1" aria-label="Больше">+</button>
+                                </span>
+                            </td>
+                            <td class="vl-free">
+                                @if (!row.IsActive)
+                                {
+                                    <span class="vl-tag">скрыта</span>
+                                }
+                                else if (free == 0)
+                                {
+                                    <span class="vl-tag is-out">нет в наличии</span>
+                                }
+                                else if (free <= low)
+                                {
+                                    <span class="vl-tag is-low">мало: @free шт.</span>
+                                }
+                                else
+                                {
+                                    <span class="vl-tag is-ok">@free шт.</span>
+                                }
+                                @if (row.ReservedQty > 0)
+                                {
+                                    <small>в резерве @row.ReservedQty</small>
+                                }
+                            </td>
+                            <td class="vl-on">
+                                <label class="vl-switch">
+                                    <input asp-for="Rows[i].IsActive" aria-label="Показывать на сайте: @row.ProductName @row.PackLabel">
+                                    <span aria-hidden="true"></span>
+                                </label>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
         <div class="savebar">
             <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
-            <span class="note">Изменённые строки подсвечиваются зелёным.</span>
+            <span class="note">Изменённые строки подсвечиваются жёлтым. Цену можно писать с запятой.</span>
         </div>
-    }
-</form>
+    </form>
+}
 <partial name="_AdminPager" model="Model.Pager" />

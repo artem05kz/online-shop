@@ -7,6 +7,18 @@
 (function () {
     'use strict';
 
+    // Кнопки «−» и «+» рядом с полем количества (.qty-step): меняют число и сообщают об этом форме,
+    // чтобы строка подсветилась как несохранённая.
+    document.addEventListener('click', function (e) {
+        var button = e.target.closest('.qty-step [data-step]');
+        if (!button) return;
+        var input = button.parentNode.querySelector('input');
+        var min = input.min === '' ? 1 : Number(input.min);
+        var value = (Number(input.value) || 0) + Number(button.dataset.step);
+        input.value = Math.max(min, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
     document.addEventListener('DOMContentLoaded', function () {
         var form = document.getElementById('changelist-form');
         if (!form) return;

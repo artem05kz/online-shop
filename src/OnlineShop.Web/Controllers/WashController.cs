@@ -108,6 +108,10 @@ public class WashController(ShopDbContext db, WashSlots slots, OrderAlerts alert
             Car = form.Car?.Trim() ?? "", Comment = form.Comment?.Trim() ?? "",
             CreatedAt = DateTime.UtcNow,
             UserId = User.Identity?.IsAuthenticated == true ? User.ShopUserId() : null,
+            Source = WashSources.Site,
+            Price = service.PriceFrom,
+            // Место назначается сразу, администратор может поменять его в панели.
+            Box = await slots.FreeBoxAsync(wash, startsAt, service.Minutes),
         };
         db.WashBookings.Add(booking);
         await db.SaveChangesAsync();

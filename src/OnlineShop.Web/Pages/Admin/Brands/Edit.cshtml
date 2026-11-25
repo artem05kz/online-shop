@@ -16,8 +16,8 @@
             <input class="field" asp-for="Input.Name">
             <span class="errorlist" asp-validation-for="Input.Name"></span>
         </div>
-        <label class="check" style="margin-bottom:6px;">
-            <input asp-for="Input.IsActive">
+        <label class="pe-switch-row fe-switch">
+            <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
             <span>Показывать на сайте</span>
         </label>
         <details style="margin-top:14px;">
@@ -66,6 +66,6 @@
 
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:28px;"
           data-confirm="Удалить бренд вместе с его категориями?">
-        <button class="btn btn-danger btn-sm" type="submit">@Icons.Get("trash", 18) Удалить бренд</button>
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить бренд</button>
     </form>
 }
