@@ -6,10 +6,10 @@
 }
 <div class="admin-head">
     <h1>@(Model.Id is null ? "Новая точка" : Model.Input.Address)</h1>
-    <a class="btn btn-ghost" asp-page="Index">К списку</a>
+    <a class="btn btn-ghost" asp-page="Index">@Icons.Get("arrow-left", 18) К списку</a>
 </div>
 
-<form method="post" style="max-width:760px;">
+<form method="post" class="fe-form">
     <div class="admin-box">
         <h3>Адрес точки</h3>
         <p class="hint">Адрес пишите так, как его должен увидеть покупатель, одной строкой.</p>
@@ -65,8 +65,8 @@
             <input class="field" asp-for="Input.SortOrder" type="number" min="0">
             <span class="help">Точки выводятся по этому числу от меньшего к большему.</span>
         </div>
-        <label class="check">
-            <input asp-for="Input.IsActive">
+        <label class="pe-switch-row fe-switch">
+            <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
             <span>Показывать на сайте</span>
         </label>
     </div>
@@ -100,7 +100,7 @@
 @if (Model.Id is not null)
 {
     <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" style="margin-top:24px;" data-confirm="Удалить эту точку?">
-        <button class="btn btn-danger btn-sm" type="submit">Удалить точку</button>
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить точку</button>
     </form>
 }
 

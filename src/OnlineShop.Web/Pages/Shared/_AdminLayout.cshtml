@@ -6,6 +6,10 @@
     var flash = TempData.TakeFlash();
     var newOrders = await Db.Orders.CountAsync(o => o.Status == OrderStatus.New);
     var pendingReviews = await Db.Reviews.CountAsync(r => r.Status == ReviewStatus.Pending);
+    // Записи на мойку, которые ждут подтверждения (с сегодняшнего дня).
+    var washDay = DateOnly.FromDateTime(WashSlots.Now()).ToDateTime(TimeOnly.MinValue);
+    var washWaiting = await Db.WashBookings.CountAsync(b => b.Status == WashBookingStatus.New && b.StartsAt >= washDay);
+    var userName = User.Identity?.Name ?? "";
     string Active(string name) => section == name ? "active" : "";
 }
 <!DOCTYPE html>
@@ -15,80 +19,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@(title is null ? "Управление магазином" : $"{title} | Управление магазином")</title>
     <meta name="robots" content="noindex">
+    <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="~/css/style.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true">
     @await RenderSectionAsync("Head", required: false)
 </head>
-<body class="admin">
-<header class="admin-top">
-    <div class="inner">
-        <a class="title" href="/admin">Управление магазином GRASS</a>
-        <span class="spacer"></span>
-        <a href="/" target="_blank" rel="noopener" title="Открыть сайт">@Icons.Get("external", 18) <span class="lbl">Открыть сайт</span></a>
-        <span title="Вы вошли как">@Icons.Get("user", 18) <span class="lbl">@User.Identity?.Name</span></span>
-        <form action="@ShopUrls.Logout" method="post">
-            @Html.AntiForgeryToken()
-            <button type="submit" title="Выйти">@Icons.Get("logout", 18) <span class="lbl">Выйти</span></button>
-        </form>
-    </div>
-</header>
-
+<body class="admin" data-live-reload="@(ViewData["LiveReload"] is true ? "on" : "off")">
+@*
+    Панель управления (редизайн 24.11): чёрное меню во всю высоту слева — солнце IFOAM, разделы с числами
+    (новые заказы, записи на мойку, отзывы), внизу кто вошёл, «Открыть сайт», «Выйти». Справа сверху строка
+    поиска заказа по номеру, телефону или имени — с любой страницы панели.
+*@
 <div class="admin-shell">
-    @* На телефоне меню свёрнуто в одну кнопку, на ней видно, где вы сейчас. *@
-    <button type="button" class="admin-menu-btn" id="admin-menu-btn" aria-expanded="false" aria-controls="admin-nav">
-        @Icons.Get("menu") <span>Меню</span><span class="where">@title</span>
-        @if (newOrders > 0)
-        {
-            <span class="badge" style="margin-left:auto; background:#e8590c; color:#fff; border-radius:20px; padding:0 9px; font-size:.85rem;">новых заказов: @newOrders</span>
-        }
-    </button>
-    <nav class="admin-nav" id="admin-nav" aria-label="Разделы панели">
-        <a class="@Active("home")" href="/admin">@Icons.Get("dashboard") Главная</a>
-        <a class="@Active("orders")" href="/admin/orders">@Icons.Get("orders") Заказы
+    <aside class="admin-side">
+        <a class="admin-brand" href="/admin">
+            <img src="~/img/logo-sun.png" width="40" height="40" alt="">
+            <span><b>IFOAM</b><small>Панель управления</small></span>
+        </a>
+        @* На телефоне меню свёрнуто в одну кнопку, на ней видно, где вы сейчас. *@
+        <button type="button" class="admin-menu-btn" id="admin-menu-btn" aria-expanded="false" aria-controls="admin-nav">
+            @Icons.Get("menu") <span>Меню</span><span class="where">@title</span>
             @if (newOrders > 0)
             {
-                <span class="badge" title="Новых заказов">@newOrders</span>
+                <span class="a-count">новых заказов: @newOrders</span>
             }
-        </a>
-        <a class="@Active("reports")" href="/admin/reports">@Icons.Get("chart") Отчёты</a>
-        <h4>Каталог</h4>
-        <a class="@Active("products")" href="/admin/products">@Icons.Get("package") Товары</a>
-        <a class="@Active("variants")" href="/admin/variants">@Icons.Get("tag") Цены и остатки</a>
-        <a class="@Active("categories")" href="/admin/categories">@Icons.Get("layers") Бренды и категории</a>
-        <a class="@Active("banners")" href="/admin/banners">@Icons.Get("image") Баннеры</a>
-        <a class="@Active("reviews")" href="/admin/reviews">@Icons.Get("star") Отзывы
-            @if (pendingReviews > 0)
-            {
-                <span class="badge" title="Ждут проверки">@pendingReviews</span>
-            }
-        </a>
-        <h4>Из 1С</h4>
-        <a class="@Active("import")" href="/admin/import">@Icons.Get("upload") Загрузить товары</a>
-        <a class="@Active("import-stock")" href="/admin/import/stock">@Icons.Get("refresh") Обновить остатки</a>
-        <h4>Сайт</h4>
-        <a class="@Active("stores")" href="/admin/stores">@Icons.Get("pin") Адреса магазинов</a>
-        <a class="@Active("contacts")" href="/admin/contacts">@Icons.Get("phone") Контакты</a>
-        <a class="@Active("users")" href="/admin/users">@Icons.Get("users") Покупатели</a>
-        <a class="@Active("addresses")" href="/admin/addresses">@Icons.Get("truck") Адреса доставки</a>
-        <a class="@Active("telegram")" href="/admin/telegram">@Icons.Get("send") Уведомления в Telegram</a>
-    </nav>
+        </button>
+        <nav class="admin-nav" id="admin-nav" aria-label="Разделы панели">
+            <a class="@Active("home")" href="/admin">@Icons.Get("dashboard") <span>Главная</span></a>
+            <a class="@Active("orders")" href="/admin/orders">@Icons.Get("orders") <span>Заказы</span>
+                <span class="a-count" title="Новых заказов" data-live="newOrders" @(newOrders > 0 ? "" : "hidden")>@newOrders</span>
+            </a>
+            <a class="@Active("wash")" href="/admin/wash">@Icons.Get("car") <span>Записи на мойку</span>
+                <span class="a-count" title="Ждут подтверждения" data-live="washWaiting" @(washWaiting > 0 ? "" : "hidden")>@washWaiting</span>
+            </a>
+            <a class="@Active("reports")" href="/admin/reports">@Icons.Get("chart") <span>Отчёты</span></a>
+            <h4>Каталог</h4>
+            <a class="@Active("products")" href="/admin/products">@Icons.Get("package") <span>Товары</span></a>
+            <a class="@Active("variants")" href="/admin/variants">@Icons.Get("tag") <span>Цены и остатки</span></a>
+            <a class="@Active("categories")" href="/admin/categories">@Icons.Get("layers") <span>Бренды и категории</span></a>
+            <a class="@Active("banners")" href="/admin/banners">@Icons.Get("image") <span>Баннеры</span></a>
+            <a class="@Active("reviews")" href="/admin/reviews">@Icons.Get("star") <span>Отзывы</span>
+                <span class="a-count" title="Ждут проверки" data-live="pendingReviews" @(pendingReviews > 0 ? "" : "hidden")>@pendingReviews</span>
+            </a>
+            <h4>Из 1С</h4>
+            <a class="@Active("import")" href="/admin/import">@Icons.Get("upload") <span>Загрузить товары</span></a>
+            <a class="@Active("import-stock")" href="/admin/import/stock">@Icons.Get("refresh") <span>Обновить остатки</span></a>
+            <h4>Сайт</h4>
+            <a class="@Active("stores")" href="/admin/stores">@Icons.Get("pin") <span>Адреса магазинов</span></a>
+            <a class="@Active("contacts")" href="/admin/contacts">@Icons.Get("phone") <span>Контакты</span></a>
+            <a class="@Active("users")" href="/admin/users">@Icons.Get("users") <span>Покупатели</span></a>
+            <a class="@Active("addresses")" href="/admin/addresses">@Icons.Get("truck") <span>Адреса доставки</span></a>
+            <a class="@Active("telegram")" href="/admin/telegram">@Icons.Get("send") <span>Уведомления в Telegram</span></a>
+        </nav>
+        <div class="admin-me">
+            <span class="admin-avatar" aria-hidden="true">@(userName.Length > 0 ? char.ToUpper(userName[0]) : '?')</span>
+            <span class="admin-me-name" title="Вы вошли как">@userName</span>
+            <form action="@ShopUrls.Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" title="Выйти">@Icons.Get("logout", 18)<span class="visually-hidden">Выйти</span></button>
+            </form>
+        </div>
+    </aside>
 
-    <main class="admin-main">
-        @if (flash.Count > 0)
-        {
-            <ul class="messages" style="margin-top:0;">
-                @foreach (var message in flash)
-                {
-                    <li class="message @message.CssClass" style="font-size:1.05rem;">@message.Text</li>
-                }
-            </ul>
-        }
-        @RenderBody()
-    </main>
+    <div class="admin-body">
+        <header class="admin-top">
+            <form class="admin-search" action="/admin/orders" method="get" role="search">
+                @Icons.Get("search", 18)
+                <input type="search" name="q" placeholder="Найти заказ: номер, телефон или имя" aria-label="Найти заказ">
+            </form>
+            <button type="button" class="admin-sound" id="admin-sound" aria-pressed="true" title="Звук при новом заказе или записи">
+                <i aria-hidden="true"></i><span class="on">Звук включён</span><span class="off">Звук выключен</span>
+            </button>
+            <a class="admin-site" href="/" target="_blank" rel="noopener">@Icons.Get("external", 16) Открыть сайт</a>
+        </header>
+
+        <main class="admin-main">
+            @* Ошибки и подсказки — наверху страницы; «Готово / Отмечено» — плашкой внизу экрана (25.11), страница не прыгает. *@
+            @if (flash.Any(m => m.Level != FlashLevel.Success))
+            {
+                <ul class="messages admin-messages">
+                    @foreach (var message in flash.Where(m => m.Level != FlashLevel.Success))
+                    {
+                        <li class="message @message.CssClass">@message.Text</li>
+                    }
+                </ul>
+            }
+            @if (flash.Any(m => m.Level == FlashLevel.Success))
+            {
+                <div class="admin-flash" role="status">
+                    <span class="admin-flash-mark" aria-hidden="true">✓</span>
+                    <span class="admin-flash-text">@string.Join(" ", flash.Where(m => m.Level == FlashLevel.Success).Select(m => m.Text))</span>
+                    <button type="button" class="admin-flash-close" aria-label="Закрыть">×</button>
+                </div>
+            }
+            @RenderBody()
+        </main>
+    </div>
 </div>
 
 <script src="~/js/forms.js" asp-append-version="true"></script>
+<script src="~/js/admin_keep_scroll.js" asp-append-version="true"></script>
+<script src="~/js/admin_file_drop.js" asp-append-version="true"></script>
 <script src="~/js/admin_edit_highlight.js" asp-append-version="true"></script>
+<div class="live-toasts" id="live-toasts" aria-live="polite"></div>
+<script src="~/js/admin_live.js" asp-append-version="true"></script>
 <script nonce="@Context.CspNonce()">
 (function () {
     var button = document.getElementById('admin-menu-btn');

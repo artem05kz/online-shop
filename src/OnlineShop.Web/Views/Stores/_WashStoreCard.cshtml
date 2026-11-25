@@ -1,0 +1,38 @@
+@model CarWash
+@* Карточка мойки на странице «Адреса» (24.11): статус по часам работы, адрес, часы, телефон, «Записаться» и «в 2ГИС». *@
+@{
+    var wash = Model;
+    var now = Format.ToLocal(DateTime.UtcNow);
+    var nowTime = TimeOnly.FromDateTime(now);
+    var open = nowTime >= wash.Opens && nowTime < wash.Closes;
+    var washStatus = open ? $"Открыто до {wash.Closes:H:mm}" : nowTime < wash.Opens ? $"Закрыто, откроется в {wash.Opens:H:mm}" : $"Закрыто, откроется завтра в {wash.Opens:H:mm}";
+}
+<article class="st-card st-wash">
+    <div class="st-top">
+        <span class="st-status@(open ? " is-open" : "")"><i aria-hidden="true"></i>@washStatus</span>
+        <span class="visit-badge">Запись онлайн</span>
+        <span class="st-kind">Автомойка</span>
+    </div>
+    <h2 class="st-address">@wash.Address</h2>
+    <p class="st-city">@wash.Name · моем средствами IFOAM</p>
+    <ul class="st-rows">
+        <li>
+            <span class="st-ico">@Icons.Get("clock", 18)</span>
+            <span><span class="st-line">Ежедневно @wash.Opens.ToString("H:mm")–@wash.Closes.ToString("H:mm")</span></span>
+        </li>
+        @if (wash.Phone.Length > 0)
+        {
+            <li>
+                <span class="st-ico">@Icons.Get("phone", 18)</span>
+                <a class="st-line" href="tel:+@wash.Phone">@PhoneNumbers.Display(wash.Phone)</a>
+            </li>
+        }
+    </ul>
+    <div class="st-actions">
+        <a class="btn st-route" href="/wash">@Icons.Get("car", 18) Записаться</a>
+        @if (wash.MapUrl.Length > 0)
+        {
+            <a class="st-btn" href="@wash.MapUrl" target="_blank" rel="noopener">@Icons.Get("map", 18) в 2ГИС</a>
+        }
+    </div>
+</article>

@@ -2,28 +2,35 @@
 @{
     ViewData["Title"] = "История заказов";
     ViewData["AccountTab"] = "orders";
-    const int PreviewItems = 3;
+    const int PreviewItems = 4;
 }
-<h1>Личный кабинет</h1>
+@*
+    Мои заказы: карточка на заказ — номер, дата, статус, полоса прогресса, фото товаров, сумма,
+    «Подробнее» и «Повторить заказ». Новые сверху.
+*@
+<div class="acc">
 <partial name="_AccountTabs" />
+<div class="acc-main">
+<h1 class="acc-title">Мои заказы</h1>
 
 @if (Model.Count == 0)
 {
-    <div class="empty">
-        <div class="empty-ico">@Icons.Get("package", 44)</div>
+    <div class="co-card acc-empty">
+        <span class="acc-empty-ico">@Icons.Get("package", 30)</span>
         <h2>Заказов пока нет</h2>
         <p>Здесь появятся ваши заказы и их статусы.</p>
-        <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></p>
+        <a class="btn" asp-controller="Catalog" asp-action="Home">Перейти к товарам</a>
     </div>
 }
 
 @foreach (var order in Model)
 {
-    <div class="panel order-card">
+    var items = order.Items.OrderBy(i => i.Id).ToList();
+    <article class="co-card oh-card">
         <div class="order-head">
             <div>
-                <div class="o-num">Заказ №@order.Id</div>
-                <div class="o-date">от @Format.DateTimeText(order.CreatedAt)</div>
+                <a class="o-num" asp-action="Detail" asp-route-id="@order.Id">Заказ №@order.Id</a>
+                <div class="o-date">@Format.DateTimeText(order.CreatedAt) · @(order.IsPickup ? "самовывоз" : "доставка")</div>
             </div>
             <span class="status status-@order.Status.ToCode()">@order.StatusText(order.Status)</span>
         </div>
@@ -39,28 +46,35 @@
                 }
             </div>
         }
-        @foreach (var item in order.Items.OrderBy(i => i.Id).Take(PreviewItems))
-        {
-            <div class="summary-row">
-                <span>@item.ProductName
-                    <span class="muted" style="font-size:.82rem;">@item.PackLabel · @item.Quantity шт.</span>
-                </span>
-                <span style="white-space:nowrap;">@Format.Money(item.Subtotal)</span>
+        <div class="oh-body">
+            <ul class="oh-thumbs">
+                @foreach (var item in items.Take(PreviewItems))
+                {
+                    <li title="@item.ProductName@(string.IsNullOrEmpty(item.PackLabel) ? "" : ", " + item.PackLabel) — @item.Quantity шт.">
+                        <img src="@Media.PhotoUrl(item.Variant.Product, Media.Small)" alt="">
+                        @if (item.Quantity > 1)
+                        {
+                            <span>×@item.Quantity</span>
+                        }
+                    </li>
+                }
+                @if (items.Count > PreviewItems)
+                {
+                    <li class="oh-more" title="и ещё @(items.Count - PreviewItems) поз.">+@(items.Count - PreviewItems)</li>
+                }
+            </ul>
+            <div class="oh-total">
+                <span>@order.TotalQuantity шт.</span>
+                <strong>@Format.Money(order.Total)</strong>
             </div>
-        }
-        @if (order.Items.Count > PreviewItems)
-        {
-            <div class="summary-row muted"><span>и ещё @(order.Items.Count - PreviewItems) поз.</span><span></span></div>
-        }
-        <div class="summary-row total">
-            <span>Итого (@order.TotalQuantity шт.)</span>
-            <span>@Format.Money(order.Total)</span>
         </div>
-        <div class="form-actions">
-            <a class="btn btn-outline btn-sm" asp-action="Detail" asp-route-id="@order.Id">Подробнее о заказе</a>
+        <div class="oh-actions">
+            <a class="st-btn" asp-action="Detail" asp-route-id="@order.Id">Подробнее о заказе</a>
             <form asp-action="Repeat" asp-route-id="@order.Id" method="post">
-                <button class="btn btn-sm" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
+                <button class="btn oh-repeat" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
             </form>
         </div>
-    </div>
+    </article>
 }
+</div>
+</div>

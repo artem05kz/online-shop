@@ -16,7 +16,7 @@ public sealed class EmailOptions
     public int Port { get; init; } = 465;
     public string User { get; init; } = "";
     public string Password { get; init; } = "";
-    public string From { get; init; } = "GRASS Актау <Grassaktau@mail.ru>";
+    public string From { get; init; } = "IFOAM Актау <Grassaktau@mail.ru>";
 
     public bool IsConfigured => Host.Length > 0;
 
@@ -29,7 +29,7 @@ public sealed class EmailOptions
             Port = section.GetValue("Port", 465),
             User = section["User"]?.Trim() ?? "",
             Password = section["Password"] ?? "",
-            From = section["From"] is { Length: > 0 } from ? from.Trim() : "GRASS Актау <Grassaktau@mail.ru>",
+            From = section["From"] is { Length: > 0 } from ? from.Trim() : "IFOAM Актау <Grassaktau@mail.ru>",
         };
     }
 }

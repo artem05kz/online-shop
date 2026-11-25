@@ -79,7 +79,7 @@ public class IndexModel(ShopDbContext db, TelegramOptions options, TelegramBot b
             return RedirectToPage();
         }
         var report = await notifier.SendToAllAsync(
-            "<b>Пробное сообщение</b>\nТак будут приходить новые заказы магазина GRASS.", ct);
+            "<b>Пробное сообщение</b>\nТак будут приходить новые заказы магазина IFOAM.", ct);
         if (report.Sent + report.Failed + report.Unlinked == 0)
         {
             TempData.Flash("Отправлять некуда: никто из списка ещё не подключил телефон.", FlashLevel.Error);

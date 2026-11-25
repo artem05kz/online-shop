@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
@@ -11,9 +10,12 @@ using OnlineShop.Web.ViewModels;
 
 namespace OnlineShop.Web.Controllers;
 
-[Authorize]
+/// <summary>
+/// Оформление заказа. Входить не нужно: гостю хватает имени и телефона, менеджер звонит сам.
+/// Если покупатель вошёл, заказ попадает в его историю и подставляются сохранённые адреса.
+/// </summary>
 [Route("/orders/checkout")]
-public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts, AccountMail mail, StockReservations reservations) : Controller
+public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts, AccountMail mail, StockReservations reservations, GuestOrders guestOrders) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -25,10 +27,6 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         }
 
         var userId = UserId();
-        if (await NeedsEmail(userId) is { } redirect)
-        {
-            return redirect;
-        }
         var addresses = await UserAddresses(userId);
         var form = new CheckoutForm();
 
@@ -43,8 +41,10 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         }
         else
         {
-            var user = await db.Users.FindAsync(userId);
+            var user = userId is { } id ? await db.Users.FindAsync(id) : null;
             form.ContactName = user?.FullName ?? "";
+            // Доставляем по городу магазина — подставляем его, покупателю остаётся вписать улицу.
+            form.City = (await db.SiteContacts.Where(c => c.IsActive).Select(c => c.City).FirstOrDefaultAsync()) ?? "Актау";
         }
 
         return View(new CheckoutViewModel { Form = form, Cart = contents, Addresses = addresses, NeedsConsent = await NeedsConsent(userId), PickupStores = await PickupStores() });
@@ -60,10 +60,6 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         }
 
         var userId = UserId();
-        if (await NeedsEmail(userId) is { } redirect)
-        {
-            return redirect;
-        }
         var addresses = await UserAddresses(userId);
         if (form.SavedAddressId is { } savedId && addresses.All(a => a.Id != savedId))
         {
@@ -128,7 +124,7 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
             }).ToList(),
         };
         db.Orders.Add(order);
-        if (form.AcceptPrivacy && await db.Users.FindAsync(userId) is { PersonalDataConsentAt: null } user)
+        if (form.AcceptPrivacy && userId is { } buyerId && await db.Users.FindAsync(buyerId) is { PersonalDataConsentAt: null } user)
         {
             user.PersonalDataConsentAt = DateTime.UtcNow;
         }
@@ -138,8 +134,17 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         await mail.NotifyOrderPlacedAsync(order.Id, $"{Request.Scheme}://{Request.Host}");
 
         await cart.ClearAsync();
-        TempData.Flash($"Заказ №{order.Id} оформлен. Оплата при получении.");
-        return RedirectToAction(nameof(OrdersController.Detail), "Orders", new { id = order.Id });
+        // «Заказ принят» показывается большой карточкой на странице заказа (Orders/Detail), а не плашкой вверху.
+        TempData["OrderPlaced"] = true;
+        if (userId is null)
+        {
+            // Если гость потом зарегистрируется в этом браузере, заказ перейдёт в его «Мои заказы».
+            guestOrders.Remember(order);
+        }
+        // Гостю истории заказов нет, поэтому его заказ открывается по секретной ссылке.
+        return userId is null
+            ? Redirect(OrdersController.LinkPath(order))
+            : RedirectToAction(nameof(OrdersController.Detail), "Orders", new { id = order.Id });
     }
 
     private IActionResult EmptyCart()
@@ -148,28 +153,16 @@ public class CheckoutController(ShopDbContext db, Cart cart, OrderAlerts alerts,
         return RedirectToAction(nameof(CatalogController.Home), "Catalog");
     }
 
-    private int UserId() => User.ShopUserId();
-
-    /// <summary>
-    /// Статусы заказа приходят на почту, поэтому без подтверждённой почты заказ не оформить:
-    /// покупатель уходит на страницу почты и возвращается сюда после подтверждения.
-    /// </summary>
-    private async Task<IActionResult?> NeedsEmail(int userId)
-    {
-        if (await db.Users.AnyAsync(u => u.Id == userId && u.Email != null && u.EmailConfirmed))
-        {
-            return null;
-        }
-        TempData.Flash("Укажите и подтвердите почту: на неё придут статусы заказа.", FlashLevel.Info);
-        return Redirect($"{OnlineShop.Web.Pages.Accounts.EmailModel.PageUrl}?returnUrl={Uri.EscapeDataString("/orders/checkout")}");
-    }
+    /// <summary>Номер покупателя, если он вошёл; null у гостя.</summary>
+    private int? UserId() => User.Identity?.IsAuthenticated == true ? User.ShopUserId() : null;
 
     private Task<List<Store>> PickupStores() =>
         db.Stores.Where(s => s.Kind != StoreKind.Warehouse).OrderBy(s => s.SortOrder).ThenBy(s => s.Id).AsNoTracking().ToListAsync();
 
-    private Task<bool> NeedsConsent(int userId) =>
-        db.Users.AnyAsync(u => u.Id == userId && u.PersonalDataConsentAt == null);
+    // Гость соглашается на обработку данных при каждом заказе, покупатель с аккаунтом — один раз.
+    private async Task<bool> NeedsConsent(int? userId) =>
+        userId is not { } id || await db.Users.AnyAsync(u => u.Id == id && u.PersonalDataConsentAt == null);
 
-    private Task<List<Address>> UserAddresses(int userId) =>
-        db.Addresses.Where(a => a.UserId == userId).Ordered().AsNoTracking().ToListAsync();
+    private async Task<List<Address>> UserAddresses(int? userId) =>
+        userId is { } id ? await db.Addresses.Where(a => a.UserId == id).Ordered().AsNoTracking().ToListAsync() : [];
 }

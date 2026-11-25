@@ -1,0 +1,88 @@
+@page "/admin/wash/clients"
+@model OnlineShop.Web.Pages.Admin.Wash.ClientsModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Клиенты мойки";
+    ViewData["AdminSection"] = "wash";
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    string Tab(string code) => "/admin/wash/clients?show=" + code + (string.IsNullOrEmpty(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q));
+    (string Code, string Label, int Count)[] tabs =
+    [
+        ("all", "Все", Model.AllCount),
+        ("regular", "Постоянные", Model.RegularCount),
+        ("new", "Новые за месяц", Model.NewCount),
+        ("noshow", "Не приезжали", Model.NoShowCount),
+    ];
+    string Initial(string name) => name.Length == 0 ? "?" : name[..1].ToUpperInvariant();
+}
+@*
+    Клиенты мойки (CRM, шаг 2, 25.11). Клиент — все записи с одним телефоном, заводить вручную не нужно.
+    Сверху поиск (имя, телефон, машина) и вкладки. Строка — карточка: нажать в любом месте — открыть клиента.
+    «Постоянный» — помыли 3 раза и больше; красная цифра — сколько раз не приехал.
+*@
+<div class="admin-head">
+    <h1>Клиенты мойки</h1>
+    <nav class="o-tabs wash-view" aria-label="Раздел мойки">
+        <a class="o-tab" href="/admin/wash">Расписание</a>
+        <a class="o-tab is-on" href="/admin/wash/clients">Клиенты</a>
+    </nav>
+    <a class="btn" href="/admin/wash/add">@Icons.Get("plus", 18) Новая запись</a>
+</div>
+
+<div class="o-bar">
+    <nav class="o-tabs" aria-label="Клиенты">
+        @foreach (var t in tabs)
+        {
+            <a class="o-tab@(Model.Show == t.Code ? " is-on" : "")" href="@Tab(t.Code)">@t.Label <span>@t.Count</span></a>
+        }
+    </nav>
+    <form class="o-search" method="get" role="search">
+        <input type="hidden" name="show" value="@Model.Show">
+        <input class="field" type="search" name="q" value="@Model.Q" placeholder="Имя, телефон или машина" aria-label="Поиск клиента">
+        <button class="btn btn-ghost" type="submit">Найти</button>
+    </form>
+</div>
+@if (!string.IsNullOrEmpty(Model.Q))
+{
+    <p class="o-reset">Поиск: «@Model.Q». <a href="/admin/wash/clients?show=@Model.Show">Сбросить</a></p>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="admin-box o-empty">
+        <p>@(Model.AllCount == 0 ? "Клиентов пока нет: они появятся здесь после первой записи на мойку." : "Никого не нашлось. Проверьте имя или последние цифры телефона.")</p>
+    </div>
+}
+else
+{
+    <ul class="o-list wc-list">
+        @foreach (var c in Model.Rows)
+        {
+            var next = c.Next;
+            <li class="wc-row@(c.IsRegular ? " is-regular" : "")">
+                <a class="o-open" href="/admin/wash/clients/@c.Phone" aria-label="Открыть клиента @c.Name"></a>
+                <span class="wc-ava" aria-hidden="true">@Initial(c.Name)</span>
+                <div class="wc-who">
+                    <b>@c.Name</b>
+                    <small>@if (c.IsRegular) { <span class="wc-tag">постоянный</span> }@(c.Car.Length > 0 ? c.Car : "машина не указана")</small>
+                </div>
+                <a class="o-phone" href="tel:+@c.Phone">@Icons.Get("phone", 16) @PhoneNumbers.Display(c.Phone)</a>
+                <div class="wc-num"><b>@c.Visits</b><small>@Plural.Choose(c.Visits, "раз помыли", "раза помыли", "раз помыли")</small></div>
+                <div class="wc-num@(c.NoShows > 0 ? " is-bad" : "")"><b>@c.NoShows</b><small>не приехал</small></div>
+                <div class="wc-num"><b>@(c.Paid > 0 ? Format.Money(c.Paid) : "—")</b><small>оплатил всего</small></div>
+                <div class="wc-when">
+                    @if (next is not null)
+                    {
+                        <b class="wc-next">@Icons.Get("calendar", 16) @next.StartsAt.ToString("d MMM, H:mm", ru)</b>
+                        <small>следующая запись</small>
+                    }
+                    else
+                    {
+                        <b>@(c.LastVisit is { } lv ? lv.ToString("d MMM yyyy", ru) : "—")</b>
+                        <small>@(c.LastVisit is null ? "ещё не мыли" : "последний раз")</small>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}

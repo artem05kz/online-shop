@@ -223,8 +223,9 @@ public class AccountTests(TempShopFactory factory) : IClassFixture<TempShopFacto
         Assert.DoesNotContain("Чужой", page);
         Assert.True(page.IndexOf("Отменён", StringComparison.Ordinal) < page.IndexOf("Выполнен", StringComparison.Ordinal),
             "Новые заказы должны быть сверху.");
-        Assert.Contains("и ещё 2 поз.", page);
-        Assert.Contains("Итого (6 шт.)", page);
+        // В карточке четыре фото, остальное — «+1»; внизу всего штук и сумма.
+        Assert.Contains("и ещё 1 поз.", page);
+        Assert.Contains("<span>6 шт.</span>", page);
         Assert.DoesNotContain(">Д<", page);
     }
 

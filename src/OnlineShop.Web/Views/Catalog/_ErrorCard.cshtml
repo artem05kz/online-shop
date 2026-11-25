@@ -1,0 +1,31 @@
+@model (int Code, string Title, string Text, bool Search)
+@inject StorefrontLayout StorefrontLayout
+@*
+    Страница ошибки (24.11): чёрная плашка как шапка раздела — крупный номер ошибки светлым контуром справа,
+    слева что случилось и что делать. Для «нет страницы» — строка поиска прямо здесь: человек искал товар.
+    Кнопки: на главную, позвонить. Тексты заголовков — те же, что раньше (их ищут тесты).
+*@
+@{
+    var contact = (await StorefrontLayout.GetAsync()).Contact;
+}
+<section class="err" role="alert">
+    <span class="err-code" aria-hidden="true">@Model.Code</span>
+    <div class="err-text">
+        <h1>@Model.Title</h1>
+        <p>@Model.Text</p>
+        @if (Model.Search)
+        {
+            <form class="err-search" action="/search" method="get" role="search">
+                <input type="text" name="q" placeholder="Название или артикул" aria-label="Поиск по каталогу">
+                <button type="submit" aria-label="Найти">@Icons.Get("search", 20)</button>
+            </form>
+        }
+        <div class="err-actions">
+            <a class="btn err-btn" asp-controller="Catalog" asp-action="Home">На главную</a>
+            @if (!string.IsNullOrEmpty(contact?.Phone))
+            {
+                <a class="btn err-btn-ghost" href="tel:@contact.PhoneLink">@Icons.Get("phone", 18) @contact.Phone</a>
+            }
+        </div>
+    </div>
+</section>

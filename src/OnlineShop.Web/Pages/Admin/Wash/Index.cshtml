@@ -1,0 +1,280 @@
+@page "/admin/wash"
+@model OnlineShop.Web.Pages.Admin.Wash.IndexModel
+@using System.Globalization
+@{
+    ViewData["Title"] = "Записи на мойку";
+    ViewData["AdminSection"] = "wash";
+    ViewData["LiveReload"] = true;
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var today = Model.Days[0];
+    string Value(DateOnly d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    string Name(DateOnly d) => d == today ? "Сегодня" : d == today.AddDays(1) ? "Завтра" : d.ToString("dddd", ru);
+    var opens = Model.Wash.Opens;
+    var hours = (int)Math.Ceiling((Model.Wash.Closes - opens).TotalHours);
+    const int hourPx = 64;
+    int Top(DateTime t) => (int)Math.Round((TimeOnly.FromDateTime(t) - opens).TotalMinutes * hourPx / 60);
+}
+@*
+    Записи на мойку (редизайн 24.11). Сверху дни-карточки: сколько записей, сколько ждут подтверждения и полоска
+    занятости мойки. Переключатель «День / Неделя». «День» — карточки записей с кнопками; «Неделя» — календарь:
+    по горизонтали дни, по вертикали часы работы, записи — цветные блоки (жёлтый — ждёт подтверждения,
+    зелёный — подтверждена, серый — помыли). Нажать на блок — открыть этот день.
+*@
+<div class="admin-head">
+    <h1>Записи на мойку</h1>
+    <nav class="o-tabs wash-view" aria-label="Вид">
+        <a class="o-tab@(Model.IsWeek ? "" : " is-on")" href="?date=@Value(Model.Day)">День</a>
+        <a class="o-tab@(Model.IsWeek ? " is-on" : "")" href="?date=@Value(Model.Day)&view=week">Неделя</a>
+    </nav>
+    <a class="btn btn-ghost" href="/admin/wash/clients">@Icons.Get("users", 18) Клиенты</a>
+    <a class="btn" href="/admin/wash/add?date=@Value(Model.Day)">@Icons.Get("plus", 18) Новая запись</a>
+</div>
+<p class="wash-lead">@Model.Wash.Name · @Model.Wash.Address · @Model.Wash.Opens.ToString("H:mm")–@Model.Wash.Closes.ToString("H:mm") · @Model.Wash.Boxes @Plural.Choose(Model.Wash.Boxes, "место", "места", "мест"). О новой записи бот пишет в Telegram: позвоните клиенту и нажмите «Подтвердить». <a href="@OnlineShop.Web.Controllers.WashController.PageUrl" target="_blank" rel="noopener">Страница записи для клиентов</a></p>
+
+<nav class="wash-days" aria-label="День">
+    @foreach (var day in Model.Days)
+    {
+        var info = Model.Info.GetValueOrDefault(day) ?? new(0, 0, 0);
+        <a class="wash-day@(day == Model.Day && !Model.IsWeek ? " is-on" : "")@(info.Waiting > 0 ? " has-wait" : "")" href="?date=@Value(day)">
+            <span class="wash-day-name">@Name(day)</span>
+            <span class="wash-day-date">@day.ToString("d MMMM", ru)</span>
+            <span class="wash-day-count">
+                @(info.Count == 0 ? "записей нет" : $"{info.Count} {Plural.Choose(info.Count, "запись", "записи", "записей")}")
+                @if (info.Waiting > 0)
+                {
+                    <b class="wash-day-wait" title="Ждут подтверждения">@info.Waiting ждут</b>
+                }
+            </span>
+            <span class="wash-load" title="Занятость мойки: @info.LoadPercent %"><i style="width:@(info.LoadPercent)%"></i></span>
+        </a>
+    }
+</nav>
+
+@if (Model.IsWeek)
+{
+    <section class="dash-card wash-week" aria-label="Календарь записей">
+        <div class="wash-week-head">
+            <span></span>
+            @foreach (var day in Model.Days)
+            {
+                <a href="?date=@Value(day)" class="@(day == today ? "is-today" : "")">@Name(day) <small>@day.ToString("d MMM", ru)</small></a>
+            }
+        </div>
+        <div class="wash-week-body" style="height:@(hours * hourPx)px">
+            <div class="wash-week-hours">
+                @for (var h = 0; h < hours; h++)
+                {
+                    <span style="top:@(h * hourPx)px">@opens.AddHours(h).ToString("H:mm")</span>
+                }
+            </div>
+            @foreach (var day in Model.Days)
+            {
+                <div class="wash-week-col@(day == today ? " is-today" : "")">
+                    @for (var h = 1; h < hours; h++)
+                    {
+                        <i class="wash-week-line" style="top:@(h * hourPx)px"></i>
+                    }
+                    @if (day == today && TimeOnly.FromDateTime(Model.Now) is var t && t > opens && t < Model.Wash.Closes)
+                    {
+                        <i class="wash-week-now" style="top:@Top(Model.Now)px" title="Сейчас @t.ToString("H:mm")"></i>
+                    }
+                    @foreach (var block in Model.Week.GetValueOrDefault(day) ?? [])
+                    {
+                        var b = block.Booking;
+                        var width = 100.0 / block.Lanes;
+                        <a class="wash-block is-@b.Status.Code()" href="?date=@Value(day)#b-@b.Id"
+                           style="top:@Top(b.StartsAt)px;height:@Math.Max(22, b.Minutes * hourPx / 60 - 3)px;left:calc(@(Math.Round(block.Lane * width, 3).ToString(CultureInfo.InvariantCulture))% + 3px);width:calc(@(Math.Round(width, 3).ToString(CultureInfo.InvariantCulture))% - 6px)"
+                           title="@b.StartsAt.ToString("H:mm")–@b.EndsAt.ToString("H:mm") · @b.Name · @b.ServiceName · @b.Status.Text()">
+                            <b>@b.StartsAt.ToString("H:mm") @b.Name</b>
+                            @if (b.Minutes >= 60)
+                            {
+                                <small>@b.ServiceName</small>
+                            }
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+        <p class="wash-legend">
+            <span><i class="is-new"></i>ждёт подтверждения</span>
+            <span><i class="is-confirmed"></i>подтверждена</span>
+            <span><i class="is-done"></i>помыли</span>
+            <span>Отменённые записи не показаны. Нажмите на запись, чтобы открыть день.</span>
+        </p>
+    </section>
+}
+else
+{
+    <div class="wash-daybar">
+        <a class="wash-arrow" href="?date=@Value(Model.Day.AddDays(-1))" aria-label="Предыдущий день">@Icons.Get("arrow-left", 18)</a>
+        <h2 class="wash-title">@(Model.Days.Contains(Model.Day) ? Name(Model.Day) + ", " : "")@Model.Day.ToString("d MMMM, dddd", ru)</h2>
+        <a class="wash-arrow" href="?date=@Value(Model.Day.AddDays(1))" aria-label="Следующий день">@Icons.Get("arrow-right", 18)</a>
+        <span class="wash-daybar-hint">Нажмите на свободное время в колонке места, чтобы записать клиента.</span>
+    </div>
+    <section class="dash-card wash-cal" aria-label="Расписание дня по местам">
+        <div class="wash-cal-head" style="--boxes:@Model.Wash.Boxes">
+            <span></span>
+            @foreach (var box in Model.ByBox.Keys)
+            {
+                var load = Model.ByBox[box].Where(b => b.Status != WashBookingStatus.NoShow).Sum(b => b.Minutes);
+                <span class="wash-cal-box">Место @box <small>@(load == 0 ? "свободно" : $"занято {load / 60} ч {load % 60:00} мин".Replace(" 0 ч ", " ").Replace(" 00 мин", ""))</small></span>
+            }
+        </div>
+        <div class="wash-cal-body" style="--boxes:@Model.Wash.Boxes;height:@(hours * hourPx)px">
+            <div class="wash-week-hours">
+                @for (var h = 0; h < hours; h++)
+                {
+                    <span style="top:@(h * hourPx)px">@opens.AddHours(h).ToString("H:mm")</span>
+                }
+            </div>
+            @foreach (var (box, list) in Model.ByBox)
+            {
+                <div class="wash-week-col wash-cal-col">
+                    @for (var slot = 0; slot < hours * 2; slot++)
+                    {
+                        var at = opens.AddMinutes(slot * 30);
+                        if (slot % 2 == 0 && slot > 0)
+                        {
+                            <i class="wash-week-line" style="top:@(slot * hourPx / 2)px"></i>
+                        }
+                        <a class="wash-cal-free" style="top:@(slot * hourPx / 2)px;height:@(hourPx / 2)px" href="/admin/wash/add?date=@Value(Model.Day)&time=@at.ToString("HH:mm")&box=@box" aria-label="Записать на @at.ToString("H:mm"), место @box"><span>+ @at.ToString("H:mm")</span></a>
+                    }
+                    @if (Model.Day == today && TimeOnly.FromDateTime(Model.Now) is var t && t > opens && t < Model.Wash.Closes)
+                    {
+                        <i class="wash-week-now" style="top:@Top(Model.Now)px"></i>
+                    }
+                    @foreach (var b in list)
+                    {
+                        @* Короткая запись (30 мин) — одной строкой «время имя»; от часа — имя ниже; от полутора часов — и услуга. *@
+                        <a class="wash-cblock is-@b.Status.Code()@(b.Minutes < 60 ? " is-short" : "")" href="/admin/wash/@b.Id" style="top:@Top(b.StartsAt)px;height:@Math.Max(28, b.Minutes * hourPx / 60 - 4)px"
+                           title="@b.StartsAt.ToString("H:mm")–@b.EndsAt.ToString("H:mm") · @b.Name · @b.ServiceName · @b.Status.Text()">
+                            <span class="wash-cblock-time">@b.StartsAt.ToString("H:mm")@(b.Minutes < 60 ? "" : "–" + b.EndsAt.ToString("H:mm"))@if (b.Minutes < 60) {<b>@b.Name</b>}@if (b.IsPaid) {<i title="Оплачено">₸</i>}</span>
+                            @if (b.Minutes >= 60)
+                            {
+                                <b>@b.Name</b>
+                            }
+                            @if (b.Minutes >= 90)
+                            {
+                                <small>@b.ServiceName@(b.Price is { } p ? " · " + Format.Money(p) : "")</small>
+                            }
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+        <p class="wash-legend">
+            <span><i class="is-new"></i>ждёт подтверждения</span>
+            <span><i class="is-confirmed"></i>подтверждена</span>
+            <span><i class="is-arrived"></i>приехал, моем</span>
+            <span><i class="is-done"></i>помыли</span>
+            <span><i class="is-noshow"></i>не приехал</span>
+        </p>
+    </section>
+
+    <h2 class="wash-title wash-list-title">Список записей</h2>
+    @if (Model.Bookings.Count == 0)
+    {
+        <p class="dash-empty">На этот день записей нет.</p>
+    }
+    else
+    {
+        var nowShown = Model.Day != DateOnly.FromDateTime(Model.Now);
+        <div class="wash-list" data-keep-scroll>
+            @foreach (var b in Model.Bookings)
+            {
+                var past = b.EndsAt <= Model.Now;
+                var late = b.IsLate(Model.Now);
+                var awaited = b.IsAwaited(Model.Now);
+                var active = b.Status is WashBookingStatus.New or WashBookingStatus.Confirmed or WashBookingStatus.Arrived;
+                if (!nowShown && !past)
+                {
+                    nowShown = true;
+                    <div class="wash-now" aria-label="Сейчас"><span>Сейчас @Model.Now.ToString("H:mm")</span></div>
+                }
+                <article id="b-@b.Id" class="wash-card is-@b.Status.Code()@(past ? " is-past" : "")@(late ? " is-late" : "")@(awaited ? " is-awaited" : "")">
+                    <a class="o-open" href="/admin/wash/@b.Id" aria-label="Открыть запись: @b.Name, @b.StartsAt.ToString("HH:mm")"></a>
+                    <div class="wash-card-time">
+                        <b>@b.StartsAt.ToString("HH:mm")</b>
+                        <span>до @b.EndsAt.ToString("HH:mm")</span>
+                    </div>
+                    <div class="wash-card-who">
+                        <b>@b.Name</b>
+                        <small>@(b.Car.Length > 0 ? b.Car : "машина не указана")</small>
+                        <span class="wash-card-contacts">
+                            <a href="tel:+@b.Phone">@Icons.Get("phone", 15) @PhoneNumbers.Display(b.Phone)</a>
+                        </span>
+                    </div>
+                    <div class="wash-card-service">
+                        <b>@b.ServiceName</b>
+                        <small>@b.Minutes мин@(b.Box > 0 ? $" · место {b.Box}" : "")@(b.Comment.Length > 0 ? " · есть комментарий" : "")</small>
+                    </div>
+                    <div class="wash-card-money">
+                        <b>@(b.Price is { } price ? Format.Money(price) : "—")</b>
+                        <small class="@(b.IsPaid ? "is-paid" : "")">@(b.IsPaid ? "оплачено" : b.Price is null ? "цена не указана" : "не оплачено")</small>
+                    </div>
+                    <div class="wash-card-actions">
+                        @if (late)
+                        {
+                            @* Правило мойки: опоздал больше чем на 15 минут — запись отменяется. *@
+                            <span class="wash-late">@Icons.Get("alert", 16) Опоздал на @b.LateMinutes(Model.Now) мин</span>
+                            <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="NoShow">
+                                <button class="btn btn-sm wash-noshow" type="submit">Не приехал</button>
+                            </form>
+                            <span class="wash-card-more">
+                                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Arrived">
+                                    <button class="btn btn-sm wash-second" type="submit">Всё-таки приехал</button>
+                                </form>
+                            </span>
+                        }
+                        else
+                        {
+                            if (awaited)
+                            {
+                                <span class="wash-wait">@Icons.Get("clock", 16) Ждём клиента · <span data-wait-left="@b.WaitSecondsLeft(Model.Now)">@Math.Ceiling(b.WaitSecondsLeft(Model.Now) / 60.0) мин</span></span>
+                            }
+                            else
+                            {
+                                <span class="a-status a-status-@b.Status.Code()">@b.Status.Text()</span>
+                            }
+                            if (b.Status == WashBookingStatus.New)
+                            {
+                                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Confirmed">
+                                    <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Подтвердить</button>
+                                </form>
+                            }
+                            else if (b.Status == WashBookingStatus.Confirmed)
+                            {
+                                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Arrived">
+                                    <button class="btn btn-sm" type="submit">@Icons.Get("car", 16) Приехал</button>
+                                </form>
+                            }
+                            else if (b.Status == WashBookingStatus.Arrived)
+                            {
+                                <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Done">
+                                    <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Помыли</button>
+                                </form>
+                            }
+                            else if (b.Status == WashBookingStatus.Done)
+                            {
+                                @* Помыли — написать клиенту, что машина готова (готовый текст в WhatsApp). *@
+                                <a class="btn btn-sm wash-ready" href="@OnlineShop.Web.Services.Telegram.BookingMessage.WhatsAppCarReady(b)" target="_blank" rel="noopener">@Icons.Get("whatsapp", 16) Машина готова</a>
+                            }
+                            if (active)
+                            {
+                                <span class="wash-card-more">
+                                    <form method="post" asp-page-handler="Status" asp-route-id="@b.Id" asp-route-status="Cancelled" data-confirm="Отменить запись? Время освободится для других.">
+                                        <button class="btn btn-sm wash-second is-cancel" type="submit">Отменить</button>
+                                    </form>
+                                </span>
+                            }
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+}
+
+@section Scripts {
+    <script src="~/js/admin_wash_wait.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,30 @@
+@*
+    «Почему удобно у нас»: четыре коротких факта, которые снимают вопросы перед заказом.
+    Только то, что сайт уже обещает в других местах (подвал, оформление заказа). Новые обещания
+    Цены доставки — из ответов заказчицы (DeliveryPrices).
+*@
+@{
+    var items = new (string Icon, string Title, string Text, string Theme)[]
+    {
+        ("truck", "Доставка по области", $"По Актау — {DeliveryPrices.City}, по Мангистауской области — {DeliveryPrices.Region}.", "green"),
+        ("check", "Оплата при получении", "Наличными или картой, когда заказ уже у вас в руках.", "blue"),
+        ("star", "Официальный дилер", "Только оригинальная продукция IFOAM, без подделок.", "yellow"),
+        ("phone", "Менеджер на связи", "Позвоним, подтвердим заказ и подскажем, что лучше подойдёт.", "pink"),
+    };
+}
+<section class="section benefits" aria-labelledby="benefits-title">
+    <div class="section-head"><h2 id="benefits-title">Почему удобно заказывать у нас</h2></div>
+    <ul class="benefits-grid">
+        @foreach (var item in items)
+        {
+            <li class="benefit benefit--@item.Theme">
+                @* Иконка и заголовок в одну строку, пояснение под ними. *@
+                <div class="benefit-head">
+                    <span class="benefit-icon" aria-hidden="true">@Icons.Get(item.Icon, 22)</span>
+                    <h3 class="benefit-title">@Typo.Text(item.Title)</h3>
+                </div>
+                <p class="benefit-text">@Typo.Text(item.Text)</p>
+            </li>
+        }
+    </ul>
+</section>

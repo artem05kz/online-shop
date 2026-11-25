@@ -58,6 +58,12 @@ public sealed class TelegramBot(
         try
         {
             using var scope = scopes.CreateScope();
+            if (update.CallbackQuery is { } query)
+            {
+                // Кнопки «Подтвердить / Отменить» под записью на мойку.
+                await scope.ServiceProvider.GetRequiredService<WashTelegramActions>().HandleAsync(query, ct);
+                return;
+            }
             await scope.ServiceProvider.GetRequiredService<TelegramLinker>().HandleAsync(update, ct);
         }
         catch (Exception e) when (!ct.IsCancellationRequested)
@@ -76,7 +82,15 @@ public sealed class TelegramBot(
                 try
                 {
                     using var scope = scopes.CreateScope();
-                    var report = await scope.ServiceProvider.GetRequiredService<TelegramNotifier>().SendOrderAsync(alert, ct);
+                    var notifier = scope.ServiceProvider.GetRequiredService<TelegramNotifier>();
+                    if (alert.BookingId > 0)
+                    {
+                        var sent = await notifier.SendBookingAsync(alert, ct);
+                        logger.LogInformation("Запись на мойку №{BookingId} отправлена в Telegram: доставлено {Sent}, ошибок {Failed}",
+                            alert.BookingId, sent.Sent, sent.Failed);
+                        continue;
+                    }
+                    var report = await notifier.SendOrderAsync(alert, ct);
                     logger.LogInformation("Заказ №{OrderId} отправлен в Telegram: доставлено {Sent}, ошибок {Failed}",
                         alert.OrderId, report.Sent, report.Failed);
                 }

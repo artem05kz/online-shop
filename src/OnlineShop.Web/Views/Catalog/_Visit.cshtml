@@ -1,0 +1,42 @@
+@model IReadOnlyList<Store>
+@*
+    «Где нас найти» на главной: до трёх точек из раздела «Адреса» панели управления.
+    Без карты (она тяжёлая) — карта и все точки на странице /addresses.
+*@
+@functions {
+    // «Пн-Сб, 9:00-18:00» -> «Пн–Сб, 9:00–18:00»: в диапазонах ставится короткое тире.
+    static string Dash(string s) => s.Replace("-", "–");
+}
+<section class="section visit" aria-labelledby="visit-title">
+    <div class="visit-intro">
+        <h2 id="visit-title">Где нас найти</h2>
+        <p>Заберите заказ сами или оформите доставку по&nbsp;Актау&nbsp;— как удобнее.</p>
+        <a class="visit-all" asp-controller="Stores" asp-action="Index">Все адреса и карта</a>
+    </div>
+    <ul class="visit-list">
+        @foreach (var store in Model)
+        {
+            var route = !string.IsNullOrEmpty(store.MapUrl) ? store.MapUrl
+                : store.Latitude is { } lat && store.Longitude is { } lng ? TwoGis.RouteUrl(lat, lng) : null;
+            // Город уже в заголовке блока и в шапке — в адресе его не повторяем.
+            var address = store.Address.Replace($"г. {store.City}, ", "");
+            var everyDay = store.WorkingHours.Contains("ежедневно", StringComparison.OrdinalIgnoreCase)
+                || store.WorkingHours.Contains("без выходных", StringComparison.OrdinalIgnoreCase);
+            <li class="visit-card">
+                <p class="visit-address">@Typo.Text(address)</p>
+                @if (store.WorkingHours.Length > 0)
+                {
+                    <p class="visit-row">@Icons.Get("clock", 16)<span>@Dash(store.WorkingHours)@(store.LunchHours.Length > 0 ? $", обед {store.LunchHours}" : "")</span>@if (everyDay) {<span class="visit-badge">Без выходных</span>}</p>
+                }
+                @if (store.Phone.Length > 0)
+                {
+                    <p class="visit-row">@Icons.Get("phone", 16)<a href="tel:@store.Phone">@store.Phone</a></p>
+                }
+                @if (route is not null)
+                {
+                    <a class="btn visit-route" href="@route" target="_blank" rel="noopener">@Icons.Get("map", 16) Как добраться</a>
+                }
+            </li>
+        }
+    </ul>
+</section>

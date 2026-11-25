@@ -4,8 +4,11 @@ using OnlineShop.Web.Data;
 
 namespace OnlineShop.Web.Services.Telegram;
 
-/// <summary>Новый заказ для отправки в Telegram. Адрес сайта берётся из запроса покупателя.</summary>
-public record OrderAlert(int OrderId, string SiteUrl);
+/// <summary>
+/// Что отправить в Telegram: новый заказ или запись на мойку (<see cref="BookingId"/>, тогда OrderId = 0).
+/// Адрес сайта берётся из запроса покупателя.
+/// </summary>
+public record OrderAlert(int OrderId, string SiteUrl, int BookingId = 0, bool BookingCancelled = false);
 
 /// <summary>
 /// Очередь уведомлений. Оформление заказа только кладёт в неё номер и сразу отвечает покупателю:
@@ -25,6 +28,15 @@ public sealed class OrderAlerts(TelegramOptions options)
             _queue.Writer.TryWrite(new OrderAlert(orderId, siteUrl.TrimEnd('/')));
         }
     }
+
+    /// <summary>Новая запись на мойку или её отмена клиентом.</summary>
+    public void EnqueueBooking(int bookingId, string siteUrl, bool cancelled = false)
+    {
+        if (options.IsConfigured)
+        {
+            _queue.Writer.TryWrite(new OrderAlert(0, siteUrl.TrimEnd('/'), bookingId, cancelled));
+        }
+    }
 }
 
 public record SendReport(int Sent, int Failed, int Unlinked);
@@ -42,7 +54,19 @@ public class TelegramNotifier(ShopDbContext db, ITelegramApi api, ILogger<Telegr
         return await SendToAllAsync(OrderMessage.Build(order, $"{alert.SiteUrl}/admin/orders/{order.Id}"), ct);
     }
 
-    public async Task<SendReport> SendToAllAsync(string html, CancellationToken ct)
+    public async Task<SendReport> SendBookingAsync(OrderAlert alert, CancellationToken ct)
+    {
+        var booking = await db.WashBookings.AsNoTracking().FirstOrDefaultAsync(b => b.Id == alert.BookingId, ct);
+        if (booking is null)
+        {
+            return new SendReport(0, 0, 0);
+        }
+        // Под новой записью — кнопки «Подтвердить / Отменить» (CRM, 24.11). Ссылка ведёт прямо в карточку записи.
+        var markup = alert.BookingCancelled || booking.Status != Models.WashBookingStatus.New ? null : TelegramKeyboards.Booking(booking.Id);
+        return await SendToAllAsync(BookingMessage.Build(booking, $"{alert.SiteUrl}/admin/wash/{booking.Id}", alert.BookingCancelled), ct, markup);
+    }
+
+    public async Task<SendReport> SendToAllAsync(string html, CancellationToken ct, object? markup = null)
     {
         int sent = 0, failed = 0, unlinked = 0;
         var recipients = await db.TelegramRecipients.Where(r => r.ChatId != null).ToListAsync(ct);
@@ -50,7 +74,7 @@ public class TelegramNotifier(ShopDbContext db, ITelegramApi api, ILogger<Telegr
         {
             try
             {
-                await api.SendMessageAsync(recipient.ChatId!.Value, html, null, ct);
+                await api.SendMessageAsync(recipient.ChatId!.Value, html, markup, ct);
                 sent++;
             }
             catch (TelegramException e) when (e.Code is 400 or 403)

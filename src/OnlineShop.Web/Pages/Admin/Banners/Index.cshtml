@@ -1,43 +1,179 @@
 @page "/admin/banners"
 @model OnlineShop.Web.Pages.Admin.Banners.IndexModel
+@inject IConfiguration Config
+@using State = OnlineShop.Web.Pages.Admin.Banners.IndexModel.State
 @{
     ViewData["Title"] = "Баннеры";
     ViewData["AdminSection"] = "banners";
+    var live = Model.All.Where(c => c.State == State.Live).ToList();
+    var shownSlides = Model.Slides.Where(p => p.Position is not null).ToList();
+    string SlideVars(ProductSlide s) => $"--ps-bg: {s.BgColor}; --ps-ink: {SlideColors.Ink(s.BgColor)}; --ps-script: {s.ScriptColor}";
+    string SlideImg(ProductSlide s) => s.IsSiteImage ? Url.Content("~" + s.ImagePath)! : Media.Url(s.ImagePath);
+    string Period(Banner b) => b.StartsAt is null && b.EndsAt is null
+        ? "без срока"
+        : $"{(b.StartsAt is { } s ? "с " + Format.DateTimeText(s) : "сейчас")} — {(b.EndsAt is { } e ? "до " + Format.DateTimeText(e) : "без конца")}";
 }
+@*
+    Первый экран главной (25.11.2026). Главные — слайды с товарами (3D-рендер и рукописное слово): их собирают здесь же,
+    в конструкторе /admin/slides/add (товар → надписи и цена сами, рендер → цвет фона с этикетки). Баннеры из панели — заготовка
+    на будущее: готовая картинка 2400 × 880, включённый баннер встаёт перед слайдами с товарами.
+    Сверху лента «Сейчас на главной» в том порядке, как слайды идут на сайте.
+*@
 <div class="admin-head">
-    <h1>Баннеры на главной</h1>
-    <a class="btn" href="/admin/banners/add">Добавить баннер</a>
+    <h1>Первый экран главной</h1>
+    <a class="btn btn-ghost" href="/admin/banners/add">@Icons.Get("plus", 18) Добавить баннер</a>
+    <a class="btn" href="/admin/slides/add">@Icons.Get("plus", 18) Новый слайд с товаром</a>
 </div>
-<p class="admin-count">Баннеры сменяют друг друга по очерёдности: от меньшего числа к большему.</p>
+@if (!Config.GetValue("Storefront:ShowBanners", true))
+{
+    <p class="vl-hint">@Icons.Get("alert", 16) <span>Показ баннеров на сайте выключен настройкой у программиста — включённые баннеры сейчас не видны.</span></p>
+}
 
-<form id="changelist-form" method="post" asp-page-handler="SaveList">
-    <div class="admin-table-wrap">
-        <table class="admin-table" id="result_list">
-            <thead><tr><th>Картинка</th><th>Заголовок</th><th>Показывать с</th><th>Показывать до</th><th>Очерёдность</th><th>На сайте</th></tr></thead>
-            <tbody>
-                @for (var i = 0; i < Model.Rows.Count; i++)
-                {
-                    var row = Model.Rows[i];
-                    <tr>
-                        <td>
-                            <input type="hidden" asp-for="Rows[i].Id">
-                            <img class="thumb" src="@Media.Thumb(row.ImagePath, Media.Small)" alt="">
-                        </td>
-                        <td><a asp-page="Edit" asp-route-id="@row.Id">@(string.IsNullOrEmpty(row.Title) ? $"Баннер №{row.Id}" : row.Title)</a></td>
-                        <td class="muted">@(row.StartsAt is { } s ? Format.DateTimeText(s) : "всегда")</td>
-                        <td class="muted">@(row.EndsAt is { } e ? Format.DateTimeText(e) : "всегда")</td>
-                        <td><input class="field tiny" asp-for="Rows[i].SortOrder" type="number" min="0"></td>
-                        <td><input asp-for="Rows[i].IsActive"></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+<section class="bn-now" aria-label="Сейчас на главной">
+    <div class="bn-now-head">
+        <b>Сейчас на главной</b>
+        <span>слайды сменяются каждые 7 секунд, по порядку слева направо</span>
     </div>
-    <div class="admin-actions">
-        <span class="admin-count">Всего: @Model.Rows.Count</span>
-        @if (Model.Rows.Count > 0)
+    <ol class="bn-now-strip">
+        @foreach (var card in live)
         {
-            <button class="btn push" type="submit">Сохранить</button>
+            <li><a href="/admin/banners/@card.Banner.Id" title="@card.Banner"><img src="@Media.Thumb(card.Banner.ImagePath, Media.Large)" alt=""><i>@card.Position</i></a></li>
         }
+        @foreach (var sc in shownSlides)
+        {
+            <li><a class="ps-mini" style="@SlideVars(sc.Slide)" href="/admin/slides/@sc.Slide.Id" title="@sc.Slide"><img src="@SlideImg(sc.Slide)" alt=""><i>@sc.Position</i></a></li>
+        }
+    </ol>
+    @if (live.Count + shownSlides.Count == 0)
+    {
+        <p class="bn-now-empty">Первый экран пустой: нет ни включённых баннеров, ни слайдов с товарами.</p>
+    }
+</section>
+
+<section class="ps-section" aria-labelledby="ps-title">
+    <div class="bn-section-head">
+        <h2 id="ps-title">Слайды с товарами</h2>
+        <span class="bn-tag is-main">главные</span>
     </div>
-</form>
+    <p class="vl-hint">@Icons.Get("info", 16) <span>Выберите товар и загрузите его 3D-рендер — название, текст, цена, рукописное слово и цвет фона с этикетки подставятся сами. Если товар скрыт в каталоге, слайд сам пропадёт с сайта.</span></p>
+    <ul class="ps-grid" data-keep-scroll>
+        @foreach (var sc in Model.Slides)
+        {
+            var slide = sc.Slide;
+            var product = sc.Product;
+            var index = Model.Slides.IndexOf(sc);
+            var (icon, state) = !slide.IsActive ? ("eye-off", "Выключен")
+                : product is null ? ("alert", "Товар скрыт — не показывается")
+                : ("check", $"На сайте · {sc.Position}-й");
+            <li class="ps-card@(sc.Position is null ? " is-off" : "")">
+                <a class="ps-mock" style="@SlideVars(slide)" href="/admin/slides/@slide.Id" aria-label="Изменить слайд «@slide»">
+                    <span class="ps-script">@slide.Script</span>
+                    <img src="@SlideImg(slide)" alt="" loading="lazy">
+                    <span class="ps-copy"><b>@slide.Title</b>@if (product?.MinPrice is { } price) { <small>@(product.HasSeveralPacks ? "от " : "")@Format.Money(price)</small> }</span>
+                    <span class="bn-state">@Icons.Get(icon, 14) @state</span>
+                </a>
+                <div class="ps-body">
+                    <b>@slide.Title</b>
+                    <small>@slide.Text</small>
+                </div>
+                <div class="bn-actions">
+                    <form method="post" asp-page-handler="ToggleSlide" asp-route-id="@slide.Id" asp-route-show="@Model.Show">
+                        <label class="pe-switch-row bn-switch">
+                            <span class="vl-switch"><input type="checkbox" checked="@slide.IsActive" data-autosubmit aria-label="Показывать слайд на сайте"><span aria-hidden="true"></span></span>
+                            <span>На сайте</span>
+                        </label>
+                    </form>
+                    <div class="bn-move" aria-label="Очерёдность">
+                        <form method="post" asp-page-handler="MoveSlide" asp-route-id="@slide.Id" asp-route-step="-1" asp-route-show="@Model.Show">
+                            <button class="btn btn-sm wash-second" type="submit" title="Показывать раньше" aria-label="Показывать раньше" disabled="@(index == 0)">@Icons.Get("arrow-left", 16)</button>
+                        </form>
+                        <form method="post" asp-page-handler="MoveSlide" asp-route-id="@slide.Id" asp-route-step="1" asp-route-show="@Model.Show">
+                            <button class="btn btn-sm wash-second" type="submit" title="Показывать позже" aria-label="Показывать позже" disabled="@(index == Model.Slides.Count - 1)">@Icons.Get("arrow-right", 16)</button>
+                        </form>
+                    </div>
+                    <a class="btn btn-sm wash-second" href="/admin/slides/@slide.Id" title="Изменить слайд" aria-label="Изменить слайд">@Icons.Get("pencil", 16)</a>
+                    <form method="post" asp-page-handler="DeleteSlide" asp-route-id="@slide.Id" asp-route-show="@Model.Show" data-confirm="Удалить слайд «@slide»? Товар в каталоге останется.">
+                        <button class="btn btn-sm wash-second is-cancel" type="submit" title="Удалить слайд" aria-label="Удалить слайд">@Icons.Get("trash", 16)</button>
+                    </form>
+                </div>
+            </li>
+        }
+        <li><a class="bn-add ps-add" href="/admin/slides/add">
+            <span class="fx-drop-icon">@Icons.Get("plus", 24)</span>
+            <b>Новый слайд</b>
+            <small>товар + 3D-рендер с прозрачным фоном</small>
+        </a></li>
+    </ul>
+</section>
+
+<div class="bn-section-head">
+    <h2>Баннеры</h2>
+    <span class="bn-tag">заготовка</span>
+</div>
+<p class="vl-hint">@Icons.Get("info", 16) <span>Готовая картинка @BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight с надписями. Включённый баннер встанет на главной перед слайдами с товарами.</span></p>
+<div class="o-bar pl-bar">
+    <nav class="o-tabs" aria-label="Баннеры">
+        @foreach (var (value, label) in OnlineShop.Web.Pages.Admin.Banners.IndexModel.TabList)
+        {
+            <a class="o-tab@((Model.Show ?? "") == value ? " is-on" : "")" href="/admin/banners@(value == "" ? "" : "?show=" + value)">@label <span>@Model.Counts[value]</span></a>
+        }
+    </nav>
+</div>
+
+<div class="bn-grid" data-keep-scroll>
+    @foreach (var card in Model.Cards)
+    {
+        var b = card.Banner;
+        var index = Model.All.IndexOf(card);
+        var link = SafeLinks.OrNull(b.LinkUrl);
+        var (icon, state) = card.State switch
+        {
+            State.Live => ("check", $"На сайте · {card.Position}-й"),
+            State.Off => ("eye-off", "Выключен"),
+            State.Planned => ("clock", $"Покажется {Format.DateTimeText(b.StartsAt!.Value)}"),
+            _ => ("calendar", $"Закончился {Format.DateTimeText(b.EndsAt!.Value)}"),
+        };
+        <article class="bn-card is-@OnlineShop.Web.Pages.Admin.Banners.IndexModel.Code(card.State)">
+            <a class="bn-pic" href="/admin/banners/@b.Id" aria-label="Изменить баннер «@b»">
+                <img src="@Media.Thumb(b.ImagePath, Media.Large)" alt="" loading="lazy">
+<span class="bn-state">@Icons.Get(icon, 14) @state</span>
+            </a>
+            <div class="bn-body">
+                <a class="bn-title" href="/admin/banners/@b.Id">@(b.Title.Length > 0 ? b.Title : $"Баннер №{b.Id}")</a>
+                <p class="bn-meta">
+                    <span>@Icons.Get("calendar", 15) @Period(b)</span>
+                    <span>@Icons.Get("link", 15) @(link is null ? "без ссылки" : b.LinkUrl)</span>
+                </p>
+            </div>
+            <div class="bn-actions">
+                <form method="post" asp-page-handler="Toggle" asp-route-id="@b.Id" asp-route-show="@Model.Show">
+                    <label class="pe-switch-row bn-switch">
+                        <span class="vl-switch"><input type="checkbox" checked="@b.IsActive" data-autosubmit aria-label="Показывать на сайте"><span aria-hidden="true"></span></span>
+                        <span>На сайте</span>
+                    </label>
+                </form>
+                <div class="bn-move" aria-label="Очерёдность">
+                    <form method="post" asp-page-handler="Move" asp-route-id="@b.Id" asp-route-step="-1" asp-route-show="@Model.Show">
+                        <button class="btn btn-sm wash-second" type="submit" title="Показывать раньше" aria-label="Показывать раньше" disabled="@(index == 0)">@Icons.Get("arrow-left", 16)</button>
+                    </form>
+                    <form method="post" asp-page-handler="Move" asp-route-id="@b.Id" asp-route-step="1" asp-route-show="@Model.Show">
+                        <button class="btn btn-sm wash-second" type="submit" title="Показывать позже" aria-label="Показывать позже" disabled="@(index == Model.All.Count - 1)">@Icons.Get("arrow-right", 16)</button>
+                    </form>
+                </div>
+                <a class="btn btn-sm wash-second" href="/admin/banners/@b.Id">@Icons.Get("pencil", 16) Изменить</a>
+                <form method="post" asp-page-handler="Delete" asp-route-id="@b.Id" asp-route-show="@Model.Show" data-confirm="Удалить баннер «@b» насовсем? Картинка тоже удалится.">
+                    <button class="btn btn-sm wash-second is-cancel" type="submit" title="Удалить баннер">@Icons.Get("trash", 16) Удалить</button>
+                </form>
+            </div>
+        </article>
+    }
+    <a class="bn-add" href="/admin/banners/add">
+        <span class="fx-drop-icon">@Icons.Get("plus", 24)</span>
+        <b>Добавить баннер</b>
+        <small>Картинка @BannerShape.RecommendedWidth × @BannerShape.RecommendedHeight, надписи прямо на ней</small>
+    </a>
+</div>
+@if (Model.Cards.Count == 0 && !string.IsNullOrEmpty(Model.Show))
+{
+    <p class="bn-empty">В этой вкладке пусто.</p>
+}

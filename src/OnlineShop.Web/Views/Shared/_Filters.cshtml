@@ -7,7 +7,8 @@
     var filter = Model.Filter;
 }
 <aside class="filters" id="filters">
-    @if (Model.SideCategories.Count > 1)
+    @* На странице раздела соседние разделы — кнопками над товарами (_CategoryNav), здесь только для поиска. *@
+    @if (Model.SideCategories.Count > 1 && Model.Category is null)
     {
         <nav class="side-cats" aria-label="Категории">
             <h3>Категории</h3>
@@ -26,6 +27,10 @@
             <input type="hidden" name="q" value="@Model.Query">
         }
         <input type="hidden" name="sort" value="@filter.Sort">
+        @if (filter.Pack.Length > 0)
+        {
+            <input type="hidden" name="pack" value="@filter.Pack">
+        }
 
         <h3>Фильтры</h3>
 
@@ -72,6 +77,13 @@
             </div>
         </fieldset>
 
+        @if (Model.Category is not null && filter.InStockOnly)
+        {
+            @* «Только в наличии» на странице раздела — кнопкой сверху; здесь лишь сохраняем выбор. *@
+            <input type="hidden" name="in_stock" value="1">
+        }
+        else if (Model.Category is null)
+        {
         <fieldset class="filter-group">
             <legend>Наличие</legend>
             <label class="check">
@@ -79,6 +91,7 @@
                 <span>Только то, что есть на складе</span>
             </label>
         </fieldset>
+        }
 
         <div class="form-actions">
             <button class="btn btn-block" type="submit">Показать</button>

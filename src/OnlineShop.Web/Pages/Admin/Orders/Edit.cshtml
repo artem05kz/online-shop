@@ -1,14 +1,32 @@
 @page "/admin/orders/{id:int}"
 @model OnlineShop.Web.Pages.Admin.Orders.EditModel
+@using OnlineShop.Web.Pages.Admin.Orders
 @{
     var order = Model.Order;
     ViewData["Title"] = $"Заказ №{order.Id}";
     ViewData["AdminSection"] = "orders";
     var generalErrors = ViewData.ModelState[""]?.Errors ?? [];
     var items = order.Items.OrderBy(i => i.Id).ToDictionary(i => i.Id);
+    var digits = PhoneNumbers.Normalize(order.ContactPhone);
+    var next = OrderSteps.Button(order.Status, order.IsPickup);
+    var flow = Order.StatusFlow.ToList();
+    var current = flow.IndexOf(order.Status);
+    // Доставка по Актау — доплата до 7 000 ₸ (DeliveryPrices), как видит покупатель. В заказе она не хранится.
+    var cityDelivery = !order.IsPickup && DeliveryPrices.IsCity(order.City);
+    var fee = cityDelivery ? DeliveryPrices.CityFee(order.Total) : 0m;
 }
-<div class="admin-head">
-    <h1>Заказ №@order.Id @if (order.IsPickup) { <span class="pill off">самовывоз</span> }</h1>
+@*
+    Карточка заказа (редизайн 24.11). Шапка: номер, статус, когда оформлен; «Печать» и «К списку».
+    Полоса шагов статуса и одна главная кнопка «следующий шаг». Ниже два столбца: состав с фото и суммой
+    (товары, доставка, к оплате) и покупатель: телефон крупно, «Позвонить», WhatsApp, получение, комментарий.
+    Правка данных и количества — в форме ниже, «Сохранить» внизу экрана.
+*@
+<div class="admin-head od-head">
+    <div class="od-title">
+        <h1>Заказ №@order.Id</h1>
+        <span class="a-status a-status-@order.Status.ToCode()">@OrderSteps.Text(order.Status, order.IsPickup)</span>
+        <p class="od-when">оформлен @Format.DateTimeText(order.CreatedAt) · @(order.User is null ? "без регистрации" : $"аккаунт {order.User.UserName}")</p>
+    </div>
     <a class="btn btn-ghost" href="/admin/orders/@order.Id/print" target="_blank" rel="noopener">@Icons.Get("orders", 18) Лист для печати</a>
     <a class="btn btn-ghost" asp-page="Index">К списку</a>
 </div>
@@ -23,83 +41,193 @@
     </ul>
 }
 
-<form method="post" id="changelist-form">
-    <div class="admin-box">
-        <ul class="spec-list">
-            <li><span>Покупатель (логин)</span><span>@order.User.UserName</span></li>
-            <li><span>Оформлен</span><span>@Format.DateTimeText(order.CreatedAt)</span></li>
-            <li><span>Изменён</span><span>@Format.DateTimeText(order.UpdatedAt)</span></li>
+<section class="admin-box od-flow">
+    @if (order.IsCanceled)
+    {
+        <p class="od-canceled">@Icons.Get("x", 18) Заказ отменён. Чтобы вернуть его в работу, выберите статус ниже в «Изменить заказ».</p>
+    }
+    else
+    {
+        <ol class="od-steps">
+            @for (var i = 0; i < flow.Count; i++)
+            {
+                <li class="@(i < current ? "is-done" : i == current ? "is-now" : "")"><i></i>@OrderSteps.Text(flow[i], order.IsPickup)</li>
+            }
+        </ol>
+        @if (next is not null)
+        {
+            <form method="post" asp-page-handler="Next" asp-route-id="@order.Id" class="od-next">
+                <button class="btn" type="submit">@Icons.Get("check", 18) @next</button>
+                <span class="note">Покупатель получит письмо о новом статусе, если подтвердил почту.</span>
+            </form>
+        }
+        else
+        {
+            <p class="od-done">@Icons.Get("check", 18) Заказ выполнен.</p>
+        }
+    }
+</section>
+
+<div class="od-grid">
+    <section class="admin-box od-items">
+        <h2>Состав заказа</h2>
+        <ul class="od-list">
+            @foreach (var item in order.Items.OrderBy(i => i.Id))
+            {
+                var product = item.Variant.Product;
+                <li>
+                    <img src="@Media.PhotoUrl(product, Media.Small)" alt="" width="64" height="64">
+                    <span class="od-item-text">
+                        <a href="/admin/products/@product.Id">@item.ProductName</a>
+                        <small>@(string.IsNullOrEmpty(item.PackLabel) ? "" : item.PackLabel + " · ")арт. @item.Article · @Format.Money(item.Price) × @item.Quantity шт.</small>
+                    </span>
+                    <b>@Format.Money(item.Subtotal)</b>
+                </li>
+            }
         </ul>
-        <div class="form-row form-narrow" style="margin-top:14px;">
-            <label asp-for="Input.Status"></label>
-            <select class="select" asp-for="Input.Status">
+        <div class="od-sum">
+            <div><span>Товары, @order.TotalQuantity шт.</span><span>@Format.Money(order.Total)</span></div>
+            @if (order.IsPickup)
+            {
+                <div><span>Самовывоз</span><span>бесплатно</span></div>
+            }
+            else
+            {
+                <div><span>Доставка@(cityDelivery ? " по Актау" : "")</span><span>@(cityDelivery ? (fee == 0 ? "бесплатно" : Format.Money(fee)) : DeliveryPrices.Region + ", назвать при звонке")</span></div>
+            }
+            <div class="od-total"><span>К оплате</span><span>@Format.Money(order.Total + fee)</span></div>
+            @if (cityDelivery && fee > 0)
+            {
+                <p class="od-note">Минимальный заказ с доставкой по Актау — @DeliveryPrices.CityMinimumText: доставка — доплата до этой суммы.</p>
+            }
+        </div>
+    </section>
+
+    <aside class="od-side">
+        <section class="admin-box od-buyer">
+            <h2>Покупатель</h2>
+            <p class="od-name">@(string.IsNullOrWhiteSpace(order.ContactName) ? "Без имени" : order.ContactName)</p>
+            <p class="od-phone">@(digits.Length > 0 ? PhoneNumbers.Display(digits) : order.ContactPhone)</p>
+            @if (digits.Length > 0)
+            {
+                <div class="od-call">
+                    <a class="btn" href="tel:+@digits">@Icons.Get("phone", 18) Позвонить</a>
+                    <a class="btn btn-ghost" href="https://wa.me/@digits" target="_blank" rel="noopener">@Icons.Get("whatsapp", 18) WhatsApp</a>
+                </div>
+            }
+        </section>
+
+        <section class="admin-box od-get">
+            <h2>@(order.IsPickup ? "Самовывоз" : "Доставка")</h2>
+            @if (order.IsPickup)
+            {
+                <p>@Icons.Get("pin", 18) <span>@(order.PickupStore?.Address ?? "магазин не выбран")</span></p>
+                @if (!string.IsNullOrEmpty(order.PickupStore?.WorkingHours))
+                {
+                    <p class="muted">@order.PickupStore.WorkingHours</p>
+                }
+            }
+            else
+            {
+                <p>@Icons.Get("truck", 18) <span>@order.City, @order.StreetAndDetails</span></p>
+            }
+            @if (!string.IsNullOrWhiteSpace(order.Comment))
+            {
+                <p class="od-comment"><b>Комментарий покупателя</b>@order.Comment</p>
+            }
+        </section>
+    </aside>
+</div>
+
+<form method="post" id="changelist-form" class="od-edit">
+    <h2 class="od-edit-title">Изменить заказ</h2>
+    <div class="admin-box od-form">
+        <fieldset class="od-statuses">
+            <legend>Статус</legend>
+            <div class="od-chips">
                 @foreach (var status in Enum.GetValues<OrderStatus>())
                 {
-                    <option value="@status">@status.Label()</option>
+                    <label class="od-chip od-chip-@status.ToCode()">
+                        <input type="radio" asp-for="Input.Status" value="@status">
+                        <span>@OrderSteps.Text(status, order.IsPickup)</span>
+                    </label>
                 }
-            </select>
+            </div>
+            <p class="hint">Обычно хватает кнопки следующего шага вверху. Здесь — чтобы вернуть заказ на шаг назад или отменить его.</p>
+        </fieldset>
+
+        <div class="od-form-cols">
+            <fieldset>
+                <legend>Получатель</legend>
+                <div class="form-row">
+                    <label asp-for="Input.ContactName">Имя</label>
+                    <input class="field" asp-for="Input.ContactName">
+                    <span class="errorlist" asp-validation-for="Input.ContactName"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.ContactPhone"></label>
+                    <input class="field" asp-for="Input.ContactPhone" type="tel">
+                    <span class="errorlist" asp-validation-for="Input.ContactPhone"></span>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>@(order.IsPickup ? "Адрес" : "Куда везти")</legend>
+                <div class="form-row">
+                    <label asp-for="Input.City"></label>
+                    <input class="field" asp-for="Input.City">
+                    <span class="errorlist" asp-validation-for="Input.City"></span>
+                </div>
+                <div class="form-row">
+                    <label asp-for="Input.StreetAndDetails">Улица, дом, квартира</label>
+                    <input class="field" asp-for="Input.StreetAndDetails">
+                    <span class="errorlist" asp-validation-for="Input.StreetAndDetails"></span>
+                </div>
+            </fieldset>
+        </div>
+
+        <div class="form-row od-comment-row">
+            <label asp-for="Input.Comment">Комментарий к заказу</label>
+            <textarea class="field" asp-for="Input.Comment" rows="2" placeholder="Например: позвонить за час, домофон не работает"></textarea>
         </div>
     </div>
 
-    <div class="admin-box">
-        <h3>Доставка</h3>
-        <div class="form-grid">
-            <div class="form-row">
-                <label asp-for="Input.ContactName"></label>
-                <input class="field" asp-for="Input.ContactName">
-                <span class="errorlist" asp-validation-for="Input.ContactName"></span>
-            </div>
-            <div class="form-row">
-                <label asp-for="Input.ContactPhone"></label>
-                <input class="field" asp-for="Input.ContactPhone">
-                <span class="errorlist" asp-validation-for="Input.ContactPhone"></span>
-            </div>
-            <div class="form-row">
-                <label asp-for="Input.City"></label>
-                <input class="field" asp-for="Input.City">
-                <span class="errorlist" asp-validation-for="Input.City"></span>
-            </div>
-            <div class="form-row">
-                <label asp-for="Input.StreetAndDetails"></label>
-                <input class="field" asp-for="Input.StreetAndDetails">
-                <span class="errorlist" asp-validation-for="Input.StreetAndDetails"></span>
-            </div>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.Comment"></label>
-            <textarea class="field" asp-for="Input.Comment" rows="3"></textarea>
-        </div>
-    </div>
-
-    <div class="admin-box">
-        <h3>Позиции</h3>
+    <div class="admin-box od-qty-box">
+        <h3>Количество</h3>
         <p class="hint">Название, фасовка и цена сохранены на момент заказа и не меняются вслед за каталогом.</p>
-        <div class="admin-table-wrap">
-            <table class="admin-table" id="result_list">
-                <thead><tr><th>Товар</th><th>Фасовка</th><th>Артикул</th><th class="num">Цена</th><th>Количество</th><th class="num">Сумма</th><th>Удалить</th></tr></thead>
-                <tbody>
-                    @for (var i = 0; i < Model.Items.Count; i++)
+        <table class="od-qty" id="result_list">
+            <tbody>
+                @for (var i = 0; i < Model.Items.Count; i++)
+                {
+                    if (!items.TryGetValue(Model.Items[i].Id, out var item))
                     {
-                        if (!items.TryGetValue(Model.Items[i].Id, out var item))
-                        {
-                            continue;
-                        }
-                        <tr>
-                            <td><input type="hidden" asp-for="Items[i].Id"><a href="/admin/products/@item.Variant.ProductId">@item.ProductName</a></td>
-                            <td>@item.PackLabel</td>
-                            <td>@item.Article</td>
-                            <td class="num">@Format.Money(item.Price)</td>
-                            <td><input class="field tiny" asp-for="Items[i].Quantity" type="number" min="1"><span class="errorlist" asp-validation-for="Items[i].Quantity"></span></td>
-                            <td class="num">@Format.Money(item.Subtotal)</td>
-                            <td><input asp-for="Items[i].Delete"></td>
-                        </tr>
+                        continue;
                     }
-                </tbody>
-            </table>
-        </div>
-        <div class="admin-actions">
-            <strong class="push">Итого: @order.TotalQuantity шт., @Format.Money(order.Total)</strong>
-        </div>
+                    <tr>
+                        <td class="od-qty-item">
+                            <input type="hidden" asp-for="Items[i].Id">
+                            <img src="@Media.PhotoUrl(item.Variant.Product, Media.Small)" alt="" width="48" height="48">
+                            <span><b>@item.ProductName</b><small>@(string.IsNullOrEmpty(item.PackLabel) ? "" : item.PackLabel + " · ")арт. @item.Article · @Format.Money(item.Price) за шт.</small></span>
+                        </td>
+                        <td class="od-qty-step">
+                            <label class="visually-hidden" for="Items_@(i)__Quantity">Количество: @item.ProductName</label>
+                            <span class="qty-step">
+                                <button type="button" data-step="-1" aria-label="Меньше">−</button>
+                                <input asp-for="Items[i].Quantity" type="number" min="1" inputmode="numeric">
+                                <button type="button" data-step="1" aria-label="Больше">+</button>
+                            </span>
+                            <span class="errorlist" asp-validation-for="Items[i].Quantity"></span>
+                        </td>
+                        <td class="od-qty-sum">@Format.Money(item.Subtotal)</td>
+                        <td class="od-qty-del">
+                            <label class="od-del">
+                                <input asp-for="Items[i].Delete">
+                                <span>@Icons.Get("x", 16) Убрать</span>
+                            </label>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 
     <div class="savebar">

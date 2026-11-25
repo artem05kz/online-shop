@@ -22,7 +22,9 @@ public record TelegramUser(long Id, string? Username, string? FirstName);
 public record TelegramChat(long Id, string Type);
 public record TelegramContact(string PhoneNumber, long? UserId);
 public record TelegramMessage(long MessageId, TelegramChat Chat, TelegramUser? From, string? Text, TelegramContact? Contact);
-public record TelegramUpdate(long UpdateId, TelegramMessage? Message);
+/// <summary>Нажатие кнопки под сообщением бота (CRM мойки, 24.11): Data — что за кнопка.</summary>
+public record TelegramCallbackQuery(string Id, TelegramUser From, TelegramMessage? Message, string? Data);
+public record TelegramUpdate(long UpdateId, TelegramMessage? Message, TelegramCallbackQuery? CallbackQuery = null);
 
 /// <summary>Telegram ответил ошибкой. Code 403: человек заблокировал бота, 401: неверный токен.</summary>
 public class TelegramException(int code, string description) : Exception($"Telegram: {code} {description}")
@@ -40,6 +42,12 @@ public interface ITelegramApi
 
     /// <summary>Сообщение с разметкой HTML. replyMarkup: клавиатура под полем ввода или её снятие.</summary>
     Task SendMessageAsync(long chatId, string html, object? replyMarkup, CancellationToken ct);
+
+    /// <summary>Ответ на нажатие кнопки: короткая всплывающая подсказка у того, кто нажал.</summary>
+    Task AnswerCallbackAsync(string callbackId, string text, CancellationToken ct);
+
+    /// <summary>Заменить кнопки под уже отправленным сообщением (null — убрать кнопки).</summary>
+    Task EditReplyMarkupAsync(long chatId, long messageId, object? replyMarkup, CancellationToken ct);
 }
 
 /// <summary>
@@ -62,7 +70,7 @@ public sealed class TelegramApi(TelegramOptions options) : ITelegramApi, IDispos
 
     public async Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(long offset, int timeoutSeconds, CancellationToken ct) =>
         await CallAsync<List<TelegramUpdate>>("getUpdates",
-            new { offset, timeout = timeoutSeconds, allowed_updates = new[] { "message" } }, ct);
+            new { offset, timeout = timeoutSeconds, allowed_updates = new[] { "message", "callback_query" } }, ct);
 
     public Task SendMessageAsync(long chatId, string html, object? replyMarkup, CancellationToken ct) =>
         CallAsync<JsonElement>("sendMessage", new
@@ -72,6 +80,17 @@ public sealed class TelegramApi(TelegramOptions options) : ITelegramApi, IDispos
             parse_mode = "HTML",
             link_preview_options = new { is_disabled = true },
             reply_markup = replyMarkup,
+        }, ct);
+
+    public Task AnswerCallbackAsync(string callbackId, string text, CancellationToken ct) =>
+        CallAsync<JsonElement>("answerCallbackQuery", new { callback_query_id = callbackId, text }, ct);
+
+    public Task EditReplyMarkupAsync(long chatId, long messageId, object? replyMarkup, CancellationToken ct) =>
+        CallAsync<JsonElement>("editMessageReplyMarkup", new
+        {
+            chat_id = chatId,
+            message_id = messageId,
+            reply_markup = replyMarkup ?? new { inline_keyboard = Array.Empty<object>() },
         }, ct);
 
     private async Task<T> CallAsync<T>(string method, object body, CancellationToken ct)
@@ -104,4 +123,23 @@ public static class TelegramKeyboards
     };
 
     public static object Remove => new { remove_keyboard = true };
+
+    /// <summary>Кнопки под новой записью на мойку: подтвердить или отменить, не заходя в панель.</summary>
+    public static object Booking(int id) => new
+    {
+        inline_keyboard = new[]
+        {
+            new[] { new { text = "✅ Подтвердить", callback_data = $"wash:ok:{id}" }, new { text = "Отменить", callback_data = $"wash:ask:{id}" } },
+        },
+    };
+
+    /// <summary>Отмена — в два нажатия, чтобы не отменить запись случайно.</summary>
+    public static object BookingCancelAsk(int id) => new
+    {
+        inline_keyboard = new[]
+        {
+            new[] { new { text = "Да, отменить запись", callback_data = $"wash:cancel:{id}" } },
+            new[] { new { text = "Назад", callback_data = $"wash:back:{id}" } },
+        },
+    };
 }

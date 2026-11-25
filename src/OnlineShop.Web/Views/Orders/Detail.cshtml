@@ -1,16 +1,76 @@
 @model Order
+@inject StorefrontLayout StorefrontLayout
 @{
     ViewData["Title"] = $"Заказ №{Model.Id}";
+    // Только что оформлен: CheckoutController кладёт метку, и наверху показывается карточка «Заказ принят» с шагами.
+    var justPlaced = TempData["OrderPlaced"] is true;
+    // Заказ открыт по секретной ссылке (оформлен без входа): истории заказов и «Повторить» у гостя нет.
+    var byLink = ViewData["ByLink"] is true;
+    // Телефон магазина: покупатель может позвонить сам, не дожидаясь звонка менеджера.
+    var shop = (await StorefrontLayout.GetAsync()).Contact;
 }
-<nav class="breadcrumbs">
-    <a asp-controller="Catalog" asp-action="Home">Главная</a>
-    <span class="sep">/</span>
-    <a href="@ShopUrls.OrderHistory">История заказов</a>
-    <span class="sep">/</span>
-    <span>Заказ №@Model.Id</span>
-</nav>
+@*
+    Страница заказа (компьютерная версия). Сразу после оформления — шаг «Готово» и большая карточка «Заказ принят»,
+    при следующих заходах — обычная страница: номер, статус с полосой прогресса, состав, получение, оплата.
+*@
+@if (justPlaced)
+{
+    <partial name="_CheckoutSteps" model="3" />
+    <section class="placed" role="status">
+        <span class="placed-ico">@Icons.Get("check", 30)</span>
+        <div class="placed-text">
+            <h1>Заказ №@Model.Id принят</h1>
+            <p>Спасибо! Менеджер перезвонит вам на номер <b>@Model.ContactPhone</b>, чтобы подтвердить заказ. Оплата при получении.</p>
+            @if (shop is { Phone.Length: > 0 })
+            {
+                <p class="placed-call">Есть вопрос по заказу? Звоните сами: <a href="tel:@shop.PhoneLink">@shop.Phone</a>@(string.IsNullOrEmpty(shop.Whatsapp) ? "" : " (звонок и WhatsApp)")</p>
+            }
+        </div>
+        <ol class="placed-steps">
+            <li><span>1</span>Менеджер звонит и подтверждает заказ</li>
+            <li><span>2</span>@(Model.IsPickup ? "Собираем заказ и сообщаем, когда можно забирать" : "Собираем заказ и привозим по адресу")</li>
+            <li><span>3</span>Вы платите наличными или картой при получении</li>
+        </ol>
+        @if (byLink)
+        {
+            <p class="placed-link">Статус заказа виден на этой странице. Сохраните ссылку, чтобы открыть её позже.</p>
+        }
+        <div class="placed-actions">
+            <a class="btn" asp-controller="Catalog" asp-action="Home">Продолжить покупки</a>
+            @if (byLink)
+            {
+                <button class="btn btn-outline" type="button" data-copy-link>@Icons.Get("link", 16) <span>Скопировать ссылку</span></button>
+            }
+            else
+            {
+                <a class="btn btn-outline" href="@ShopUrls.OrderHistory">Мои заказы</a>
+            }
+        </div>
+        @if (byLink && User.Identity?.IsAuthenticated != true)
+        {
+            @* Регистрация по желанию: заказ из этого браузера сам перейдёт в «Мои заказы» (GuestOrders). *@
+            <div class="placed-account">
+                <span class="placed-account-ico">@Icons.Get("user", 20)</span>
+                <p><b>Хотите следить за заказом без ссылки?</b>
+                    Создайте аккаунт: этот заказ сохранится в «Мои заказы», и все следующие тоже.</p>
+                <a class="placed-account-btn" href="@ShopUrls.Register?returnUrl=@Uri.EscapeDataString(ShopUrls.OrderHistory)">Создать аккаунт</a>
+                <a class="placed-account-login" href="@ShopUrls.Login?returnUrl=@Uri.EscapeDataString(ShopUrls.OrderHistory)">Уже есть аккаунт</a>
+            </div>
+        }
+    </section>
+}
+else if (!byLink)
+{
+    <nav class="breadcrumbs">
+        <a asp-controller="Catalog" asp-action="Home">Главная</a>
+        <span class="sep">/</span>
+        <a href="@ShopUrls.OrderHistory">История заказов</a>
+        <span class="sep">/</span>
+        <span>Заказ №@Model.Id</span>
+    </nav>
+}
 
-<div class="panel">
+<div class="co-card od-head">
     <div class="order-head">
         <div>
             <div class="o-num">Заказ №@Model.Id</div>
@@ -36,52 +96,93 @@
     }
 </div>
 
-<div class="two-col">
-    <div class="panel">
-        <h3>Состав заказа</h3>
-        @foreach (var item in Model.Items)
-        {
-            var product = item.Variant.Product;
-            <div class="line-item">
-                <a class="thumb" href="@Url.Product(product)">
-                    <img src="@Media.PhotoUrl(product, Media.Small)" alt="@item.ProductName">
-                </a>
-                <div>
-                    <a class="li-name" href="@Url.Product(product)">@item.ProductName</a>
-                    <div class="li-meta">
-                        Фасовка: @(string.IsNullOrEmpty(item.PackLabel) ? "не указана" : item.PackLabel)@(string.IsNullOrEmpty(item.Article) ? "" : $" · Артикул: {item.Article}")
-                    </div>
-                    <div class="li-meta">@Format.Money(item.Price) × @item.Quantity шт.</div>
-                </div>
-                <div class="li-right"><strong>@Format.Money(item.Subtotal)</strong></div>
+<div class="co">
+    <div class="co-main">
+        <div class="co-card">
+            <h2>Состав заказа</h2>
+            <ul class="cart-list od-items">
+                @foreach (var item in Model.Items)
+                {
+                    var product = item.Variant.Product;
+                    <li class="cart-line">
+                        <a class="cart-thumb" href="@Url.Product(product)">
+                            <img src="@Media.PhotoUrl(product, Media.Small)" alt="">
+                        </a>
+                        <div class="cart-info">
+                            <a class="cart-name" href="@Url.Product(product)">@item.ProductName</a>
+                            <p class="cart-meta">@(string.IsNullOrEmpty(item.PackLabel) ? "" : $"{item.PackLabel}")@(string.IsNullOrEmpty(item.Article) ? "" : $" · арт. {item.Article}")</p>
+                            <p class="cart-price">@Format.Money(item.Price) × @item.Quantity шт.</p>
+                        </div>
+                        <strong class="cart-sum">@Format.Money(item.Subtotal)</strong>
+                    </li>
+                }
+            </ul>
+            @{
+                // Доставка по Актау — доплата до 7 000 ₸, как в корзине. По области цену называет менеджер. В базе заказа доставки нет.
+                var cityDelivery = !Model.IsPickup && DeliveryPrices.IsCity(Model.City);
+                var cityFee = cityDelivery ? DeliveryPrices.CityFee(Model.Total) : 0m;
+            }
+            @if (!Model.IsPickup)
+            {
+                <div class="summary-row od-sub"><span>Товары, @Model.TotalQuantity шт.</span><span>@Format.Money(Model.Total)</span></div>
+                <div class="summary-row od-sub"><span>Доставка@(cityDelivery ? " по Актау" : "")</span><span>@(cityDelivery ? (cityFee == 0 ? "бесплатно" : Format.Money(cityFee)) : DeliveryPrices.Region + ", назовёт менеджер")</span></div>
+            }
+            <div class="summary-row total">
+                <span>@(Model.IsPickup ? $"Итого, {Model.TotalQuantity} шт." : "К оплате")</span>
+                <span>@Format.Money(Model.Total + cityFee)</span>
             </div>
-        }
-        <div class="summary-row total">
-            <span>Итого (@Model.TotalQuantity шт.)</span>
-            <span>@Format.Money(Model.Total)</span>
         </div>
     </div>
-    <div>
-        <div class="panel">
-            <h3>Доставка</h3>
+    <aside class="co-side">
+        <div class="co-card">
+            <h2>@(Model.IsPickup ? "Самовывоз" : "Доставка")</h2>
             <ul class="spec-list">
                 <li><span>Получатель</span><span>@Model.ContactName</span></li>
                 <li><span>Телефон</span><span>@Model.ContactPhone</span></li>
-                <li><span>Город</span><span>@Model.City</span></li>
-                <li><span>Адрес</span><span>@Model.StreetAndDetails</span></li>
+                @if (Model.IsPickup)
+                {
+                    <li><span>Магазин</span><span>@Model.StreetAndDetails</span></li>
+                }
+                else
+                {
+                    <li><span>Город</span><span>@Model.City</span></li>
+                    <li><span>Адрес</span><span>@Model.StreetAndDetails</span></li>
+                }
                 @if (!string.IsNullOrEmpty(Model.Comment))
                 {
                     <li><span>Комментарий</span><span>@Model.Comment</span></li>
                 }
             </ul>
         </div>
-        <div class="panel">
-            <h3>Оплата</h3>
-            <p class="muted">Наличными или картой при получении. Заказ подтверждает менеджер по телефону.</p>
-            <form asp-action="Repeat" asp-route-id="@Model.Id" method="post" style="margin-bottom:10px;">
-                <button class="btn btn-block" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
-            </form>
-            <a class="btn btn-ghost btn-block" href="@ShopUrls.OrderHistory">Ко всем заказам</a>
+        <div class="co-card">
+            <h2>Оплата</h2>
+            <p class="muted od-pay">Наличными или картой при получении. Заказ подтверждает менеджер по телефону.</p>
+            @if (!justPlaced && !byLink)
+            {
+                <form asp-action="Repeat" asp-route-id="@Model.Id" method="post">
+                    <button class="btn co-cta" type="submit">@Icons.Get("refresh", 16) Повторить заказ</button>
+                </form>
+                <a class="co-edit" href="@ShopUrls.OrderHistory">Ко всем заказам</a>
+            }
         </div>
-    </div>
+    </aside>
 </div>
+
+@section Scripts {
+    @if (byLink && justPlaced)
+    {
+        <script nonce="@Context.CspNonce()">
+            // «Скопировать ссылку»: адрес этой страницы в буфер обмена, на кнопке ненадолго «Ссылка скопирована».
+            document.querySelector('[data-copy-link]')?.addEventListener('click', async (e) => {
+                const label = e.currentTarget.querySelector('span');
+                try {
+                    await navigator.clipboard.writeText(location.href);
+                    label.textContent = 'Ссылка скопирована';
+                } catch {
+                    label.textContent = 'Скопируйте адрес страницы';
+                }
+                setTimeout(() => { label.textContent = 'Скопировать ссылку'; }, 2500);
+            });
+        </script>
+    }
+}

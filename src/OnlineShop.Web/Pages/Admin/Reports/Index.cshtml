@@ -3,77 +3,257 @@
 @{
     ViewData["Title"] = "Отчёты";
     ViewData["AdminSection"] = "reports";
+    var ru = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
     var maxRevenue = Model.Bars.Count == 0 ? 0 : Model.Bars.Max(b => b.Revenue);
     var everyNth = Math.Max(1, (int)Math.Ceiling(Model.Bars.Count / 15.0));
+    var today = DateOnly.FromDateTime(Format.ToLocal(DateTime.UtcNow));
+    string Range(DateOnly a, DateOnly b) =>
+        a == b ? a.ToString("d MMMM yyyy", ru)
+        : a.Year == b.Year && a.Month == b.Month ? $"{a.Day}–{b.ToString("d MMMM yyyy", ru)}"
+        : a.Year == b.Year ? $"{a.ToString("d MMMM", ru)} – {b.ToString("d MMMM yyyy", ru)}"
+        : $"{a.ToString("d MMMM yyyy", ru)} – {b.ToString("d MMMM yyyy", ru)}";
+    string Pct(decimal part, decimal whole) => whole == 0 ? "0" : Math.Round(part / whole * 100m).ToString("0");
+    var receiveTotal = Model.Receive.Sum(r => r.Revenue);
+    var catMax = Model.Categories.Count == 0 ? 0 : Model.Categories.Max(c => c.Revenue);
+    var topMax = Model.Top.Count == 0 ? 0 : Model.Top.Max(t => t.Revenue);
+    var washMax = Model.WashServices.Count == 0 ? 0 : Model.WashServices.Max(w => w.Count);
 }
+@functions {
+    // Значок изменения к прошлому периоду: «+12 %» зелёным, «−8 %» красным.
+    private static Microsoft.AspNetCore.Html.IHtmlContent Delta(decimal now, decimal before)
+    {
+        if (OnlineShop.Web.Pages.Admin.Reports.IndexModel.Change(now, before) is not { } c)
+        {
+            return new Microsoft.AspNetCore.Html.HtmlString(before == 0 && now > 0 ? "<span class=\"rp-delta\">раньше не было</span>" : "<span class=\"rp-delta\">как раньше</span>");
+        }
+        var cls = c > 0 ? "is-up" : c < 0 ? "is-down" : "";
+        var text = c == 0 ? "без изменений" : $"{(c > 0 ? "+" : "−")}{Math.Abs(c)} %";
+        return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"rp-delta {cls}\">{text}</span>");
+    }
+}
+@*
+    Отчёты (редизайн 24.11). Сверху период: быстрые кнопки и свои даты. Цифры периода со сравнением с таким же
+    прошлым периодом; выручка по дням (или месяцам); как получают; категории; что покупают; мойка.
+*@
 <div class="admin-head">
     <h1>Отчёты</h1>
     <a class="btn btn-ghost" href="/admin/reports?handler=Excel&from=@Model.Start.ToString("yyyy-MM-dd")&to=@Model.End.ToString("yyyy-MM-dd")">@Icons.Get("upload", 18) Скачать в Excel</a>
 </div>
 
-<div class="chips" style="margin-bottom:10px;">
-    @foreach (var (code, label) in OnlineShop.Web.Pages.Admin.Reports.IndexModel.Periods)
-    {
-        <a class="chip-link @(Model.Period == code ? "on" : "")" href="/admin/reports?period=@code">@label</a>
-    }
-</div>
-<form method="get" class="admin-filters" style="margin-bottom:18px;">
-    <label>с <input class="field" type="date" name="from" value="@Model.Start.ToString("yyyy-MM-dd")"></label>
-    <label>по <input class="field" type="date" name="to" value="@Model.End.ToString("yyyy-MM-dd")"></label>
-    <button class="btn btn-ghost" type="submit">Показать</button>
-</form>
-<p class="admin-count">Период: @Model.Start.ToString("dd.MM.yyyy") - @Model.End.ToString("dd.MM.yyyy"). Отменённые заказы в выручку не входят.</p>
-
-<div class="stats">
-    <div class="stat"><div class="v">@Model.OrderCount</div><div class="l">заказов</div></div>
-    <div class="stat"><div class="v">@Format.Money(Model.Revenue)</div><div class="l">выручка</div></div>
-    <div class="stat"><div class="v">@Format.Money(Math.Round(Model.AverageCheck))</div><div class="l">средний чек</div></div>
-    <div class="stat"><div class="v">@Model.ItemsSold</div><div class="l">продано, шт.</div></div>
-    <div class="stat"><div class="v">@Model.CanceledCount</div><div class="l">отменено</div></div>
-</div>
-
-<h2>Выручка по @(Model.ByMonth ? "месяцам" : "дням")</h2>
-@if (maxRevenue == 0)
-{
-    <p class="admin-count">За этот период продаж нет.</p>
-}
-else
-{
-    <div class="bars" role="img" aria-label="Выручка за период">
-        @for (var i = 0; i < Model.Bars.Count; i++)
+<div class="rp-period">
+    <nav class="o-tabs" aria-label="Период">
+        @foreach (var (code, label) in OnlineShop.Web.Pages.Admin.Reports.IndexModel.Periods)
         {
-            var bar = Model.Bars[i];
-            var height = (int)Math.Round(bar.Revenue / maxRevenue * 100);
-            <div class="bar" title="@bar.Hint: @Format.Money(bar.Revenue), заказов @bar.Orders">
-                <div class="bar-fill" style="height:@(height)%"></div>
-                <div class="bar-label">@(i % everyNth == 0 ? bar.Label : "")</div>
-            </div>
+            <a class="o-tab@(Model.Period == code ? " is-on" : "")" href="/admin/reports?period=@code">@label</a>
+        }
+    </nav>
+    <form method="get" class="rp-dates@(Model.Period == "custom" ? " is-on" : "")">
+        <label><span>с</span><input type="date" name="from" value="@Model.Start.ToString("yyyy-MM-dd")" max="@today.ToString("yyyy-MM-dd")"></label>
+        <label><span>по</span><input type="date" name="to" value="@Model.End.ToString("yyyy-MM-dd")" max="@today.ToString("yyyy-MM-dd")"></label>
+        <button class="btn btn-sm" type="submit">Показать</button>
+    </form>
+</div>
+<p class="rp-range"><b>@Range(Model.Start, Model.End)</b> <span>сравниваем с @Range(Model.PrevStart, Model.PrevEnd). Отменённые заказы в выручку не входят.</span></p>
+
+<section class="rp-kpis" aria-label="Итоги периода">
+    <div class="rp-kpi rp-kpi-main">
+        <div class="v">@Format.Money(Model.Revenue)</div><div class="l">выручка</div>
+        <p>@Delta(Model.Revenue, Model.PrevRevenue) <small>было @Format.Money(Model.PrevRevenue)</small></p>
+    </div>
+    <div class="rp-kpi">
+        <div class="v">@Model.OrderCount</div><div class="l">заказов</div>
+        <p>@Delta(Model.OrderCount, Model.PrevOrderCount) <small>было @Model.PrevOrderCount</small></p>
+    </div>
+    <div class="rp-kpi">
+        <div class="v">@Format.Money(Math.Round(Model.AverageCheck))</div><div class="l">средний чек</div>
+        <p>@Delta(Math.Round(Model.AverageCheck), Math.Round(Model.PrevAverageCheck)) <small>было @Format.Money(Math.Round(Model.PrevAverageCheck))</small></p>
+    </div>
+    <div class="rp-kpi">
+        <div class="v">@Model.ItemsSold</div><div class="l">продано, шт.</div>
+        <p>@Delta(Model.ItemsSold, Model.PrevItemsSold) <small>было @Model.PrevItemsSold</small></p>
+    </div>
+    <a class="rp-kpi rp-kpi-muted" href="/admin/orders?status=canceled">
+        <div class="v">@Model.CanceledCount</div><div class="l">отменено</div>
+        <p><small>заказов за период</small></p>
+    </a>
+</section>
+
+<section class="dash-card rp-chart">
+    <div class="dash-card-head">
+        <h2>Выручка по @(Model.ByMonth ? "месяцам" : "дням")</h2>
+        @if (maxRevenue > 0)
+        {
+            <span class="rp-max">максимум @Format.Money(maxRevenue)</span>
         }
     </div>
-}
+    @if (maxRevenue == 0)
+    {
+        <p class="dash-empty">За этот период продаж нет.</p>
+    }
+    else
+    {
+        <div class="bars" role="img" aria-label="Выручка за период">
+            @for (var i = 0; i < Model.Bars.Count; i++)
+            {
+                var bar = Model.Bars[i];
+                var height = (int)Math.Round(bar.Revenue / maxRevenue * 100);
+                <div class="bar@(bar.Revenue == maxRevenue ? " is-max" : "")" title="@bar.Hint: @Format.Money(bar.Revenue), заказов @bar.Orders">
+                    <div class="bar-fill" style="height:@(height)%"></div>
+                    <div class="bar-label">@(i % everyNth == 0 ? bar.Label : "")</div>
+                </div>
+            }
+        </div>
+    }
+</section>
 
-<h2>Что покупают</h2>
-@if (Model.Top.Count == 0)
-{
-    <p class="admin-count">Продаж нет.</p>
-}
-else
-{
-    <div class="admin-table-wrap">
-        <table class="admin-table">
-            <thead><tr><th>Товар</th><th>Фасовка</th><th>Артикул</th><th class="num">Продано, шт.</th><th class="num">Выручка</th></tr></thead>
-            <tbody>
-                @foreach (var row in Model.Top)
+<div class="rp-grid">
+    <section class="dash-card">
+        <div class="dash-card-head"><h2>Как получают</h2></div>
+        @if (receiveTotal == 0)
+        {
+            <p class="dash-empty">Продаж нет.</p>
+        }
+        else
+        {
+            <div class="rp-stack" aria-hidden="true">
+                @foreach (var (r, i) in Model.Receive.Select((r, i) => (r, i)))
                 {
-                    <tr>
-                        <td>@row.Name</td>
-                        <td>@row.Pack</td>
-                        <td>@row.Article</td>
-                        <td class="num">@row.Quantity</td>
-                        <td class="num">@Format.Money(row.Revenue)</td>
-                    </tr>
+                    if (r.Revenue > 0)
+                    {
+                        <i class="rp-c@(i)" style="width:@Pct(r.Revenue, receiveTotal)%"></i>
+                    }
                 }
-            </tbody>
-        </table>
-    </div>
-}
+            </div>
+            <ul class="rp-legend">
+                @foreach (var (r, i) in Model.Receive.Select((r, i) => (r, i)))
+                {
+                    <li>
+                        <span class="rp-dot rp-c@(i)"></span>
+                        <span class="rp-name">@r.Label<small>@r.Count @Plural.Choose(r.Count, "заказ", "заказа", "заказов")</small></span>
+                        <b>@Format.Money(r.Revenue)</b>
+                        <span class="rp-pct">@Pct(r.Revenue, receiveTotal) %</span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    <section class="dash-card">
+        <div class="dash-card-head"><h2>Категории</h2></div>
+        @if (Model.Categories.Count == 0)
+        {
+            <p class="dash-empty">Продаж нет.</p>
+        }
+        else
+        {
+            <ul class="rp-hbars">
+                @foreach (var c in Model.Categories)
+                {
+                    <li>
+                        <span class="rp-name">@c.Label<small>@c.Count шт.</small></span>
+                        <b>@Format.Money(c.Revenue)</b>
+                        <span class="rp-track"><i style="width:@Pct(c.Revenue, catMax)%"></i></span>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+<section class="dash-card rp-top">
+    <div class="dash-card-head"><h2>Что покупают</h2><span class="rp-max">10 самых продаваемых по выручке</span></div>
+    @if (Model.Top.Count == 0)
+    {
+        <p class="dash-empty">Продаж нет.</p>
+    }
+    else
+    {
+        <ol class="rp-toplist">
+            @foreach (var row in Model.Top)
+            {
+                <li>
+                    @if (row.Photo is not null)
+                    {
+                        <img src="@row.Photo" alt="" width="44" height="44" loading="lazy">
+                    }
+                    else
+                    {
+                        <span class="rp-nophoto"></span>
+                    }
+                    <span class="rp-name">@row.Name<small>@(string.IsNullOrEmpty(row.Pack) ? "" : row.Pack + " · ")арт. @row.Article</small></span>
+                    <span class="rp-qty">@row.Quantity шт.</span>
+                    <span class="rp-rev"><b>@Format.Money(row.Revenue)</b><span class="rp-track"><i style="width:@Pct(row.Revenue, topMax)%"></i></span></span>
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+<section class="dash-card rp-wash">
+    <div class="dash-card-head"><h2>Мойка</h2><a href="/admin/wash/clients">Клиенты мойки</a></div>
+    @if (Model.WashTotal == 0)
+    {
+        <p class="dash-empty">За этот период записей на мойку нет.</p>
+    }
+    else
+    {
+        <div class="rp-wash-nums rp-wash-top">
+            <div><b>@Format.Money(Model.WashRevenue)</b><span>оплачено за мойку</span></div>
+            <div><b>@(Model.WashAverage > 0 ? Format.Money(Math.Round(Model.WashAverage)) : "—")</b><span>средний чек</span></div>
+            <div><b>@Model.WashDone</b><span>помыли машин</span></div>
+            <div class="@(Model.WashNoShowPercent >= 15 ? "is-bad" : "")"><b>@Model.WashNoShow <small>@Model.WashNoShowPercent %</small></b><span>не приехали</span></div>
+            <div><b>@Model.WashNewClients</b><span>новых клиентов</span></div>
+        </div>
+        <p class="rp-wash-sub">Всего записей: @Model.WashTotal · ещё впереди: @Model.WashUpcoming · отменили: @Model.WashCanceled@(Model.WashPaidCount < Model.WashDone ? $" · без отметки об оплате: {Model.WashDone - Model.WashPaidCount}" : "")</p>
+        <div class="rp-wash-cols">
+            <div>
+                <h3>Услуги</h3>
+                <ul class="rp-hbars">
+                    @foreach (var w in Model.WashServices)
+                    {
+                        <li>
+                            <span class="rp-name">@w.Label</span>
+                            <b>@w.Count</b>
+                            <span class="rp-track"><i style="width:@(washMax == 0 ? 0 : w.Count * 100 / washMax)%"></i></span>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div>
+                <h3>Откуда клиенты</h3>
+                @{ var srcMax = Model.WashSourcesShare.Count == 0 ? 0 : Model.WashSourcesShare.Max(x => x.Count); }
+                <ul class="rp-hbars">
+                    @foreach (var w in Model.WashSourcesShare)
+                    {
+                        <li>
+                            <span class="rp-name">@w.Label</span>
+                            <b>@w.Count</b>
+                            <span class="rp-track"><i style="width:@(srcMax == 0 ? 0 : w.Count * 100 / srcMax)%"></i></span>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div>
+                <h3>Как платят</h3>
+                @if (Model.WashPaymentsShare.Count == 0)
+                {
+                    <p class="dash-empty">Оплату ещё не отмечали. Отметить можно в карточке записи.</p>
+                }
+                else
+                {
+                    var payMax = Model.WashPaymentsShare.Max(x => x.Revenue);
+                    <ul class="rp-hbars">
+                        @foreach (var w in Model.WashPaymentsShare)
+                        {
+                            <li>
+                                <span class="rp-name">@w.Label</span>
+                                <b>@Format.Money(w.Revenue)</b>
+                                <span class="rp-track"><i style="width:@(payMax == 0 ? 0 : (int)(w.Revenue * 100 / payMax))%"></i></span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+</section>

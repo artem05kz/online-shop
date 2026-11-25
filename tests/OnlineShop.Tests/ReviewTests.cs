@@ -93,6 +93,29 @@ public class ReviewTests(TempShopFactory factory) : IClassFixture<TempShopFactor
         var sent = await Send(client, slug, productId, 4, "Блестит хорошо");
         Assert.Equal(HttpStatusCode.Redirect, sent.StatusCode);
         Assert.Equal(ReviewStatus.Pending, Db(db => db.Reviews.Single(r => r.ProductId == productId)).Status);
+
+        // Сразу после отправки сообщение стоит в блоке отзывов (туда открывается страница), а не плашкой вверху.
+        var after = await Page(client, $"/product/{slug}");
+        Assert.Contains("Отзыв отправлен", after);
+        Assert.DoesNotContain("Спасибо за отзыв", after);
+        Assert.Contains("Изменить отзыв", after);
+        // При следующем заходе — спокойное «на проверке».
+        Assert.Contains("Отзыв на проверке", await Page(client, $"/product/{slug}"));
+    }
+
+    [Fact]
+    public async Task Review_text_is_limited_to_1000_characters()
+    {
+        var (productId, slug, variantId) = SeedProduct();
+        var (client, userId) = await SignIn();
+        SeedOrder(userId, variantId, OrderStatus.Completed);
+        Assert.Contains($"maxlength=\"{Review.MaxTextLength}\"", await Page(client, $"/product/{slug}"));
+        Assert.Equal(1000, Review.MaxTextLength);
+
+        await Send(client, slug, productId, 5, new string('а', 1001));
+        Assert.False(Db(db => db.Reviews.Any(r => r.ProductId == productId)));
+        await Send(client, slug, productId, 5, new string('а', 1000));
+        Assert.True(Db(db => db.Reviews.Any(r => r.ProductId == productId)));
     }
 
     [Fact]

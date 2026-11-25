@@ -1,0 +1,120 @@
+@page "/admin/slides/{id:int}"
+@model OnlineShop.Web.Pages.Admin.Slides.EditModel
+@{
+    ViewData["Title"] = Model.Id is null ? "Новый слайд" : "Слайд с товаром";
+    ViewData["AdminSection"] = "banners";
+    var bg = SlideColors.IsHex(Model.Input.BgColor) ? Model.Input.BgColor! : SlideColors.Fallback;
+    var script = SlideColors.IsHex(Model.Input.ScriptColor) ? Model.Input.ScriptColor! : SlideColors.ScriptFor(bg);
+    var chosen = Model.Products.FirstOrDefault(p => p.Id == Model.Input.ProductId);
+}
+@*
+    Конструктор слайда с товаром (25.11.2026). Сверху живое превью первого экрана (1200 × 440, уменьшено).
+    Слева: товар (надписи и цена подставляются сами) и надписи. Справа: 3D-рендер (перетащить или выбрать)
+    и цвета — фон сам берётся с этикетки на рендере, его можно поменять. Всё меняется в превью сразу.
+*@
+<div class="admin-head">
+    <h1>@(Model.Id is null ? "Новый слайд с товаром" : Model.Input.Title)</h1>
+    <a class="btn btn-ghost" href="/admin/banners">@Icons.Get("arrow-left", 18) Первый экран</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="sl-form" id="slide-form">
+    <section class="sl-stage" aria-label="Как будет на сайте">
+        <p class="sl-stage-label">Так слайд будет выглядеть на главной</p>
+        <div class="sl-preview" id="slide-preview" style="--ps-bg: @bg; --ps-ink: @SlideColors.Ink(bg); --ps-script: @script">
+            <div class="sl-visual">
+                <span class="sl-script" data-preview="script">@Model.Input.Script</span>
+                <img data-preview="image" src="@(Model.CurrentImageUrl ?? "")" alt="" @(Model.CurrentImageUrl is null ? "hidden" : "")>
+                <span class="sl-noimg" @(Model.CurrentImageUrl is null ? "" : "hidden")>@Icons.Get("image", 28) Здесь будет 3D-рендер</span>
+            </div>
+            <div class="sl-copy">
+                <b class="sl-title" data-preview="title">@(string.IsNullOrEmpty(Model.Input.Title) ? "Заголовок слайда" : Model.Input.Title)</b>
+                <span class="sl-text" data-preview="text">@Model.Input.Text</span>
+                <span class="sl-price" data-preview="price">@chosen?.Price</span>
+                <span class="sl-buy">Купить</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="sl-grid">
+        <section class="admin-box">
+            <h3>Товар и надписи</h3>
+            <div class="form-row">
+                <label asp-for="Input.ProductId"></label>
+                <select class="select" asp-for="Input.ProductId" id="slide-product">
+                    <option value="">Выберите товар</option>
+                    @foreach (var p in Model.Products)
+                    {
+                        <option value="@p.Id" data-title="@p.Title" data-script="@p.Script" data-text="@p.Text" data-price="@p.Price">@p.Name</option>
+                    }
+                </select>
+                <span class="help">Название, текст, цена и рукописное слово подставятся из карточки товара. Цена на сайте всегда как в каталоге.</span>
+                <span class="errorlist" asp-validation-for="Input.ProductId"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Script"></label>
+                <input class="field sl-script-field" asp-for="Input.Script" data-field="script" placeholder="Glass Gloss">
+                <span class="help">Пишется крупно от руки за товаром. Лучше одно-два слова, до @OnlineShop.Web.Pages.Admin.Slides.EditModel.ScriptComfortLength букв.</span>
+                <span class="errorlist" asp-validation-for="Input.Script"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Title"></label>
+                <input class="field" asp-for="Input.Title" data-field="title">
+                <span class="errorlist" asp-validation-for="Input.Title"></span>
+            </div>
+            <div class="form-row">
+                <label asp-for="Input.Text"></label>
+                <textarea class="field" asp-for="Input.Text" rows="3" data-field="text"></textarea>
+                <span class="help">Одна-две короткие строки: чем товар хорош.</span>
+                <span class="errorlist" asp-validation-for="Input.Text"></span>
+            </div>
+            <button class="btn btn-sm wash-second" type="button" id="slide-refill">@Icons.Get("refresh", 16) Подставить из товара заново</button>
+        </section>
+
+        <section class="admin-box">
+            <h3>3D-рендер и цвет</h3>
+            <label class="fx-drop sl-drop@(Model.CurrentImageUrl is not null ? " has-file" : "")">
+                <span class="fx-drop-icon">@Icons.Get("upload", 22)</span>
+                <b>@(Model.CurrentImageUrl is null ? "Перетащите рендер сюда" : "Заменить рендер")</b>
+                <small>PNG или WEBP с прозрачным фоном, около 1360 × 800, товар по центру</small>
+                <span class="fx-drop-file" data-empty="Файл не выбран">@(Model.CurrentImageUrl is null ? "Файл не выбран" : "Рендер загружен")</span>
+                <input class="visually-hidden" type="file" asp-for="Image" accept="image/png,image/webp" id="slide-image">
+            </label>
+            <span class="errorlist" asp-validation-for="Image"></span>
+
+            <input type="hidden" name="ColorsTouched" value="false" id="slide-touched">
+            <div class="sl-colors">
+                <label class="sl-color">
+                    <input type="color" asp-for="Input.BgColor" value="@bg" id="slide-bg">
+                    <span><b>Фон</b><small id="slide-bg-note">@(Model.CurrentImageUrl is null ? "возьмётся с этикетки" : bg)</small></span>
+                </label>
+                <label class="sl-color">
+                    <input type="color" asp-for="Input.ScriptColor" value="@script" id="slide-script-color">
+                    <span><b>Рукописное слово</b><small>@script</small></span>
+                </label>
+            </div>
+            <button class="btn btn-sm wash-second" type="button" id="slide-pick">@Icons.Get("droplets", 16) Взять цвет с этикетки</button>
+            <p class="help" id="slide-color-help">Фон подбирается по самому яркому цвету этикетки. Можно выбрать свой — нажмите на квадратик.</p>
+
+            <label class="pe-switch-row fe-switch">
+                <span class="vl-switch"><input asp-for="Input.IsActive"><span aria-hidden="true"></span></span>
+                <span>Показывать на сайте</span>
+            </label>
+        </section>
+    </div>
+
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Сохранить слайд</button>
+        <a class="btn btn-ghost" href="/admin/banners">Отмена</a>
+    </div>
+</form>
+
+@if (Model.Id is not null)
+{
+    <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Id" class="bn-delete" data-confirm="Удалить слайд? Товар в каталоге останется.">
+        <button class="btn btn-sm wash-second is-cancel fe-delete" type="submit">@Icons.Get("trash", 16) Удалить слайд</button>
+    </form>
+}
+
+@section Scripts {
+    <script src="~/js/admin_slide_edit.js" asp-append-version="true"></script>
+}

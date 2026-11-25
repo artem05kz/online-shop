@@ -84,21 +84,38 @@ public class EmailTests(TempShopFactory factory) : IClassFixture<TempShopFactory
     }
 
     [Fact]
-    public async Task Checkout_waits_for_confirmed_email_and_returns_there_after()
+    public async Task Guest_order_moves_to_my_orders_after_registration_in_same_browser()
     {
         var variantId = SeedVariant();
-        var (client, email, _) = await Register();
+        var client = factory.Browser();
+        var token = await TokenFrom(client, "/");
+        await Post(client, $"/orders/cart/add/{variantId}", token);
+        var placed = await Post(client, "/orders/checkout", token, ("Form.ContactName", "Гость"), ("Form.ContactPhone", "+7 702 555"),
+            ("Form.IsPickup", "false"), ("Form.City", "Актау"), ("Form.StreetAndDetails", "5 мкр"), ("Form.AcceptPrivacy", "true"));
+        var link = placed.Headers.Location!.OriginalString;
+
+        // На карточке «Заказ принят» гостю предлагают аккаунт, но не заставляют.
+        Assert.Contains("Создать аккаунт", await Page(client, link));
+
+        var email = $"{Guid.NewGuid():N}@example.com";
+        token = await TokenFrom(client, "/accounts/register");
+        await Post(client, "/accounts/register", token, ("Input.UserName", NewName()), ("Input.Email", email),
+            ("Input.Password", Password), ("Input.ConfirmPassword", Password), ("Input.AcceptPrivacy", "true"));
+
+        var accessToken = link.Split('/').Last();
+        Assert.Equal(Db(db => db.Users.Single(u => u.Email == email).Id), Db(db => db.Orders.Single(o => o.AccessToken == accessToken).UserId));
+        Assert.Contains($"/orders/my/", await Page(client, "/orders/my"));
+    }
+
+    [Fact]
+    public async Task Checkout_does_not_ask_for_email()
+    {
+        // Заказчица: почта для заказа не нужна, менеджер звонит сам. Без подтверждённой почты оформление открывается.
+        var variantId = SeedVariant();
+        var (client, _, _) = await Register();
         var token = await TokenFrom(client, "/");
         await Post(client, $"/orders/cart/add/{variantId}", token);
 
-        var checkout = await client.GetAsync("/orders/checkout");
-        Assert.Equal(HttpStatusCode.Redirect, checkout.StatusCode);
-        Assert.Equal("/accounts/email?returnUrl=%2Forders%2Fcheckout", checkout.Headers.Location!.OriginalString);
-
-        var code = await factory.Email.CodeFor(email);
-        token = await TokenFrom(client, "/accounts/email");
-        var confirmed = await Post(client, "/accounts/email?handler=Confirm&returnUrl=%2Forders%2Fcheckout", token, ("Code", code));
-        Assert.Equal("/orders/checkout", confirmed.Headers.Location!.OriginalString);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/orders/checkout")).StatusCode);
     }
 

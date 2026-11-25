@@ -1,0 +1,99 @@
+@model HomeViewModel
+@inject MediaStorage MediaStorage
+@*
+    Первый экран главной. Слайды двух видов в одной карусели:
+    1) баннеры из панели (25.11.2026): готовая картинка во весь блок, надписи нарисованы на ней самой.
+       Размер 2400 × 880 (блок на компьютере 1200 × 440); другая пропорция обрезается по краям.
+       Если у баннера есть ссылка — нажать можно на весь баннер. Название баннера — подпись для незрячих (alt);
+    2) слайды с товарами из панели (ProductSlide): 3D-рендер, рукописное слово за товаром, цена и «Купить».
+       Цвета слайда (фон, текст, рукописное слово и блик на нём) приходят переменными из базы (SlideColors).
+    Баннеры идут первыми (акции важнее), по очерёдности из панели.
+    Сменяются сами только на компьютере (мышь), раз в 7 секунд, с паузой; на телефоне листаются пальцем.
+*@
+@{
+    var total = Model.Banners.Count + Model.Hero.Count;
+    var n = 0;
+    // Тон первого слайда: светлые точки и стрелки на тёмном блоке (дальше переключает hero.js).
+    var firstLight = Model.Banners.Count > 0 || Model.Hero.Count > 0 && SlideColors.IsDark(Model.Hero[0].Slide.BgColor);
+}
+<section class="hero@(firstLight ? " is-light" : "")" id="hero" aria-roledescription="carousel" aria-label="Акции и популярные товары">
+    <div class="hero-track">
+        @foreach (var banner in Model.Banners)
+        {
+            var i = n++;
+            var link = SafeLinks.OrNull(banner.LinkUrl);
+            var srcset = BannerShape.SrcSet(MediaStorage, banner.ImagePath);
+            var alt = banner.Title.Length > 0 ? banner.Title : "Акция";
+            @* Точки и стрелки на баннере светлые, под ними лёгкая тень (картинка может быть любой). *@
+            <article class="hero-slide hero-slide--banner@(i == 0 ? " active" : "")" data-tone="light"
+                     aria-roledescription="slide" aria-label="@(i + 1) из @total"
+                     aria-hidden="@(i == 0 ? "false" : "true")" inert="@(i == 0 ? null : "inert")">
+                @if (link is not null)
+                {
+                    <a class="hero-banner" href="@link">
+                        <img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.HeroSizes"
+                             alt="@alt" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                    </a>
+                }
+                else
+                {
+                    <div class="hero-banner">
+                        <img src="@Media.Url(banner.ImagePath)" srcset="@(srcset.Length > 0 ? srcset : null)" sizes="@BannerShape.HeroSizes"
+                             alt="@alt" loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                    </div>
+                }
+            </article>
+        }
+        @foreach (var item in Model.Hero)
+        {
+            var i = n++;
+            var slide = item.Slide;
+            var product = item.Product;
+            var url = Url.Product(product);
+            var dark = SlideColors.IsDark(slide.BgColor);
+            var colors = $"--hero-bg: {slide.BgColor}; --hero-ink: {SlideColors.Ink(slide.BgColor)}; --hero-script: {slide.ScriptColor}; --hero-script-hi: {SlideColors.Highlight(slide.ScriptColor)}";
+            <article class="hero-slide hero-slide--product@(i == 0 ? " active" : "")" data-tone="@(dark ? "light" : "dark")" style="@colors"
+                     aria-roledescription="slide" aria-label="@(i + 1) из @total"
+                     aria-hidden="@(i == 0 ? "false" : "true")" inert="@(i == 0 ? null : "inert")">
+                <a class="hero-visual" href="@url" tabindex="-1" aria-hidden="true">
+                    <span class="hero-script">@slide.Script</span>
+                    <img src="@(slide.IsSiteImage ? Url.Content("~" + slide.ImagePath) : Media.Url(slide.ImagePath))" alt="" width="1360" height="800"
+                         loading="@(i == 0 ? "eager" : "lazy")" fetchpriority="@(i == 0 ? "high" : "auto")">
+                </a>
+                <div class="hero-copy">
+                    <h2 class="hero-title">@Typo.Text(slide.Title)</h2>
+                    <p class="hero-text">@Typo.Text(slide.Text)</p>
+                    @if (product.MinPrice is { } price)
+                    {
+                        <p class="hero-price">@(product.HasSeveralPacks ? "от " : "")@Format.Money(price)</p>
+                    }
+                    @if (product.InStock)
+                    {
+                        <a class="btn hero-buy" href="@url">Купить</a>
+                    }
+                    else
+                    {
+                        <a class="btn btn-outline hero-buy" href="@url">Подробнее</a>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (total > 1)
+    {
+        @* Управление стоит в той же сетке, что и текст: начинается с левого края текста, кончается правым. *@
+        <div class="hero-controls"><div class="hero-controls-row">
+            <button type="button" class="hero-arrow hero-prev" aria-label="Предыдущий слайд">@Icons.Get("arrow-left", 18)</button>
+            <div class="hero-dots">
+                @for (var i = 0; i < total; i++)
+                {
+                    <button type="button" class="hero-dot@(i == 0 ? " active" : "")" aria-label="Слайд @(i + 1)"
+                            aria-current="@(i == 0 ? "true" : "false")"></button>
+                }
+            </div>
+            <button type="button" class="hero-arrow hero-next" aria-label="Следующий слайд">@Icons.Get("arrow-right", 18)</button>
+            <button type="button" class="hero-pause" aria-label="Остановить смену слайдов" hidden></button>
+        </div></div>
+    }
+</section>

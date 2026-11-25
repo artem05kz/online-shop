@@ -3,13 +3,22 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.ViewModels;
 
-public record CategoryTile(Category Category, int ProductCount, string? ImagePath);
+/// <param name="Render">3D-рендер товара раздела из wwwroot/img/tiles/ (если есть) — показывается вместо фото.</param>
+public record CategoryTile(Category Category, int ProductCount, string? ImagePath, string? Render = null);
+
+/// <summary>Слайд первого экрана вместе с товаром из базы (цена, ссылка, наличие).</summary>
+public record HeroSlideView(ProductSlide Slide, Product Product);
 
 public class HomeViewModel
 {
+    public IReadOnlyList<HeroSlideView> Hero { get; init; } = [];
     public required IReadOnlyList<Banner> Banners { get; init; }
     public required IReadOnlyList<CategoryTile> Tiles { get; init; }
     public required IReadOnlyList<Product> Featured { get; init; }
+
+    /// <summary>«Хиты продаж» на главной (список заказчицы, <see cref="Infrastructure.HitProducts"/>).</summary>
+    public IReadOnlyList<Product> Hits { get; init; } = [];
+    public IReadOnlyList<Store> Stores { get; init; } = [];
 }
 
 /// <summary>Список товаров с фильтрами: страница категории или результаты поиска.</summary>
@@ -31,14 +40,25 @@ public class ProductListViewModel
 
     public bool ShowTaxonomyFilters => Category is null;
 
-    /// <summary>Все категории бренда со счётчиками для списка слева: перейти в соседнюю, не возвращаясь на главную.</summary>
+    /// <summary>Раздел: все категории бренда со счётчиками (кнопки в шапке). Поиск: категории, в которых нашлись товары.</summary>
     public IReadOnlyList<CategoryTile> SideCategories { get; init; } = [];
+
+    /// <summary>Кнопки фасовок раздела («Триггер 500 мл», «1 кг», «5–6 кг»…): только те, что есть в разделе.</summary>
+    public IReadOnlyList<PackChip> PackChips { get; init; } = [];
 }
+
+public record PackChip(string Key, string Label, int Count);
 
 public class ProductPageViewModel
 {
     public required Product Product { get; init; }
     public required IReadOnlyList<Product> Related { get; init; }
+
+    /// <summary>«С этим покупают»: из тех же заказов, остаток — хиты других разделов.</summary>
+    public IReadOnlyList<Product> BoughtWith { get; init; } = [];
+
+    /// <summary>«Вы недавно смотрели», без этого товара.</summary>
+    public IReadOnlyList<Product> Recent { get; init; } = [];
 
     /// <summary>Опубликованные отзывы, новые сверху.</summary>
     public IReadOnlyList<Review> Reviews { get; init; } = [];

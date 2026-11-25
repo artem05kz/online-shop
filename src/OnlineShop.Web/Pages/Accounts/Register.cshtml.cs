@@ -9,7 +9,7 @@ using OnlineShop.Web.Models;
 
 namespace OnlineShop.Web.Pages.Accounts;
 
-public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart, AccountMail mail) : PageModel
+public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Favorites favorites, Cart cart, GuestOrders guestOrders, AccountMail mail) : PageModel
 {
     public class InputModel
     {
@@ -100,6 +100,7 @@ public class RegisterModel(UserManager<ApplicationUser> userManager, SignInManag
         await signInManager.SignInAsync(user, isPersistent: true);
         await favorites.MergeGuestAsync(user.Id);
         await cart.MergeGuestAsync(user.Id);
+        await guestOrders.ClaimAsync(user.Id);
         await mail.SendConfirmationCodeAsync(user);
         TempData.Flash($"Аккаунт создан. Отправили код на {email}: подтвердите почту, чтобы получать статусы заказов.", FlashLevel.Info);
         return RedirectToPage("Email", new { returnUrl = Url.IsLocalUrl(ReturnUrl) ? ReturnUrl : null });

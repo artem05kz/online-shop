@@ -3,17 +3,36 @@
 @{
     ViewData["Title"] = "Товары";
     ViewData["AdminSection"] = "products";
+    const int low = OnlineShop.Web.Pages.Admin.IndexModel.LowStock;
+    string Stock(ProductVariant v) => !v.IsActive ? "is-off" : v.AvailableQty == 0 ? "is-out" : v.AvailableQty <= low ? "is-low" : "";
 }
+@*
+    Товары (этап 5 админки, 25.11). Сверху вкладки-вопросы со счётчиками: «Мало осталось», «Нет в наличии»,
+    «Без фото», «Без цены», «Скрытые»; рядом поиск, раздел и порядок. Строка — карточка: нажать в любом месте —
+    открыть товар. В строке фото, название и раздел, все фасовки плашками «фасовка · цена · остаток»
+    (красная — нет в наличии, жёлтая — 1–3 шт.), диапазон цен и состояние товара.
+*@
 <div class="admin-head">
     <h1>Товары</h1>
-    <a class="btn btn-ghost" href="/admin/import">@Icons.Get("upload") Загрузить из 1С</a>
-    <a class="btn" href="/admin/products/add">@Icons.Get("plus") Новый товар</a>
+    <a class="btn btn-ghost" href="/admin/variants">@Icons.Get("tag", 18) Цены и остатки</a>
+    <a class="btn btn-ghost" href="/admin/import">@Icons.Get("upload", 18) Загрузить из 1С</a>
+    <a class="btn" href="/admin/products/add">@Icons.Get("plus", 18) Новый товар</a>
 </div>
 
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название или артикул">
-    <select class="select" name="category" data-autosubmit aria-label="Категория">
-        <option value="">Все категории</option>
+<div class="o-bar pl-bar">
+    <nav class="o-tabs" aria-label="Товары">
+        @foreach (var show in Model.Shows)
+        {
+            var hot = show.Value is "low" or "nostock" or "nophoto" or "noprice" && show.Count > 0;
+            <a class="o-tab@((Model.Filter ?? "") == show.Value ? " is-on" : "")@(hot ? " is-hot" : "")"
+               href="@QueryStrings.With(Request.Query, "filter", show.Value)">@show.Label <span>@show.Count</span></a>
+        }
+    </nav>
+</div>
+<form class="pl-filters" method="get" role="search">
+    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Название или артикул" aria-label="Поиск товара">
+    <select class="select" name="category" data-autosubmit aria-label="Раздел">
+        <option value="">Все разделы</option>
         @foreach (var node in Model.Tree.Flatten())
         {
             <option value="@node.Category.Id" selected="@(Model.Category == node.Category.Id)">@Model.Tree.Path(node.Category.Id)</option>
@@ -29,73 +48,69 @@
     {
         <input type="hidden" name="filter" value="@Model.Filter">
     }
-    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
+    <button class="btn btn-ghost" type="submit">@Icons.Get("search", 18) Найти</button>
 </form>
-
-<div class="chips">
-    @foreach (var show in Model.Shows)
-    {
-        <a class="chip-link @((Model.Filter ?? "") == show.Value ? "on" : "")"
-           href="@QueryStrings.With(Request.Query, "filter", show.Value)">@show.Label <span class="n">@show.Count</span></a>
-    }
-</div>
 
 @if (Model.List.Items.Count == 0)
 {
-    <div class="admin-box">Ничего не нашлось. Попробуйте другое название или нажмите «Все».</div>
+    <div class="admin-box o-empty"><p>Ничего не нашлось. Попробуйте другое название или артикул, или откройте вкладку «Все».</p></div>
 }
-
-<div class="item-list">
-    @foreach (var row in Model.List.Items)
-    {
-        var product = row.Product;
-        var image = product.PrimaryImage;
-        <a class="item" href="/admin/products/@product.Id">
-            @if (image is not null)
-            {
-                <img class="thumb" src="@Media.Thumb(image.ImagePath, Media.Small)" alt="" loading="lazy">
-            }
-            else
-            {
-                <span class="thumb empty">нет фото</span>
-            }
-            <span>
-                <span class="name">@product.Name</span>
-                <span class="article">арт. @string.Join(", ", row.Packs.Select(v => string.IsNullOrEmpty(v.PackLabel) ? v.Article : $"{v.Article} ({v.PackLabel})"))</span>
-                <span class="path">@row.Path</span>
-                <span class="facts">
-                    <span>Фасовки: @string.Join(", ", row.Packs.Select(v => string.IsNullOrEmpty(v.PackLabel) ? v.Article : v.PackLabel))</span>
-                </span>
-            </span>
-            <span class="side">
-                <span class="price">
-                    @if (row.MinPrice is { } min)
-                    {
-                        @(row.MaxPrice > min ? $"{Format.Money(min)} - {Format.Money(row.MaxPrice!.Value)}" : Format.Money(min))
-                    }
-                    else
-                    {
-                        <span class="pill warn">нет цены</span>
-                    }
-                </span>
-                @if (!product.IsActive)
+else
+{
+    <ul class="o-list pl-list">
+        @foreach (var row in Model.List.Items)
+        {
+            var product = row.Product;
+            var image = product.PrimaryImage;
+            <li class="pl-row@(product.IsActive ? "" : " is-hidden")">
+                <a class="o-open" href="/admin/products/@product.Id" aria-label="Открыть товар @product.Name"></a>
+                @if (image is not null)
                 {
-                    <span class="pill off">@Icons.Get("eye-off", 16) скрыт</span>
-                }
-                else if (row.InStock)
-                {
-                    <span class="pill ok">@Icons.Get("check", 16) в наличии</span>
+                    <img class="pl-thumb" src="@Media.Thumb(image.ImagePath, Media.Small)" alt="" loading="lazy">
                 }
                 else
                 {
-                    <span class="pill bad">нет в наличии</span>
+                    <span class="pl-thumb is-empty">нет фото</span>
                 }
-                @if (row.HasUnpriced && row.MinPrice is not null)
-                {
-                    <span class="pill warn">есть фасовка без цены</span>
-                }
-            </span>
-        </a>
-    }
-</div>
+                <div class="pl-name">
+                    <b>@product.Name</b>
+                    <small>@row.Path</small>
+                </div>
+                <ul class="pl-packs" aria-label="Фасовки">
+                    @foreach (var v in row.Packs)
+                    {
+                        <li class="pl-pack @Stock(v)" title="арт. @v.Article@(v.ReservedQty > 0 ? $" · в резерве {v.ReservedQty}" : "")">
+                            <b>@(string.IsNullOrEmpty(v.PackLabel) ? v.Article : v.PackLabel)</b>
+                            <span>@(v.Price is { } price ? Format.Money(price) : "нет цены")</span>
+                            <i>@(!v.IsActive ? "скрыта" : v.AvailableQty == 0 ? "нет" : $"{v.AvailableQty} шт.")</i>
+                        </li>
+                    }
+                </ul>
+                <div class="pl-state">
+                    @if (!product.IsActive)
+                    {
+                        <span class="a-status pl-status-off">@Icons.Get("eye-off", 14) скрыт</span>
+                    }
+                    else if (row.InStock)
+                    {
+                        <span class="a-status pl-status-ok">в наличии</span>
+                    }
+                    else
+                    {
+                        <span class="a-status pl-status-out">нет в наличии</span>
+                    }
+                    @if (row.HasUnpriced)
+                    {
+                        <small class="pl-warn">есть фасовка без цены</small>
+                    }
+                    else if (image is null)
+                    {
+                        <small class="pl-warn">нет фото</small>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+    <p class="pl-total">Показано @Model.List.Items.Count из @Model.List.TotalCount</p>
+}
 <partial name="_AdminPager" model="PagerInfo.From(Model.List)" />

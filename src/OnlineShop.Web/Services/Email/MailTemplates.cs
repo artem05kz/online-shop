@@ -15,13 +15,13 @@ public static class MailTemplates
 
     public static EmailMessage ConfirmCode(string to, string code) => Code(to,
         "Код подтверждения почты",
-        "Чтобы подтвердить почту на сайте GRASS Актау, введите код:",
+        "Чтобы подтвердить почту на сайте IFOAM Актау, введите код:",
         code,
         "Если вы не регистрировались на нашем сайте, просто удалите это письмо.");
 
     public static EmailMessage ResetCode(string to, string code) => Code(to,
         "Код для смены пароля",
-        "Вы попросили сменить пароль на сайте GRASS Актау. Введите код на странице смены пароля:",
+        "Вы попросили сменить пароль на сайте IFOAM Актау. Введите код на странице смены пароля:",
         code,
         "Если вы не просили сменить пароль, удалите это письмо: без кода пароль никто не поменяет.");
 
@@ -107,11 +107,11 @@ public static class MailTemplates
 
     private static EmailMessage Wrap(string to, string subject, string body, string text) => new(to, subject,
         "<div style=\"font-family:Arial,sans-serif;font-size:16px;line-height:1.5;color:#16181a;max-width:600px;\">"
-        + "<p style=\"font-size:20px;font-weight:bold;color:#4d8f21;margin:0 0 16px;\">GRASS Актау</p>"
+        + "<p style=\"font-size:20px;font-weight:bold;color:#0f0f0f;margin:0 0 16px;\">IFOAM Актау</p>"
         + body
         + "<p style=\"color:#7b838c;font-size:13px;margin-top:24px;\">Письмо отправлено автоматически, отвечать на него не нужно.</p>"
         + "</div>",
-        text + "\nGRASS Актау\n");
+        text + "\nIFOAM Актау\n");
 
     private static string ItemsTable(Order order)
     {

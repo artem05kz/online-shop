@@ -6,10 +6,10 @@
 }
 <div class="admin-head">
     <h1>Адреса магазинов</h1>
-    <a class="btn" href="/admin/stores/add">Добавить точку</a>
+    <a class="btn" href="/admin/stores/add">@Icons.Get("plus", 18) Добавить точку</a>
 </div>
 
-<form class="admin-filters" method="get">
+<form class="pl-filters" method="get" role="search">
     <input class="field" type="search" name="q" value="@Model.Q" placeholder="Адрес, город или телефон">
     <select class="select" name="city" data-autosubmit>
         <option value="">Все города</option>
@@ -35,31 +35,37 @@
 
 <form id="changelist-form" method="post" asp-page-handler="SaveList"
       asp-route-q="@Model.Q" asp-route-city="@Model.City" asp-route-kind="@Model.Kind" asp-route-active="@Model.Active">
-    <div class="admin-table-wrap">
-        <table class="admin-table" id="result_list">
-            <thead><tr><th>Адрес</th><th>Город</th><th>Тип точки</th><th>Часы работы</th><th>Телефон</th><th>Очерёдность</th><th>На сайте</th></tr></thead>
-            <tbody>
-                @for (var i = 0; i < Model.Rows.Count; i++)
-                {
-                    var row = Model.Rows[i];
-                    <tr>
-                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">@row.Address</a></td>
-                        <td>@row.City</td>
-                        <td>@row.Kind.Label()</td>
-                        <td class="muted">@row.WorkingHours</td>
-                        <td>@row.Phone</td>
-                        <td><input class="field tiny" asp-for="Rows[i].SortOrder" type="number" min="0"></td>
-                        <td><input asp-for="Rows[i].IsActive"></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-    <div class="admin-actions">
-        <span class="admin-count">Всего: @Model.Rows.Count</span>
-        @if (Model.Rows.Count > 0)
-        {
-            <button class="btn push" type="submit">Сохранить</button>
-        }
-    </div>
+    <table class="ct ct-stores" id="result_list">
+        <thead><tr><th></th><th>Адрес</th><th>Часы и телефон</th><th>Очерёдность</th><th>На сайте</th></tr></thead>
+        <tbody>
+            @for (var i = 0; i < Model.Rows.Count; i++)
+            {
+                var row = Model.Rows[i];
+                <tr>
+                    <td class="ct-ico"><input type="hidden" asp-for="Rows[i].Id">@Icons.Get("pin", 20)</td>
+                    <td class="ct-main">
+                        <a class="ct-title" asp-page="Edit" asp-route-id="@row.Id">@row.Address</a>
+                        <small><span class="ct-chip">@row.Kind.Label()</span> @row.City</small>
+                    </td>
+                    <td class="ct-sub">
+                        <span>@Icons.Get("clock", 15) @(string.IsNullOrEmpty(row.WorkingHours) ? "часы не указаны" : row.WorkingHours)</span>
+                        <span>@Icons.Get("phone", 15) @(string.IsNullOrEmpty(row.Phone) ? "телефона нет" : row.Phone)</span>
+                    </td>
+                    <td class="ct-order"><label><span>Очерёдность</span><input class="field" asp-for="Rows[i].SortOrder" type="number" min="0"></label></td>
+                    <td class="ct-on"><label class="vl-switch" title="Показывать на сайте"><input asp-for="Rows[i].IsActive" aria-label="Показывать на сайте"><span aria-hidden="true"></span></label></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Rows.Count == 0)
+    {
+        <div class="admin-box o-empty"><p>Ничего не нашлось. Сбросьте фильтры или добавьте точку.</p></div>
+    }
+    else
+    {
+        <div class="savebar">
+            <button class="btn" type="submit">@Icons.Get("check") Сохранить</button>
+            <span class="note">Всего точек: @Model.Rows.Count. На сайте они идут по очерёдности.</span>
+        </div>
+    }
 </form>

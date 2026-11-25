@@ -32,6 +32,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<ProductSlide> ProductSlides => Set<ProductSlide>();
     public DbSet<Store> Stores => Set<Store>();
     public DbSet<SiteContact> SiteContacts => Set<SiteContact>();
     public DbSet<Address> Addresses => Set<Address>();
@@ -41,6 +42,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<WashBooking> WashBookings => Set<WashBooking>();
 
     // Ключи, которыми подписаны куки входа. В базе, а не в памяти: иначе после перезапуска сайта
     // всех покупателей и менеджеров выкидывало бы из аккаунта.
@@ -57,6 +59,19 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        // Слайд первого экрана удаляется вместе с товаром.
+        builder.Entity<ProductSlide>(e =>
+        {
+            e.HasOne(s => s.Product).WithMany().OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => s.SortOrder);
+        });
+
+        builder.Entity<WashBooking>(e =>
+        {
+            e.HasIndex(b => b.AccessToken).IsUnique();
+            e.HasIndex(b => new { b.WashKey, b.StartsAt });
+        });
 
         builder.Entity<Brand>(e =>
         {
@@ -111,6 +126,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
                 .HasConversion(s => s.ToCode(), c => OrderStatusInfo.FromCode(c))
                 .HasMaxLength(20);
             e.HasIndex(o => o.CreatedAt);
+            e.HasIndex(o => o.AccessToken).IsUnique();
             // Точку самовывоза можно удалить: заказ хранит её адрес у себя.
             e.HasOne(o => o.PickupStore).WithMany().OnDelete(DeleteBehavior.SetNull);
         });
@@ -186,6 +202,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
                 e.Property(v => v.OldPrice).HasPrecision(12, 2);
             });
             builder.Entity<OrderItem>().Property(i => i.Price).HasPrecision(12, 2);
+            builder.Entity<WashBooking>().Property(b => b.Price).HasPrecision(12, 2);
             return;
         }
 
@@ -207,6 +224,7 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<int
             e.Property(v => v.OldPrice).HasConversion(money);
         });
         builder.Entity<OrderItem>().Property(i => i.Price).HasConversion(money);
+        builder.Entity<WashBooking>().Property(b => b.Price).HasConversion(money);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)

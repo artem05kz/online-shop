@@ -126,6 +126,8 @@ builder.Services.AddSingleton<Thumbnails>();
 builder.Services.AddSingleton(new ImportUploads(Path.Combine(appDataDir, "imports")));
 builder.Services.AddScoped<ImportApplier>();
 builder.Services.AddScoped<Cart>();
+builder.Services.AddScoped<WashSlots>();
+builder.Services.AddScoped<GuestOrders>();
 builder.Services.AddScoped<StockReservations>();
 builder.Services.AddSingleton<SearchSpelling>();
 builder.Services.AddSingleton<SiteAddress>();
@@ -160,6 +162,9 @@ builder.Services.AddHostedService<EmailWorker>();
 builder.Services.AddScoped<AccountMail>();
 builder.Services.AddScoped<TelegramLinker>();
 builder.Services.AddScoped<TelegramNotifier>();
+builder.Services.AddScoped<WashTelegramActions>();
+builder.Services.AddScoped<WashReminders>();
+builder.Services.AddHostedService<WashReminderWorker>();
 
 builder.Services.AddControllersWithViews(options =>
         options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
@@ -182,7 +187,7 @@ builder.Services.AddRazorPages(options =>
             AttributeRouteModel = new AttributeRouteModel { Template = template, SuppressLinkGeneration = true },
         }));
     AddCreateRoute("/Accounts/AddressEdit", "/accounts/profile/addresses/add");
-    foreach (var section in new[] { "Brands", "Categories", "Products", "Variants", "Banners", "Stores", "Contacts" })
+    foreach (var section in new[] { "Brands", "Categories", "Products", "Variants", "Banners", "Slides", "Stores", "Contacts" })
     {
         AddCreateRoute($"/Admin/{section}/Edit", $"/admin/{section.ToLowerInvariant()}/add");
     }

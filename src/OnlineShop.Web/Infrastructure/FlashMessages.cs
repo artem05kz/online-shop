@@ -11,7 +11,8 @@ public enum FlashLevel
     Error,
 }
 
-public record FlashMessage(FlashLevel Level, string Text)
+/// <summary>Сообщение; Link и LinkText — необязательная ссылка-действие («Перейти в корзину»).</summary>
+public record FlashMessage(FlashLevel Level, string Text, string? Link = null, string? LinkText = null)
 {
     public string CssClass => Level.ToString().ToLowerInvariant();
 }
@@ -24,10 +25,17 @@ public static class FlashMessages
 {
     private const string Key = "flash";
 
-    public static void Flash(this ITempDataDictionary tempData, string text, FlashLevel level = FlashLevel.Success)
+    public static void Flash(this ITempDataDictionary tempData, string text, FlashLevel level = FlashLevel.Success) =>
+        tempData.Flash(new FlashMessage(level, text));
+
+    /// <summary>Сообщение со ссылкой-действием, например ««Шампунь» в корзине» + «Перейти в корзину».</summary>
+    public static void Flash(this ITempDataDictionary tempData, string text, string link, string linkText, FlashLevel level = FlashLevel.Success) =>
+        tempData.Flash(new FlashMessage(level, text, link, linkText));
+
+    private static void Flash(this ITempDataDictionary tempData, FlashMessage message)
     {
         var messages = Read(tempData.Peek(Key));
-        messages.Add(new FlashMessage(level, text));
+        messages.Add(message);
         tempData[Key] = JsonSerializer.Serialize(messages);
     }
 

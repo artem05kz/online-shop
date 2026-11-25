@@ -21,7 +21,7 @@
             catalogMenu.setAttribute('aria-hidden', 'false');
             catalogToggle.setAttribute('aria-expanded', 'true');
             document.body.style.overflow = 'hidden';
-            var firstLink = catalogMenu.querySelector('a');
+            var firstLink = catalogMenu.querySelector('.cm-sec.is-active') || catalogMenu.querySelector('a');
             if (firstLink) firstLink.focus({ preventScroll: true });
         };
 
@@ -95,5 +95,86 @@
         if (clamped === parseInt(input.value, 10)) return;
         input.value = clamped;
         input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+})();
+
+// Сообщения-карточки справа под шапкой (_Layout, .toasts): крестик закрывает, успех и подсказки
+// сами уходят через несколько секунд. Пока на карточку навели мышь или фокус внутри — ждём.
+// Ошибки сами не исчезают: их нужно прочитать.
+(function () {
+    'use strict';
+    var toasts = document.querySelectorAll('.toasts .toast');
+    if (!toasts.length) return;
+
+    function hide(toast) {
+        if (toast.classList.contains('is-leaving')) return;
+        toast.classList.add('is-leaving');
+        var done = function () {
+            var list = toast.parentElement;
+            toast.remove();
+            if (list && !list.children.length) list.remove();
+        };
+        // Без анимации (настройка «меньше движения») убираем сразу.
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) done();
+        else toast.addEventListener('animationend', done, { once: true });
+    }
+
+    toasts.forEach(function (toast) {
+        toast.querySelector('.toast-close').addEventListener('click', function () { hide(toast); });
+        if (toast.classList.contains('error')) return;
+
+        var delay = toast.querySelector('.toast-link') ? 7000 : 5000;
+        var timer = null;
+        var start = function () { timer = setTimeout(function () { hide(toast); }, delay); };
+        var stop = function () { clearTimeout(timer); };
+        toast.addEventListener('mouseenter', stop);
+        toast.addEventListener('mouseleave', start);
+        toast.addEventListener('focusin', stop);
+        toast.addEventListener('focusout', start);
+        start();
+    });
+})();
+
+// Каталог сбоку: слева разделы, справа категории выбранного раздела. Раздел выбирается наведением
+// (с небольшой задержкой, чтобы при движении мыши к правой части не перескакивать на соседний раздел),
+// нажатием или с клавиатуры.
+(function () {
+    'use strict';
+    var buttons = document.querySelectorAll('.cm-sec');
+    if (!buttons.length) return;
+    var hoverTimer = null;
+
+    function activate(button) {
+        var key = button.getAttribute('data-cm-sec');
+        buttons.forEach(function (b) {
+            var on = b === button;
+            b.classList.toggle('is-active', on);
+            b.setAttribute('aria-expanded', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('.cm-panel').forEach(function (p) {
+            p.classList.toggle('is-active', p.getAttribute('data-cm-panel') === key);
+        });
+    }
+
+    buttons.forEach(function (button) {
+        button.addEventListener('click', function () { activate(button); });
+        button.addEventListener('focus', function () { activate(button); });
+        button.addEventListener('mouseenter', function () {
+            clearTimeout(hoverTimer);
+            hoverTimer = setTimeout(function () { activate(button); }, 120);
+        });
+        button.addEventListener('mouseleave', function () { clearTimeout(hoverTimer); });
+        // Стрелки вверх и вниз ходят по разделам, вправо — к первой категории.
+        button.addEventListener('keydown', function (e) {
+            var list = Array.prototype.slice.call(buttons);
+            var i = list.indexOf(button);
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                list[(i + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length].focus();
+            } else if (e.key === 'ArrowRight') {
+                var first = document.querySelector('.cm-panel.is-active a');
+                if (first) { e.preventDefault(); first.focus(); }
+            }
+        });
     });
 })();

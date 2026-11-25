@@ -1,10 +1,10 @@
 @page "/accounts/denied"
 @{
     ViewData["Title"] = "Нет доступа";
+    // Нет доступа (24.11): та же чёрная плашка, что у страниц ошибок. Имя показываем, только если человек вошёл.
+    var name = User.Identity?.IsAuthenticated == true ? User.Identity.Name : null;
+    var card = (403, "Нет доступа",
+        "Панель управления открыта только менеджерам магазина." + (string.IsNullOrEmpty(name) ? "" : $" Вы вошли как «{name}»."),
+        false);
 }
-<div class="empty">
-    <div class="empty-ico">@Icons.Get("alert", 44)</div>
-    <h2>Нет доступа</h2>
-    <p>Панель управления открыта только менеджерам магазина. Вы вошли как «@User.Identity?.Name».</p>
-    <p style="margin-top:18px;"><a class="btn" asp-controller="Catalog" asp-action="Home">На главную</a></p>
-</div>
+<partial name="/Views/Catalog/_ErrorCard.cshtml" model="card" />

@@ -1,0 +1,67 @@
+@model MyWashViewModel
+@{
+    ViewData["Title"] = "Мои записи на мойку";
+    ViewData["AccountTab"] = "wash";
+    var ru = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+}
+@*
+    Мои записи на мойку (24.11): раздел кабинета. Сверху предстоящие — крупно дата и время, услуга, мойка, статус,
+    кнопка «Открыть запись» (там же отмена). Ниже — история. Пусто — карточка с кнопкой «Записаться».
+*@
+<div class="acc">
+<partial name="_AccountTabs" />
+<div class="acc-main">
+<h1 class="acc-title">Записи на мойку</h1>
+
+@if (Model.Upcoming.Count == 0 && Model.Past.Count == 0)
+{
+    <div class="co-card acc-empty">
+        <span class="acc-empty-ico">@Icons.Get("car", 30)</span>
+        <h2>Записей пока нет</h2>
+        <p>Запишитесь на мойку онлайн: выберите услугу и время, и запись появится здесь.</p>
+        <a class="btn" href="/wash">Записаться на мойку</a>
+    </div>
+}
+else
+{
+    @if (Model.Upcoming.Count == 0)
+    {
+        <div class="co-card wb-next-empty">
+            <p>Предстоящих записей нет.</p>
+            <a class="btn" href="/wash">@Icons.Get("car", 18) Записаться</a>
+        </div>
+    }
+    @foreach (var b in Model.Upcoming)
+    {
+        <article class="co-card wb-card is-next">
+            <div class="wb-when">
+                <span class="wb-day">@b.StartsAt.ToString("dddd, d MMMM", ru)</span>
+                <span class="wb-time">@b.StartsAt.ToString("H:mm")<small>–@b.EndsAt.ToString("H:mm")</small></span>
+            </div>
+            <div class="wb-what">
+                <b>@b.ServiceName</b>
+                <span>@b.WashName@(CarWashes.Find(b.WashKey) is { } w ? $", {w.Address}" : "")</span>
+                @if (b.Car.Length > 0) { <span>@b.Car</span> }
+            </div>
+            <span class="status wb-status status-@b.Status.Code()">@b.Status.Text()</span>
+            <a class="btn wb-open" href="@OnlineShop.Web.Controllers.WashController.LinkPath(b)">Открыть запись</a>
+        </article>
+    }
+
+    @if (Model.Past.Count > 0)
+    {
+        <h2 class="wb-past-title">Прошедшие и отменённые</h2>
+        <div class="co-card wb-past">
+            @foreach (var b in Model.Past)
+            {
+                <a class="wb-row" href="@OnlineShop.Web.Controllers.WashController.LinkPath(b)">
+                    <span class="wb-row-date">@b.StartsAt.ToString("d MMMM, H:mm", ru)</span>
+                    <span class="wb-row-name">@b.ServiceName</span>
+                    <span class="status status-@b.Status.Code()">@b.Status.Text()</span>
+                </a>
+            }
+        </div>
+    }
+}
+</div>
+</div>

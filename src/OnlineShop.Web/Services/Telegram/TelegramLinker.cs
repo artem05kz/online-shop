@@ -49,7 +49,7 @@ public class TelegramLinker(ShopDbContext db, ITelegramApi api)
             return;
         }
         await api.SendMessageAsync(chatId,
-            "Бот присылает уведомления о новых заказах магазина GRASS.\n\n" +
+            "Бот присылает уведомления о новых заказах магазина IFOAM.\n\n" +
             "Нажмите кнопку «Отправить мой номер» внизу. Если номер есть в списке магазина, заказы начнут приходить сюда.",
             TelegramKeyboards.SharePhone, ct);
     }

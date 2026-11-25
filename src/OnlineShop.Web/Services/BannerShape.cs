@@ -4,17 +4,16 @@ using OnlineShop.Web.Infrastructure;
 namespace OnlineShop.Web.Services;
 
 /// <summary>
-/// Форма баннера. Пропорция одна на всех экранах (3:1), меняется только масштаб: на телефоне
-/// это та же картинка, только меньше. Поэтому надпись на баннере не съезжает и не обрезается,
-/// где бы её ни поставили. Та же пропорция задана в style.css (.banner-carousel).
+/// Размеры баннера первого экрана (25.11.2026): баннер — готовая картинка во весь первый экран, надписи на ней.
+/// Первый экран на компьютере 1200 × 440, картинку просим вдвое крупнее (2400 × 880), чтобы была чёткой.
+/// Картинка заполняет блок целиком: если пропорция другая, лишнее обрезается по краям.
 /// </summary>
 public static class BannerShape
 {
-    public const int RatioWidth = 3;
-    public const int RatioHeight = 1;
-    public const int RecommendedWidth = 3840;
-    public const int RecommendedHeight = 1280;
-    public const int MinWidth = 1920;
+    public const int RecommendedWidth = 2400;
+    public const int RecommendedHeight = 880;
+    public const int MinWidth = 1200;
+    public const double Ratio = (double)RecommendedWidth / RecommendedHeight;
 
     /// <summary>Уменьшенные копии по ширине. Браузер сам выбирает подходящую экрану (srcset).</summary>
     public static readonly IReadOnlyList<int> Widths = [960, 1280, 1920, 2560];
@@ -30,23 +29,22 @@ public static class BannerShape
             yield break;
         }
         var ratio = (double)width / height;
-        var target = (double)RatioWidth / RatioHeight;
-        if (ratio > target * (1 + Tolerance))
+        if (ratio < Ratio * (1 - Tolerance))
         {
-            var cut = Percent((width - height * target) / width / 2);
-            yield return $"Картинка шире, чем {RatioWidth}:{RatioHeight}: слева и справа обрежется примерно по {cut}%. " +
+            var cut = Percent((height - width / Ratio) / height / 2);
+            yield return $"Картинка выше, чем первый экран: сверху и снизу обрежется примерно по {cut}%. " +
                 $"Лучше сделать её размером {RecommendedWidth} × {RecommendedHeight}.";
         }
-        else if (ratio < target * (1 - Tolerance))
+        else if (ratio > Ratio * (1 + Tolerance))
         {
-            var cut = Percent((height - width / target) / height / 2);
-            yield return $"Картинка выше, чем {RatioWidth}:{RatioHeight}: сверху и снизу обрежется примерно по {cut}%. " +
+            var cut = Percent((width - height * Ratio) / width / 2);
+            yield return $"Картинка шире, чем первый экран: слева и справа обрежется примерно по {cut}%. " +
                 $"Лучше сделать её размером {RecommendedWidth} × {RecommendedHeight}.";
         }
         if (width < MinWidth)
         {
-            yield return $"Ширина картинки {width} точек: на больших экранах баннер будет нечётким. " +
-                $"Лучше {RecommendedWidth} × {RecommendedHeight}, не меньше {MinWidth} × {MinWidth / RatioWidth * RatioHeight}.";
+            yield return $"Ширина картинки {width} точек: на компьютере баннер будет нечётким. " +
+                $"Лучше {RecommendedWidth} × {RecommendedHeight}, не меньше {MinWidth} × {MinWidth * RecommendedHeight / RecommendedWidth}.";
         }
     }
 
@@ -67,8 +65,8 @@ public static class BannerShape
         return string.Join(", ", parts);
     }
 
-    /// <summary>Какой ширины баннер на странице: вся ширина экрана, но не больше колонки сайта.</summary>
-    public const string Sizes = "(min-width: 1280px) 1240px, 100vw";
+    /// <summary>Ширина баннера на первом экране: вся колонка сайта (1200 точек на компьютере).</summary>
+    public const string HeroSizes = "(min-width: 1280px) 1200px, 100vw";
 
     private static string Percent(double share) => Math.Round(share * 100).ToString(CultureInfo.InvariantCulture);
 }

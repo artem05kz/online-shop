@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
@@ -98,6 +99,14 @@ public class EditModel(ShopDbContext db) : PageModel
         if (contact.Id == 0)
         {
             db.SiteContacts.Add(contact);
+        }
+        // На сайте всегда один набор (25.11.2026): включили этот — остальные становятся запасными.
+        if (contact.IsActive)
+        {
+            foreach (var other in await db.SiteContacts.Where(c => c.IsActive && c.Id != contact.Id).ToListAsync())
+            {
+                other.IsActive = false;
+            }
         }
         await db.SaveChangesAsync();
         TempData.Flash("Контакты сохранены.");

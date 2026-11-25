@@ -1,15 +1,31 @@
 @model StoreListViewModel
+@inject StorefrontLayout StorefrontLayout
 @{
     ViewData["Title"] = "Адреса магазинов";
-    ViewData["Description"] = "Пункты самовывоза и магазины GRASS в Актау: адреса, часы работы, телефоны.";
+    ViewData["Description"] = "Магазины IFOAM в Актау: адреса, часы работы, телефон. Самовывоз заказов с сайта.";
+    var contact = (await StorefrontLayout.GetAsync()).Contact;
+    var city = Model.SelectedCity.Length > 0 ? Model.SelectedCity : (Model.Cities.Count == 1 ? Model.Cities[0] : "");
+    var now = Format.ToLocal(DateTime.UtcNow);
+    var mapped = Model.Stores.Where(st => st.Latitude is not null && st.Longitude is not null).ToList();
 }
+@*
+    Адреса (компьютерная версия). Сверху заголовок и общий телефон, ниже карточки магазинов и мойки (24.11):
+    статус «Открыто до …» / «Закрыто, откроется …» (по часам из «Адресов», Infrastructure/StoreHours.cs),
+    часы построчно, кнопки «Как добраться», «Позвонить», WhatsApp. Карта 2ГИС — если в настройках есть ключ.
+*@
 <nav class="breadcrumbs">
     <a asp-controller="Catalog" asp-action="Home">Главная</a>
     <span class="sep">/</span>
     <span>Адреса</span>
 </nav>
 
-<h1>Адреса</h1>
+<div class="st-head">
+    <div>
+        <h1>Магазины IFOAM@(city.Length > 0 ? $" в {city}" : "")</h1>
+        <p>Приезжайте за покупками или заберите заказ с сайта: при оформлении выберите «Самовывоз», и мы позвоним, когда всё будет собрано. А машину можно помыть на нашей автомойке — запись онлайн.</p>
+    </div>
+    @* Общий телефон отдельно не показываем: он есть в шапке, а в карточках — кнопки «Позвонить» и WhatsApp. *@
+</div>
 
 @if (Model.Cities.Count > 1)
 {
@@ -17,64 +33,113 @@
         <label class="muted" for="city-select">Выберите город</label>
         <select class="select" name="city" id="city-select" style="width:auto; min-width:200px;" data-autosubmit>
             <option value="">Все города</option>
-            @foreach (var city in Model.Cities)
+            @foreach (var c in Model.Cities)
             {
-                <option value="@city" selected="@(city == Model.SelectedCity)">@city</option>
+                <option value="@c" selected="@(c == Model.SelectedCity)">@c</option>
             }
         </select>
     </form>
 }
 
-@{
-    var mapped = Model.Stores.Where(st => st.Latitude is not null && st.Longitude is not null).ToList();
-}
 @if (Model.MapKey.Length > 0 && mapped.Count > 0)
 {
-    <div id="stores-map" class="stores-map"></div>
+    <div id="stores-map" class="stores-map st-map"></div>
 }
 
 @if (Model.Stores.Count > 0)
 {
-    <div class="address-grid">
+    <div class="st-grid">
         @foreach (var store in Model.Stores)
         {
-            <div class="panel store-card">
-                <div class="store-kind">@store.Kind.Label()</div>
-                <div class="store-address">@store.Address</div>
-                <ul class="spec-list" style="margin-top:12px;">
-                    @if (store.HoursLine.Length > 0)
+            var hours = StoreHours.Parse(store.WorkingHours, store.LunchHours);
+            var status = hours?.StatusAt(now);
+            var shortAddress = store.Address.Replace($"г. {store.City}, ", "");
+            var route = !string.IsNullOrEmpty(store.MapUrl) ? store.MapUrl
+                : store.Latitude is { } lat && store.Longitude is { } lng ? TwoGis.RouteUrl(lat, lng) : null;
+            var phone = !string.IsNullOrEmpty(store.Phone) ? store.Phone : contact?.Phone;
+            <article class="st-card">
+                <div class="st-top">
+                    @if (status is { } st)
                     {
-                        <li><span>Режим работы</span><span>@store.HoursLine</span></li>
+                        <span class="st-status@(st.IsOpen ? " is-open" : "")"><i aria-hidden="true"></i>@st.Text</span>
                     }
-                    @if (!string.IsNullOrEmpty(store.Phone))
+                    @if (hours?.EveryDay == true)
                     {
-                        <li><span>Телефон</span><span><a href="tel:@store.Phone">@store.Phone</a></span></li>
+                        <span class="visit-badge">Без выходных</span>
                     }
-                    <li><span>Город</span><span>@store.City</span></li>
+                    <span class="st-kind">@store.Kind.Label()</span>
+                </div>
+                <h2 class="st-address">@shortAddress</h2>
+                @if (Model.Cities.Count > 1)
+                {
+                    <p class="st-city">@store.City</p>
+                }
+
+                <ul class="st-rows">
+                    @if (store.WorkingHours.Length > 0)
+                    {
+                        <li>
+                            <span class="st-ico">@Icons.Get("clock", 18)</span>
+                            <span>
+                                @foreach (var line in StoreHours.Lines(store.WorkingHours))
+                                {
+                                    <span class="st-line">@line</span>
+                                }
+                                @if (store.LunchHours.Length > 0)
+                                {
+                                    <span class="st-line muted">Обед @store.LunchHours</span>
+                                }
+                            </span>
+                        </li>
+                    }
+                    @* Свой телефон у точки показываем строкой; общий номер есть в шапке и на кнопках. *@
+                    @if (!string.IsNullOrEmpty(phone) && phone != contact?.Phone)
+                    {
+                        <li>
+                            <span class="st-ico">@Icons.Get("phone", 18)</span>
+                            <a class="st-line" href="tel:+@(new string(phone.Where(char.IsDigit).ToArray()))">@phone</a>
+                        </li>
+                    }
                 </ul>
-                @if (!string.IsNullOrEmpty(store.MapUrl))
-                {
-                    <div class="form-actions">
-                        <a class="btn btn-outline btn-sm" href="@store.MapUrl" target="_blank" rel="noopener">@Icons.Get("map", 16) Как добраться</a>
-                    </div>
-                }
-                else if (store.Latitude is { } lat && store.Longitude is { } lng)
-                {
-                    <div class="form-actions">
-                        <a class="btn btn-outline btn-sm" href="@TwoGis.RouteUrl(lat, lng)" target="_blank" rel="noopener">@Icons.Get("map", 16) Маршрут в 2ГИС</a>
-                        <a class="btn btn-ghost btn-sm" href="@TwoGis.PlaceUrl(lat, lng)" target="_blank" rel="noopener">На карте 2ГИС</a>
-                    </div>
-                }
-            </div>
+
+                <div class="st-actions">
+                    @if (route is not null)
+                    {
+                        <a class="btn st-route" href="@route" target="_blank" rel="noopener">@Icons.Get("map", 18) Как добраться</a>
+                    }
+                    @if (!string.IsNullOrEmpty(phone))
+                    {
+                        <a class="st-btn" href="tel:+@(new string(phone.Where(char.IsDigit).ToArray()))">Позвонить</a>
+                    }
+                    @if (!string.IsNullOrEmpty(contact?.Whatsapp))
+                    {
+                        <a class="st-btn st-wa" href="@contact.WhatsappLink" target="_blank" rel="noopener" aria-label="Написать в WhatsApp">@Icons.Get("whatsapp", 18)</a>
+                    }
+                </div>
+            </article>
+        }
+        @* Мойка (24.11) — тоже точка в городе: карточка в том же стиле, главная кнопка — запись онлайн. *@
+        @foreach (var wash in CarWashes.All)
+        {
+            <partial name="_WashStoreCard" model="wash" />
         }
     </div>
 }
 else
 {
-    <div class="empty">
-        <div class="empty-ico">@Icons.Get("pin", 44)</div>
-        <h2>Адреса пока не добавлены</h2>
-        <p>Их можно добавить в панели управления, раздел «Адреса магазинов».</p>
+    <section class="co-card search-empty">
+        <span class="search-empty-ico">@Icons.Get("pin", 26)</span>
+        <div>
+            <h2>Адреса скоро появятся</h2>
+            <p>А пока товары можно заказать с доставкой: менеджер позвонит и уточнит время.</p>
+            <div class="search-empty-actions"><a class="btn" asp-controller="Catalog" asp-action="Home">Перейти в каталог</a></div>
+        </div>
+    </section>
+    <div class="st-grid">
+        @foreach (var wash in CarWashes.All)
+        {
+            <partial name="_WashStoreCard" model="wash" />
+        }
     </div>
 }
 

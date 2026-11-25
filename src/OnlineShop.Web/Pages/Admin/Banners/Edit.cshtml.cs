@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using OnlineShop.Web.Data;
 using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
@@ -8,7 +9,10 @@ using OnlineShop.Web.Services;
 
 namespace OnlineShop.Web.Pages.Admin.Banners;
 
-/// <summary>Баннер: картинку и сроки показа менеджер задаёт сам, для новой акции код менять не нужно.</summary>
+/// <summary>
+/// Баннер (25.11.2026): готовая картинка 2400 × 880 во весь первый экран, название (подпись для незрячих),
+/// ссылка и сроки показа. Старые поля (рукописное слово, текст, кнопка, цвет, центр фото) в базе остались, форма их не трогает.
+/// </summary>
 [RequestSizeLimit(40 * 1024 * 1024)]
 [RequestFormLimits(MultipartBodyLengthLimit = 40 * 1024 * 1024)]
 public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
@@ -18,17 +22,14 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
 
     public class InputModel
     {
-        [Display(Name = "Заголовок")]
+        // Название — для панели и подпись картинки для незрячих (alt). Сами надписи нарисованы на картинке.
+        [Display(Name = "Название")]
         [StringLength(200, ErrorMessage = "Не длиннее {1} символов.")]
         public string? Title { get; set; }
 
         [Display(Name = "Ссылка при нажатии")]
         [StringLength(300, ErrorMessage = "Не длиннее {1} символов.")]
         public string? LinkUrl { get; set; }
-
-        [Display(Name = "Очерёдность в слайдере")]
-        [Range(0, int.MaxValue, ErrorMessage = "Число не меньше 0.")]
-        public int SortOrder { get; set; }
 
         [Display(Name = "Показывать на сайте")]
         public bool IsActive { get; set; } = true;
@@ -66,7 +67,8 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         }
         Input = new InputModel
         {
-            Title = banner.Title, LinkUrl = banner.LinkUrl, SortOrder = banner.SortOrder, IsActive = banner.IsActive,
+            Title = banner.Title, LinkUrl = banner.LinkUrl,
+            IsActive = banner.IsActive,
             StartsAt = banner.StartsAt is { } s ? Format.ToLocal(s) : null,
             EndsAt = banner.EndsAt is { } e ? Format.ToLocal(e) : null,
         };
@@ -128,12 +130,13 @@ public class EditModel(ShopDbContext db, MediaStorage media) : PageModel
         }
         banner.Title = Input.Title?.Trim() ?? "";
         banner.LinkUrl = Input.LinkUrl?.Trim() ?? "";
-        banner.SortOrder = Input.SortOrder;
         banner.IsActive = Input.IsActive;
         banner.StartsAt = Input.StartsAt is { } start ? Format.FromLocal(start) : null;
         banner.EndsAt = Input.EndsAt is { } end ? Format.FromLocal(end) : null;
         if (banner.Id == 0)
         {
+            // Новый баннер встаёт последним среди баннеров (перед слайдами с товарами).
+            banner.SortOrder = (await db.Banners.MaxAsync(b => (int?)b.SortOrder) ?? 0) + 1;
             db.Banners.Add(banner);
         }
         try

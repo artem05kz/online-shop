@@ -3,30 +3,35 @@
 @{
     ViewData["Title"] = "Вход";
 }
-<div class="panel form-narrow" style="margin:34px auto;">
-    <h1>Вход</h1>
-    <form method="post" style="margin-top:18px;">
-        @if (Model.Error is not null)
-        {
-            <ul class="messages">
-                <li class="message error">@Model.Error</li>
-            </ul>
-        }
-        <input type="hidden" asp-for="ReturnUrl">
-        <div class="form-row">
-            <label asp-for="Input.UserName"></label>
-            <input class="field" asp-for="Input.UserName" autocomplete="username" autofocus>
-            <span class="errorlist" asp-validation-for="Input.UserName"></span>
-        </div>
-        <div class="form-row">
-            <label asp-for="Input.Password"></label>
-            <input class="field" asp-for="Input.Password" autocomplete="current-password">
-            <span class="errorlist" asp-validation-for="Input.Password"></span>
-        </div>
-        <button class="btn btn-block" type="submit">Войти</button>
-    </form>
-    <p style="margin-top:14px;"><a asp-page="ForgotPassword" style="color:var(--green-dark); font-weight:600;">Забыли пароль?</a></p>
-    <p class="muted" style="margin-top:16px; font-size:.9rem;">
-        Нет аккаунта? <a asp-page="Register" asp-route-returnUrl="@Model.ReturnUrl" style="color:var(--green-dark); font-weight:600;">Зарегистрироваться</a>
-    </p>
+@* Вход: слева форма, справа «Аккаунт — по желанию» (_AuthAside). *@
+<div class="auth auth-split">
+    <div class="auth-card">
+        <h1>Вход</h1>
+        <p class="auth-lead">Войдите, чтобы видеть свои заказы и не вводить адрес каждый раз.</p>
+        <form method="post">
+            @if (Model.Error is not null)
+            {
+                <ul class="messages">
+                    <li class="message error">@Model.Error</li>
+                </ul>
+            }
+            <input type="hidden" asp-for="ReturnUrl">
+            <div class="form-row">
+                <label asp-for="Input.UserName"></label>
+                <input class="field" asp-for="Input.UserName" autocomplete="username" autofocus>
+                <span class="errorlist" asp-validation-for="Input.UserName"></span>
+            </div>
+            <div class="form-row">
+                <div class="auth-label-row">
+                    <label asp-for="Input.Password"></label>
+                    <a class="auth-link" asp-page="ForgotPassword">Забыли пароль?</a>
+                </div>
+                <input class="field" asp-for="Input.Password" autocomplete="current-password">
+                <span class="errorlist" asp-validation-for="Input.Password"></span>
+            </div>
+            <button class="btn btn-block auth-submit" type="submit">Войти</button>
+        </form>
+        <p class="auth-switch">Нет аккаунта? <a class="auth-link" asp-page="Register" asp-route-returnUrl="@Model.ReturnUrl">Зарегистрироваться</a></p>
+    </div>
+    <partial name="_AuthAside" />
 </div>

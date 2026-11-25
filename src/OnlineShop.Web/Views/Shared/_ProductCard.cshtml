@@ -8,8 +8,9 @@
     var showBrand = (await StorefrontLayout.GetAsync()).NavBrands.Count > 1;
     var isFavorite = (await Favorites.IdsAsync()).Contains(Model.Id);
     var packs = Model.ActiveVariants.Select(v => v.PackLabel).Where(l => l.Length > 0).ToList();
+    var shownVariant = variant ?? Model.ActiveVariants.FirstOrDefault();
 }
-<article class="product-card">
+<article class="product-card@(Model.InStock ? "" : " is-out")">
     <partial name="_FavoriteButton" model="new FavoriteButtonModel(Model.Id, isFavorite)" />
     <a class="thumb" href="@url">
         <img src="@Media.PhotoUrl(Model)" alt="@Model.Name" loading="lazy">
@@ -17,19 +18,22 @@
         {
             <span class="badge badge-out">Нет в наличии</span>
         }
+        else if (HitProducts.IsHit(Model))
+        {
+            <span class="badge badge-hit">@Icons.Get("star", 12) Хит</span>
+        }
     </a>
 
     @if (showBrand)
     {
         <p class="brand">@Model.Category.Brand.Name</p>
     }
-    <a class="name" href="@url">@Model.Name</a>
-    @* Артикул главный ориентир и для магазина, и для постоянных покупателей. *@
-    <p class="card-article">арт. @string.Join(", ", Model.ActiveVariants.Select(v => v.Article))</p>
-    @if (packs.Count > 1)
-    {
-        <p class="packs">@string.Join(" · ", packs)</p>
-    }
+    <a class="name" href="@url">@Typo.Text(Model.Name)</a>
+    @* Под названием две строки фиксированной высоты: фасовки и артикул. Так у всех карточек в ряду
+       цены и кнопки стоят на одной линии, сколько бы фасовок и артикулов ни было у товара.
+       Артикул — той фасовки, что предложена по умолчанию (остальные — на странице товара). *@
+    <p class="card-packs">@(packs.Count > 0 ? string.Join(" · ", packs) : "")</p>
+    <p class="card-article">@(shownVariant is null ? "" : $"арт. {shownVariant.Article}")</p>
 
     <div class="price-row">
         @if (Model.MinPrice is { } price)
@@ -46,15 +50,16 @@
         }
     </div>
 
+    @* Купить можно: кнопка главная (чёрная). Нельзя: спокойная, ведёт на страницу товара. *@
     @if (Model.HasSeveralPacks)
     {
-        <a class="btn btn-outline btn-block" href="@url">Выбрать фасовку</a>
+        <a class="btn @(Model.InStock ? "" : "btn-outline ")btn-block" href="@url">Выбрать фасовку</a>
     }
     else if (variant is { InStock: true })
     {
         <form asp-controller="Cart" asp-action="Add" asp-route-variantId="@variant.Id" method="post">
             <input type="hidden" name="next" value="@(Context.Request.Path + Context.Request.QueryString)">
-            <button class="btn btn-outline btn-block" type="submit">В корзину</button>
+            <button class="btn btn-block" type="submit">В корзину</button>
         </form>
     }
     else

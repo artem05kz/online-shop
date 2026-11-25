@@ -9,29 +9,45 @@
 
 @if (!Model.IsPreview)
 {
-    <h1>Загрузка товаров из 1С</h1>
-    <p>Выберите один или оба файла, которые вы выгрузили из 1С. На следующем шаге можно будет посмотреть,
-       что получилось, и снять галочки с ненужных строк. До подтверждения в базу ничего не запишется.</p>
-    <form method="post" enctype="multipart/form-data" class="admin-box form-narrow" style="max-width:640px;">
-        <div class="form-row">
-            <label for="PriceList">Прайс-лист (название, фото, описание, цена)</label>
-            <input type="file" id="PriceList" name="PriceList" accept=".xlsx">
+    @* Загрузка из 1С (этап 6, 25.11): три шага сверху и два больших поля для файлов — можно перетащить файл мышкой. *@
+    <div class="admin-head"><h1>Загрузка товаров из 1С</h1></div>
+    <ol class="im-steps" aria-label="Шаги">
+        <li class="is-now"><b>1</b>Выберите файлы</li>
+        <li><b>2</b>Проверьте, что получится</li>
+        <li><b>3</b>Загрузите в каталог</li>
+    </ol>
+    <form method="post" enctype="multipart/form-data" class="im-form">
+        <div class="im-drops">
+            <label class="fx-drop" for="PriceList">
+                <span class="fx-drop-icon">@Icons.Get("package", 26)</span>
+                <b>Прайс-лист</b>
+                <small>названия, фото, описания, цены</small>
+                <span class="fx-drop-file" data-empty="Перетащите файл .xlsx сюда или нажмите, чтобы выбрать">Перетащите файл .xlsx сюда или нажмите, чтобы выбрать</span>
+                <input type="file" id="PriceList" name="PriceList" accept=".xlsx" class="visually-hidden">
+            </label>
+            <label class="fx-drop" for="Stock">
+                <span class="fx-drop-icon">@Icons.Get("refresh", 26)</span>
+                <b>Остатки</b>
+                <small>артикул и количество на складе</small>
+                <span class="fx-drop-file" data-empty="Перетащите файл .xlsx сюда или нажмите, чтобы выбрать">Перетащите файл .xlsx сюда или нажмите, чтобы выбрать</span>
+                <input type="file" id="Stock" name="Stock" accept=".xlsx" class="visually-hidden">
+            </label>
         </div>
-        <div class="form-row">
-            <label for="Stock">Остатки (артикул, количество на складе)</label>
-            <input type="file" id="Stock" name="Stock" accept=".xlsx">
-        </div>
-        <div class="admin-actions">
-            <button class="btn" type="submit">Посмотреть, что получится</button>
+        <div class="im-foot">
+            <button class="btn" type="submit">Посмотреть, что получится @Icons.Get("arrow-right", 18)</button>
+            <p>Можно выбрать один файл или оба. До подтверждения на следующем шаге в каталог ничего не запишется.</p>
         </div>
     </form>
     return;
 }
 
-<h1>Проверьте перед записью в базу</h1>
-<p>Пока ничего не сохранено. Название, категорию, бренд и остаток можно поправить прямо здесь, правки уйдут в базу
-   вместе с загрузкой. Снимите галочки с тех строк, которые грузить не нужно, затем нажмите «Загрузить в каталог» внизу.
-   Поиск и клик по заголовку столбца работают на этой странице.</p>
+<div class="admin-head"><h1>Проверьте перед записью в базу</h1></div>
+<ol class="im-steps" aria-label="Шаги">
+    <li class="is-done"><b>1</b>Выберите файлы</li>
+    <li class="is-now"><b>2</b>Проверьте, что получится</li>
+    <li><b>3</b>Загрузите в каталог</li>
+</ol>
+<p class="im-lead">Пока ничего не сохранено. Название, категорию, бренд и остаток можно поправить прямо здесь. Снимите галочки со строк, которые грузить не нужно, и нажмите «Загрузить в каталог» внизу.</p>
 
 <form method="post" asp-page="Confirm">
     @if (Model.PriceTempName is not null)
@@ -130,8 +146,8 @@
         </div>
     }
 
-    <div class="admin-actions">
-        <button class="btn" type="submit">Загрузить в каталог</button>
+    <div class="savebar">
+        <button class="btn" type="submit">@Icons.Get("check") Загрузить в каталог</button>
         <a class="btn btn-ghost" asp-page="Index">Отмена</a>
     </div>
 </form>

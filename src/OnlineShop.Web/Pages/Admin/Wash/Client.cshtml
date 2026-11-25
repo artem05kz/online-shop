@@ -1,0 +1,105 @@
+@page "/admin/wash/clients/{phone}"
+@model OnlineShop.Web.Pages.Admin.Wash.ClientModel
+@using System.Globalization
+@{
+    var c = Model.Client;
+    ViewData["Title"] = $"Клиент: {c.Name}";
+    ViewData["AdminSection"] = "wash";
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var next = c.Next;
+    var again = $"/admin/wash/add?name={Uri.EscapeDataString(c.Name)}&phone={c.Phone}&car={Uri.EscapeDataString(c.Car)}";
+}
+@*
+    Карточка клиента мойки (CRM, шаг 2, 25.11). Шапка: имя, «постоянный», позвонить, WhatsApp, «Записать снова».
+    Цифры: сколько раз помыли, не приехал, оплатил всего, средний чек, когда впервые. Ниже ближайшая запись
+    и все записи по этому телефону; справа машины и заметки администратора.
+*@
+<div class="admin-head od-head">
+    <div class="od-title">
+        <h1>@c.Name</h1>
+        @if (c.IsRegular) { <span class="a-status wc-status-regular">Постоянный клиент</span> }
+        else if (c.Visits == 0) { <span class="a-status a-status-new">Ещё не мыли</span> }
+        @if (c.NoShows > 0) { <span class="a-status a-status-noshow">Не приехал @c.NoShows @Plural.Choose(c.NoShows, "раз", "раза", "раз")</span> }
+        <p class="od-when">@PhoneNumbers.Display(c.Phone) · с нами с @c.FirstAt.ToString("d MMMM yyyy", ru)</p>
+    </div>
+    <a class="btn btn-ghost" href="/admin/wash/clients">Все клиенты</a>
+</div>
+
+<div class="wc-actions">
+    <a class="btn" href="@again">@Icons.Get("plus", 18) Записать снова</a>
+    <a class="btn btn-ghost" href="tel:+@c.Phone">@Icons.Get("phone", 18) Позвонить</a>
+    <a class="btn btn-ghost" href="https://wa.me/@c.Phone" target="_blank" rel="noopener">@Icons.Get("whatsapp", 18) WhatsApp</a>
+</div>
+
+<div class="wc-kpis">
+    <div class="is-main"><b>@c.Visits</b><span>@Plural.Choose(c.Visits, "раз помыли", "раза помыли", "раз помыли")</span></div>
+    <div class="@(c.NoShows > 0 ? "is-bad" : "")"><b>@c.NoShows</b><span>не приехал</span></div>
+    <div><b>@(c.Paid > 0 ? Format.Money(c.Paid) : "—")</b><span>оплатил всего</span></div>
+    <div><b>@(c.AverageCheck > 0 ? Format.Money(Math.Round(c.AverageCheck)) : "—")</b><span>средний чек</span></div>
+    <div><b>@c.Cancelled</b><span>@Plural.Choose(c.Cancelled, "отмена", "отмены", "отмен")</span></div>
+</div>
+
+<div class="od-grid">
+    <div>
+        @if (next is not null)
+        {
+            <a class="admin-box wc-nextbox" href="/admin/wash/@next.Id">
+                <span class="wc-nextbox-mark">@Icons.Get("calendar", 22)</span>
+                <span>
+                    <small>Следующая запись</small>
+                    <b>@next.StartsAt.ToString("dddd, d MMMM, H:mm", ru)–@next.EndsAt.ToString("H:mm")</b>
+                    <small>@next.ServiceName@(next.Box > 0 ? $" · место {next.Box}" : "")</small>
+                </span>
+                <span class="a-status a-status-@next.Status.Code()">@next.Status.Text()</span>
+            </a>
+        }
+        <section class="admin-box">
+            <h2>Все записи <span class="muted">@c.Bookings.Count</span></h2>
+            <table class="wc-table">
+                <thead>
+                    <tr><th>Когда</th><th>Услуга</th><th>Цена</th><th>Оплата</th><th>Статус</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in c.Bookings)
+                    {
+                        <tr>
+                            <td><a href="/admin/wash/@b.Id">@b.StartsAt.ToString("d MMM yyyy, H:mm", ru)</a></td>
+                            <td>@b.ServiceName@(b.Car.Length > 0 && b.Car != c.Car ? $" · {b.Car}" : "")</td>
+                            <td>@(b.Price is { } p ? Format.Money(p) : "—")</td>
+                            <td>@(b.IsPaid ? WashPayments.Text(b.PaymentMethod) is { Length: > 0 } m ? m : "оплачено" : "—")</td>
+                            <td><span class="a-status a-status-@b.Status.Code()">@b.Status.Text()</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+    </div>
+    <aside class="od-side">
+        <section class="admin-box">
+            <h2>Машины</h2>
+            @if (c.Cars.Count == 0)
+            {
+                <p class="muted">Машину ещё не записывали.</p>
+            }
+            else
+            {
+                <ul class="wc-cars">
+                    @foreach (var car in c.Cars) { <li>@Icons.Get("car", 18) @car</li> }
+                </ul>
+            }
+        </section>
+        <section class="admin-box">
+            <h2>Заметки администратора</h2>
+            @if (c.Notes.Count == 0)
+            {
+                <p class="muted">Заметок нет. Добавить заметку можно в карточке записи.</p>
+            }
+            else
+            {
+                <ul class="wc-notes">
+                    @foreach (var note in c.Notes) { <li>@note</li> }
+                </ul>
+            }
+        </section>
+    </aside>
+</div>

@@ -33,11 +33,11 @@ public class CartController(ShopDbContext db, Cart cart) : Controller
         else if (inCart < quantity || inCart == variant.AvailableQty)
         {
             // Попросили больше, чем есть, или упёрлись в остаток вместе с тем, что уже лежало в корзине.
-            TempData.Flash($"В наличии только {variant.AvailableQty} шт. «{name}», в корзине {inCart} шт.", FlashLevel.Info);
+            TempData.Flash($"В наличии только {variant.AvailableQty} шт. «{name}», в корзине {inCart} шт.", "/orders/cart", "Перейти в корзину", FlashLevel.Info);
         }
         else
         {
-            TempData.Flash($"«{name}» в корзине.");
+            TempData.Flash($"«{name}» в корзине.", "/orders/cart", "Перейти в корзину");
         }
 
         // Возвращаем только на страницы своего сайта, чтобы ссылкой нельзя было увести покупателя на чужой.

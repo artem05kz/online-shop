@@ -1,81 +1,144 @@
 @page "/admin/orders"
 @model OnlineShop.Web.Pages.Admin.Orders.IndexModel
+@using OnlineShop.Web.Pages.Admin.Orders
 @{
     ViewData["Title"] = "Заказы";
     ViewData["AdminSection"] = "orders";
+    ViewData["LiveReload"] = true;
+    var ru = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+    var today = DateOnly.FromDateTime(Format.ToLocal(DateTime.UtcNow));
+    string Tab(string code) => "/admin/orders?status=" + code + (string.IsNullOrEmpty(Model.Q) ? "" : "&q=" + Uri.EscapeDataString(Model.Q));
+    string DayTitle(DateOnly d) => d == today ? "Сегодня" : d == today.AddDays(-1) ? "Вчера" : d.ToString(d.Year == today.Year ? "d MMMM, dddd" : "d MMMM yyyy", ru);
+    string Waiting(DateTime utc)
+    {
+        var minutes = (int)(DateTime.UtcNow - utc).TotalMinutes;
+        if (minutes < 60) return $"ждёт {Math.Max(1, minutes)} мин";
+        if (minutes < 60 * 24) return $"ждёт {minutes / 60} ч";
+        return $"ждёт {minutes / 60 / 24} дн";
+    }
+    var inWork = Model.Counts.GetValueOrDefault(OrderStatus.New) + Model.Counts.GetValueOrDefault(OrderStatus.Confirmed) + Model.Counts.GetValueOrDefault(OrderStatus.Delivering);
+    (string Code, string Label, int Count, bool Hot)[] tabs =
+    [
+        (OnlineShop.Web.Pages.Admin.Orders.IndexModel.ActiveCode, "В работе", inWork, false),
+        ("new", "Новые", Model.Counts.GetValueOrDefault(OrderStatus.New), Model.Counts.GetValueOrDefault(OrderStatus.New) > 0),
+        ("confirmed", "Подтверждённые", Model.Counts.GetValueOrDefault(OrderStatus.Confirmed), false),
+        ("delivering", "В доставке / к выдаче", Model.Counts.GetValueOrDefault(OrderStatus.Delivering), false),
+        ("completed", "Выполненные", Model.Counts.GetValueOrDefault(OrderStatus.Completed), false),
+        ("canceled", "Отменённые", Model.Counts.GetValueOrDefault(OrderStatus.Canceled), false),
+        (OnlineShop.Web.Pages.Admin.Orders.IndexModel.AllCode, "Все", Model.AllCount, false),
+    ];
+    var back = $"&q={Uri.EscapeDataString(Model.Q ?? "")}&status={Model.Status}&o={Model.O}&p={Request.Query["p"]}";
 }
+@*
+    Заказы (редизайн 24.11, вторая версия). По умолчанию открыты заказы «в работе», по дням: «Сегодня», «Вчера», дата.
+    Строка — карточка: нажать в любом месте — открыть заказ. В строке номер и время, фото товаров, покупатель
+    (телефон — позвонить), куда везти, сумма к оплате с доставкой, статус и одна кнопка «следующий шаг».
+    Сменить статус вручную или отменить заказ — в карточке заказа.
+*@
 <div class="admin-head">
-    <h1>Заказы покупателей</h1>
+    <h1>Заказы</h1>
 </div>
 
-<form class="admin-filters" method="get">
-    <input class="field" type="search" name="q" value="@Model.Q" placeholder="Телефон, имя, артикул или номер заказа">
-    <select class="select" name="status" data-autosubmit>
-        <option value="">Все статусы</option>
-        @foreach (var status in Enum.GetValues<OrderStatus>())
+<div class="o-bar">
+    <nav class="o-tabs" aria-label="Заказы по статусу">
+        @foreach (var t in tabs)
         {
-            <option value="@status.ToCode()" selected="@(Model.Status == status.ToCode())">@status.Label()</option>
+            <a class="o-tab@(Model.Status == t.Code ? " is-on" : "")@(t.Hot ? " is-hot" : "")" href="@Tab(t.Code)">@t.Label <span>@t.Count</span></a>
         }
-    </select>
-    @if (!string.IsNullOrEmpty(Model.O))
-    {
-        <input type="hidden" name="o" value="@Model.O">
-    }
-    <button class="btn" type="submit">@Icons.Get("search") Найти</button>
-</form>
+    </nav>
+</div>
+@if (!string.IsNullOrEmpty(Model.Q))
+{
+    <p class="o-reset">Поиск: «@Model.Q» — по всем статусам. <a href="/admin/orders">Сбросить</a></p>
+}
 
-<form id="changelist-form" method="post" asp-page-handler="SaveList"
-      asp-route-q="@Model.Q" asp-route-status="@Model.Status" asp-route-o="@Model.O" asp-route-p="@Request.Query["p"]">
-    <div class="admin-table-wrap">
-        <table class="admin-table" id="result_list">
-            <thead>
-                <tr>
-                    <th>@AdminList.SortHeader(Request, "id", "Номер")</th>
-                    <th>Покупатель</th>
-                    <th>Получатель</th>
-                    <th>Телефон</th>
-                    <th>Город</th>
-                    <th>@AdminList.SortHeader(Request, "created", "Дата")</th>
-                    <th>Статус</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (var i = 0; i < Model.Rows.Count; i++)
-                {
-                    var row = Model.Rows[i];
-                    <tr class="@(row.Status == OrderStatus.New ? "is-new" : "")">
-                        <td>
-                            <input type="hidden" asp-for="Rows[i].Id">
-                            <a asp-page="Edit" asp-route-id="@row.Id" style="font-weight:700;">№@row.Id</a>
-                            @if (row.Status == OrderStatus.New)
-                            {
-                                <span class="pill new">новый</span>
-                            }
-                        </td>
-                        <td>@row.UserName</td>
-                        <td>@row.ContactName</td>
-                        <td><a href="tel:@row.ContactPhone">@row.ContactPhone</a></td>
-                        <td>@row.City @if (row.IsPickup) { <span class="pill off">самовывоз</span> }</td>
-                        <td class="muted">@Format.DateTimeText(row.CreatedAt)</td>
-                        <td>
-                            <select class="select" asp-for="Rows[i].Status">
-                                @foreach (var status in Enum.GetValues<OrderStatus>())
-                                {
-                                    <option value="@status">@status.Label()</option>
-                                }
-                            </select>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+@if (Model.Rows.Count == 0)
+{
+    <div class="admin-box o-empty">
+        @if (!string.IsNullOrEmpty(Model.Q))
+        {
+            <p>По запросу «@Model.Q» заказов не нашлось. Проверьте номер или телефон.</p>
+        }
+        else if (Model.Status == OnlineShop.Web.Pages.Admin.Orders.IndexModel.ActiveCode)
+        {
+            <p>@Icons.Get("check", 20) Все заказы обработаны — в работе ничего нет.</p>
+        }
+        else
+        {
+            <p>Здесь заказов нет.</p>
+        }
     </div>
-    @if (Model.Rows.Count > 0)
+}
+else
+{
+    @foreach (var day in Model.Rows.GroupBy(r => DateOnly.FromDateTime(Format.ToLocal(r.CreatedAt))))
     {
-        <div class="savebar">
-            <button class="btn" type="submit">@Icons.Get("check") Сохранить статусы</button>
-            <span class="note">Нажмите на номер заказа, чтобы открыть его целиком.</span>
-        </div>
+        <h2 class="o-day">@DayTitle(day.Key) <span>@day.Count() @Plural.Choose(day.Count(), "заказ", "заказа", "заказов")</span></h2>
+        <ul class="o-list" data-keep-scroll>
+            @foreach (var row in day)
+            {
+                var digits = PhoneNumbers.Normalize(row.ContactPhone);
+                var (total, quantity) = Model.Totals.GetValueOrDefault(row.Id);
+                var (photos, lines) = Model.Previews.GetValueOrDefault(row.Id, ([], 0));
+                var city = !row.IsPickup && DeliveryPrices.IsCity(row.City);
+                var fee = city ? DeliveryPrices.CityFee(total) : 0m;
+                var button = OrderSteps.Button(row.Status, row.IsPickup);
+                var open = row.Status is OrderStatus.New or OrderStatus.Confirmed or OrderStatus.Delivering;
+                <li class="o-row o-row-@row.Status.ToCode()">
+                    <a class="o-open" href="/admin/orders/@row.Id"><span class="visually-hidden">Открыть заказ №@row.Id</span></a>
+                    <div class="o-num">
+                        <b>№@row.Id</b>
+                        <small>@Format.ToLocal(row.CreatedAt).ToString("H:mm")</small>
+                        @if (row.Status == OrderStatus.New)
+                        {
+                            <small class="o-wait">@Waiting(row.CreatedAt)</small>
+                        }
+                    </div>
+                    <div class="o-pics" aria-hidden="true">
+                        @foreach (var src in photos)
+                        {
+                            <img src="@src" alt="" width="44" height="44" loading="lazy">
+                        }
+                        @if (lines > photos.Count)
+                        {
+                            <span class="o-more">+@(lines - photos.Count)</span>
+                        }
+                    </div>
+                    <div class="o-who">
+                        <b>@(string.IsNullOrWhiteSpace(row.ContactName) ? "Без имени" : row.ContactName)</b>
+                        @if (digits.Length > 0)
+                        {
+                            <a class="o-phone" href="tel:+@digits">@Icons.Get("phone", 14) @PhoneNumbers.Display(digits)</a>
+                        }
+                        else
+                        {
+                            <span>@row.ContactPhone</span>
+                        }
+                    </div>
+                    <div class="o-get">
+                        <span class="o-kind">@Icons.Get(row.IsPickup ? "pin" : "truck", 16) @(row.IsPickup ? "Самовывоз" : city ? "Доставка по Актау" : "Доставка, " + row.City)</span>
+                        <small>@(string.IsNullOrWhiteSpace(row.Place) ? "адрес не указан" : row.Place)</small>
+                    </div>
+                    <div class="o-sum">
+                        <b>@Format.Money(total + fee)</b>
+                        <small>@quantity шт.@(!row.IsPickup && fee == 0 ? (city ? ", доставка бесплатно" : " + доставка") : "")</small>
+                        @if (fee > 0)
+                        {
+                            <small>доставка @Format.Money(fee)</small>
+                        }
+                    </div>
+                    <div class="o-act">
+                        <span class="a-status a-status-@row.Status.ToCode()">@OrderSteps.Text(row.Status, row.IsPickup)</span>
+                        @if (button is not null && open)
+                        {
+                            <form method="post" action="/admin/orders?handler=Next&id=@row.Id@back" asp-antiforgery="true">
+                                <button class="btn btn-sm@(row.Status == OrderStatus.New ? "" : " btn-ghost")" type="submit">@button</button>
+                            </form>
+                        }
+                    </div>
+                </li>
+            }
+        </ul>
     }
-</form>
+}
 <partial name="_AdminPager" model="Model.Pager" />

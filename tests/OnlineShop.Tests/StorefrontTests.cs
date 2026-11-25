@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OnlineShop.Web.Data;
+using OnlineShop.Web.Infrastructure;
 using OnlineShop.Web.Models;
 
 namespace OnlineShop.Tests;
@@ -327,11 +328,59 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
     }
 
     [Fact]
-    public async Task Checkout_requires_login()
+    public async Task Side_catalog_groups_categories_by_home_sections()
     {
-        var response = await Client().GetAsync("/orders/checkout");
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/accounts/login", response.Headers.Location!.AbsolutePath);
+        var html = await Page(Client(), "/");
+        // Шесть разделов как на главной; пустые помечены «скоро», у категорий число товаров.
+        Assert.Contains("data-cm-sec=\"laundry\"", html);
+        Assert.Contains("data-cm-sec=\"car\"", html);
+        Assert.Contains("скоро", html);
+        Assert.Contains("class=\"cm-cat-count\"", html);
+    }
+
+    [Fact]
+    public async Task Guest_checks_out_without_account_and_sees_order_by_secret_link()
+    {
+        var client = Client();
+        var token = await TokenFrom(client, "/product/шампунь-тест");
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token);
+        // Сообщение после добавления — карточка со ссылкой в корзину.
+        var afterAdd = await Page(client, "/product/шампунь-тест");
+        Assert.Contains("message toast success", afterAdd);
+        Assert.Contains("Перейти в корзину", afterAdd);
+
+        // Входить не надо: форма открывается сразу, город уже подставлен, согласие спрашиваем.
+        var form = await Page(client, "/orders/checkout");
+        Assert.Contains("Без регистрации", form);
+        Assert.Contains("value=\"Актау\"", form);
+        Assert.Contains("политики конфиденциальности", form);
+
+        var address = new[] { ("Form.ContactName", "Гость"), ("Form.ContactPhone", "+7 701 111-22-33"),
+            ("Form.IsPickup", "false"), ("Form.City", "Актау"), ("Form.StreetAndDetails", "3 микрорайон, дом 1") };
+        var refused = await Post(client, "/orders/checkout", token, address);
+        Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
+
+        var placed = await Post(client, "/orders/checkout", token, [.. address, ("Form.AcceptPrivacy", "true")]);
+        Assert.Equal(HttpStatusCode.Redirect, placed.StatusCode);
+        var link = placed.Headers.Location!.OriginalString;
+        Assert.Matches(@"^/orders/view/[0-9a-f]{32}$", link);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var order = scope.ServiceProvider.GetRequiredService<ShopDbContext>().Orders.Single(o => o.ContactPhone == "+7 701 111-22-33");
+            Assert.Null(order.UserId);
+            Assert.Equal(link, $"/orders/view/{order.AccessToken}");
+        }
+
+        var page = await Page(client, link);
+        Assert.Contains("принят", page);
+        Assert.Contains("Скопировать ссылку", page);
+        Assert.DoesNotContain("Мои заказы</a>", page);
+        Assert.Contains("Корзина пуста", await Page(client, "/orders/cart"));
+
+        // По ссылке заказ открывается и без куки (с другого устройства), а по выдуманной метке нет.
+        Assert.Equal(HttpStatusCode.OK, (await Client().GetAsync(link)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Client().GetAsync("/orders/view/" + new string('0', 32))).StatusCode);
     }
 
     [Fact]
@@ -365,7 +414,7 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         {
             var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
             var order = db.Orders.Include(o => o.Items).OrderBy(o => o.Id).Last();
-            Assert.Equal(_factory.BuyerId, order.UserId);
+            Assert.Equal<int?>(_factory.BuyerId, order.UserId);
             Assert.Equal(OrderStatus.New, order.Status);
             var item = Assert.Single(order.Items);
             Assert.Equal(("Шампунь Тест", "1 л", "100", 1890m, 2), (item.ProductName, item.PackLabel, item.Article, item.Price, item.Quantity));
@@ -373,14 +422,15 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
 
         // Менеджеру в Telegram уходит заказ со ссылкой на него в панели.
         var orderId = orderUrl.Split('/').Last();
-        var alert = await _factory.Telegram.WaitForMessage(ShopFactory.ManagerChatId);
-        Assert.StartsWith($"<b>Новый заказ №{orderId}</b>", alert.Text);
+        var alert = await _factory.Telegram.WaitForMessage(ShopFactory.ManagerChatId, m => m.Text.StartsWith($"<b>Новый заказ №{orderId}</b>"));
         Assert.Contains("Шампунь Тест, 1 л: 2 × 1 890 ₸", alert.Text);
         Assert.Contains("Комментарий: позвонить заранее", alert.Text);
         Assert.EndsWith($"/admin/orders/{orderId}", alert.Text);
 
         var page = await Page(client, orderUrl);
-        Assert.Contains("оформлен. Оплата при получении.", page);
+        // Сразу после оформления — карточка «Заказ принят» с шагом «Готово».
+        Assert.Contains($"Заказ №{orderId} принят", page);
+        Assert.Contains("co-step is-current", page);
         Assert.Contains("3 780 ₸", page);
         Assert.Contains("Корзина пуста", await Page(client, "/orders/cart"));
 
@@ -395,5 +445,317 @@ public class StorefrontTests : IClassFixture<StorefrontTests.ShopFactory>
         var checkout = await Client(_factory.OtherBuyerId).GetAsync("/orders/checkout");
         Assert.Equal(HttpStatusCode.Redirect, checkout.StatusCode);
         Assert.Equal("/", checkout.Headers.Location!.OriginalString);
+    }
+
+    [Fact]
+    public async Task Hero_shows_only_slides_whose_product_is_on_sale()
+    {
+        // Слайдов нет: первого экрана нет, страница открывается как раньше.
+        Assert.DoesNotContain("class=\"hero\"", await Page(Client(), "/"));
+
+        int id;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var category = db.Categories.First();
+            var wax = new Product
+            {
+                Category = category, Name = "Холодный воск TOP WAX", Slug = "холодный-воск-top-wax",
+                Variants = [new ProductVariant { Article = "212101", PackLabel = "1 кг", Price = 180m, StockQty = 3 }],
+            };
+            db.Products.Add(wax);
+            db.SaveChanges();
+            id = wax.Id;
+            db.ProductSlides.Add(new ProductSlide
+            {
+                ProductId = id, Script = "Top Wax", Title = "Холодный воск TOP WAX", Text = "Блеск после мойки.",
+                ImagePath = "/img/hero/top-wax.webp", BgColor = "#ff9447", ScriptColor = "#ec6a18", SortOrder = 1,
+            });
+            db.SaveChanges();
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            Assert.Contains("class=\"hero\"", html);
+            Assert.Contains("Холодный воск TOP WAX", html);
+            Assert.Contains("img/hero/top-wax.webp", html);
+            // Цвета слайда приходят из базы; светлый фон — тёмный текст.
+            Assert.Contains("--hero-bg: #ff9447; --hero-ink: #0f0f0f; --hero-script: #ec6a18", html);
+            Assert.Contains(">Купить</a>", html);
+            // Один слайд: листать нечего, стрелок нет.
+            Assert.DoesNotContain("class=\"hero-controls\"", html);
+
+            // Товар скрыли — слайд пропал.
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+                db.Products.Single(p => p.Id == id).IsActive = false;
+                db.SaveChanges();
+            }
+            Assert.DoesNotContain("class=\"hero\"", await Page(Client(), "/"));
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Products.Remove(db.Products.Include(p => p.Variants).First(p => p.Id == id));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Home_shows_active_stores_with_route_link()
+    {
+        int[] ids;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var shown = new Store
+            {
+                Address = "г. Актау, 7 микрорайон, тест-бутик", Kind = StoreKind.Shop, SortOrder = -2,
+                WorkingHours = "Пн-Сб, 9:00-18:00", LunchHours = "с 13:00 до 14:00", Phone = "+7 700 111-22-33",
+                Latitude = 43.65, Longitude = 51.16,
+            };
+            var hidden = new Store { Address = "г. Актау, скрытая тест-точка", SortOrder = -1, IsActive = false };
+            var daily = new Store { Address = "г. Актау, 15 микрорайон, тест-ежедневно", Kind = StoreKind.Shop, SortOrder = -3, WorkingHours = "Ежедневно 11:00–18:00" };
+            db.Stores.AddRange(shown, hidden, daily);
+            db.SaveChanges();
+            ids = [shown.Id, hidden.Id, daily.Id];
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            Assert.Contains("Где нас найти", html);
+            Assert.Contains("тест-бутик", html);
+            Assert.Contains("обед с 13:00 до 14:00", html);
+            Assert.Contains("href=\"tel:+7 700 111-22-33\"", html);
+            Assert.Contains("Как добраться", html);
+            Assert.DoesNotContain("скрытая тест-точка", html);
+            // Точка, работающая каждый день, получает плашку «Без выходных»; «г. Актау» в адресе не повторяется.
+            var visit = html[html.IndexOf("visit-list", StringComparison.Ordinal)..html.IndexOf("</section>", html.IndexOf("visit-list", StringComparison.Ordinal), StringComparison.Ordinal)];
+            Assert.Contains("Без выходных", visit);
+            Assert.DoesNotContain("г. Актау, 15", visit);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Stores.RemoveRange(db.Stores.Where(s => ids.Contains(s.Id)));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Home_shows_six_big_sections_and_marks_empty_ones()
+    {
+        var html = await Page(Client(), "/");
+        foreach (var title in new[] { "Для стирки", "Для уборки", "Для дома", "Для гигиены", "Для авто", "Для бизнеса" })
+        {
+            Assert.Contains($"<span class=\"hs-name\">{title}</span>", html);
+        }
+        // В тестовом каталоге нет товаров для стирки: плитка не ссылка, а «Скоро в каталоге».
+        Assert.Contains("Скоро в каталоге", html);
+    }
+
+    [Fact]
+    public async Task Footer_has_whatsapp_button_and_shops_with_hours_but_no_warehouse()
+    {
+        int[] storeIds;
+        int contactId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var shop = new Store { Address = "г. Актау, 21 микрорайон, подвал-бутик", Kind = StoreKind.Shop, WorkingHours = "Пн–Пт 9:00–16:00", SortOrder = -5 };
+            var warehouse = new Store { Address = "г. Актау, подвал-склад", Kind = StoreKind.Warehouse, SortOrder = -4 };
+            var contact = new SiteContact { Phone = "+7 701 245-48-48", Whatsapp = "+7 701 245-48-48", Instagram = "grassaktau" };
+            db.Stores.AddRange(shop, warehouse);
+            db.SiteContacts.Add(contact);
+            db.SaveChanges();
+            storeIds = [shop.Id, warehouse.Id];
+            contactId = contact.Id;
+        }
+        try
+        {
+            var html = await Page(Client(), "/");
+            var footer = html[html.IndexOf("<footer", StringComparison.Ordinal)..];
+            Assert.Contains("Написать в WhatsApp", footer);
+            Assert.Contains("https://wa.me/77012454848?text=", footer);
+            Assert.Contains("https://instagram.com/grassaktau", footer);
+            // Адрес без «г. Актау»: город уже в заголовке колонки.
+            Assert.Contains(">21 микрорайон, подвал-бутик</a>", footer);
+            Assert.Contains("Пн–Пт 9:00–16:00", footer);
+            Assert.DoesNotContain("подвал-склад", footer);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Stores.RemoveRange(db.Stores.Where(s => storeIds.Contains(s.Id)));
+            db.SiteContacts.RemoveRange(db.SiteContacts.Where(c => c.Id == contactId));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Category_page_has_pack_buttons_and_puts_in_stock_first()
+    {
+        int[] ids;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var category = db.Categories.Include(c => c.Brand).First(c => c.Slug == "автошампуни" && c.Brand.Slug == "grass");
+            var spray = new Product
+            {
+                Category = category, Name = "А-тест триггер", Slug = "а-тест-триггер",
+                Variants = [new ProductVariant { Article = "990001", PackLabel = "500 мл триггер", Price = 100m, StockQty = 0 }],
+            };
+            var canister = new Product
+            {
+                Category = category, Name = "Я-тест канистра", Slug = "я-тест-канистра",
+                Variants = [new ProductVariant { Article = "990002", PackLabel = "20 кг", Price = 900m, StockQty = 5 }],
+            };
+            db.Products.AddRange(spray, canister);
+            db.SaveChanges();
+            ids = [spray.Id, canister.Id];
+        }
+        try
+        {
+            var html = await Page(Client(), "/catalog/grass/автошампуни");
+            Assert.Contains("class=\"quick-filters\"", html);
+            Assert.Contains("Триггер 500", html);
+            Assert.Contains("Только в наличии", html);
+            // То, что можно купить сейчас, стоит выше товара «нет в наличии», хотя по алфавиту он первый.
+            Assert.True(html.IndexOf("Я-тест канистра") < html.IndexOf("А-тест триггер"));
+
+            var sprays = await Page(Client(), "/catalog/grass/автошампуни?pack=spray");
+            Assert.Contains("А-тест триггер", sprays);
+            Assert.DoesNotContain("Я-тест канистра", sprays);
+
+            var inStock = await Page(Client(), "/catalog/grass/автошампуни?in_stock=1");
+            Assert.Contains("Я-тест канистра", inStock);
+            Assert.DoesNotContain("А-тест триггер", inStock);
+
+            // Цена — в том же ряду кнопок; боковой панели фильтров на странице раздела больше нет.
+            var cheap = await Page(Client(), "/catalog/grass/автошампуни?price_max=500");
+            Assert.Contains("А-тест триггер", cheap);
+            Assert.DoesNotContain("Я-тест канистра", cheap);
+            Assert.Contains("name=\"price_max\"", cheap);
+            Assert.DoesNotContain("id=\"filters\"", cheap);
+        }
+        finally
+        {
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            db.Products.RemoveRange(db.Products.Include(p => p.Variants).Where(p => ids.Contains(p.Id)));
+            db.SaveChanges();
+        }
+    }
+
+    [Fact]
+    public async Task Header_has_new_logo_and_no_top_strip()
+    {
+        var html = await Page(Client(), "/");
+        Assert.DoesNotContain("class=\"topbar\"", html);
+        // С 24.11 только IFOAM: GRASS убран из логотипа, рядом город.
+        Assert.Contains("img/logo-sun.png", html);
+        Assert.Contains("IFOAM<span class=\"logo-bar\"></span>", html);
+        Assert.Contains("Бытовая и автохимия", html);
+        Assert.DoesNotContain("GRASS<span", html);
+    }
+
+    // ----- Доработки витрины 24.11 -----
+
+    [Fact]
+    public async Task Delivery_in_aktau_tops_up_the_order_to_the_minimum()
+    {
+        // Минимальный заказ с доставкой по Актау — 7 000 ₸: меньше — доплата до 7 000 ₸, больше — доставка бесплатная.
+        Assert.Equal(5110m, DeliveryPrices.CityFee(1890m));
+        Assert.Equal(0m, DeliveryPrices.CityFee(7000m));
+        Assert.Equal(0m, DeliveryPrices.CityFee(9450m));
+        Assert.True(DeliveryPrices.IsCity("г. Актау"));
+        Assert.False(DeliveryPrices.IsCity("Жанаозен"));
+
+        var client = Client();
+        var token = await TokenFrom(client, "/product/шампунь-тест");
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token);
+        var cart = await Page(client, "/orders/cart");
+        Assert.Contains(Format.Money(5110m), cart);                 // доставка
+        Assert.Contains(Format.Money(7000m), cart);                 // к оплате
+        Assert.Contains("При самовывозе — " + Format.Money(1890m), cart);
+        Assert.Contains(Format.Money(7000m), await Page(client, "/orders/checkout"));
+
+        // Ещё 3 шт. — товаров на 7 560 ₸, доставка бесплатная.
+        await Post(client, $"/orders/cart/add/{_factory.InStockVariantId}", token, ("quantity", "3"));
+        cart = await Page(client, "/orders/cart");
+        Assert.Contains("Доставка по Актау бесплатная", cart);
+        Assert.Contains(Format.Money(7560m), cart);
+        await Post(client, $"/orders/cart/remove/{_factory.InStockVariantId}", token);
+    }
+
+    [Fact]
+    public async Task Recently_viewed_is_on_product_pages_only_and_there_is_no_whatsapp_order()
+    {
+        var client = Client();
+        var page = await Page(client, "/product/шампунь-тест");
+        Assert.DoesNotContain("Вы недавно смотрели", page);
+        // Решение пользователя 24.11: заказ только через сайт, кнопки «Заказать в WhatsApp» нет.
+        Assert.DoesNotContain("Заказать в WhatsApp", page);
+        // Главная «недавние» не показывает, страница самого товара себя в них не показывает.
+        Assert.DoesNotContain("Вы недавно смотрели", await Page(client, "/"));
+        Assert.DoesNotContain("Вы недавно смотрели", await Page(client, "/product/шампунь-тест"));
+
+        // Открыли другой товар — на нём внизу «Вы недавно смотрели» с шампунем.
+        string slug;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var other = db.Products.FirstOrDefault(p => p.Name == "Воск Недавний");
+            if (other is null)
+            {
+                var category = db.Categories.First();
+                other = new Product { CategoryId = category.Id, Name = "Воск Недавний", Variants = [new ProductVariant { Article = "300", PackLabel = "1 л", Price = 500m, StockQty = 3 }] };
+                db.Products.Add(other);
+                db.SaveChanges();
+            }
+            slug = other.Slug;
+        }
+        var second = await Page(client, "/product/" + slug);
+        Assert.Contains("Вы недавно смотрели", second);
+        Assert.Contains("Шампунь Тест", second);
+    }
+
+    [Fact]
+    public async Task Cabinet_lists_my_wash_bookings_and_denied_page_has_no_empty_name()
+    {
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+            var wash = OnlineShop.Web.Infrastructure.CarWashes.All[0];
+            db.WashBookings.Add(new WashBooking
+            {
+                WashKey = wash.Key, WashName = wash.Name, ServiceKey = "complex", ServiceName = "Комплексная мойка", Minutes = 60,
+                StartsAt = OnlineShop.Web.Services.WashSlots.Now().Date.AddDays(2).AddHours(12), Name = "Иван", Phone = "77010000000",
+                CreatedAt = DateTime.UtcNow, UserId = _factory.BuyerId,
+            });
+            db.SaveChanges();
+        }
+        var mine = await Page(Client(_factory.BuyerId), "/accounts/wash");
+        Assert.Contains("Записи на мойку", mine);
+        Assert.Contains("Комплексная мойка", mine);
+        Assert.Contains("Открыть запись", mine);
+        Assert.DoesNotContain("Комплексная мойка", await Page(Client(_factory.OtherBuyerId), "/accounts/wash"));
+        Assert.Equal(HttpStatusCode.Redirect, (await _factory.Browser().GetAsync("/accounts/wash")).StatusCode);
+
+        var denied = await Page(Client(), "/accounts/denied");
+        Assert.Contains("Нет доступа", denied);
+        Assert.DoesNotContain("Вы вошли как «»", denied);
+    }
+
+    [Fact]
+    public async Task Stores_page_shows_the_car_wash()
+    {
+        var page = await Page(Client(), "/addresses");
+        Assert.Contains(OnlineShop.Web.Infrastructure.CarWashes.All[0].Address, page);
+        Assert.Contains("href=\"/wash\"", page);
     }
 }

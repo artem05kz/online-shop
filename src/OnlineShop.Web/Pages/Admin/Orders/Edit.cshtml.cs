@@ -11,6 +11,9 @@ using OnlineShop.Web.Models;
 namespace OnlineShop.Web.Pages.Admin.Orders;
 
 /// <summary>
+/// Карточка заказа (редизайн 24.11): сверху статус полосой шагов и кнопка «следующий шаг»; слева состав
+/// с фото и суммой с доставкой (правило 7 000 ₸, как у покупателя), справа покупатель с кнопками
+/// «Позвонить» и WhatsApp, получение и комментарий. Данные и количество правятся ниже, «Сохранить» внизу.
 /// Заказ: статус, данные доставки, количество по позициям. Название, фасовка и цена позиции
 /// только для чтения: это снимок на момент заказа, и покупатель видит именно его.
 /// </summary>
@@ -124,7 +127,17 @@ public class EditModel(ShopDbContext db, AccountMail mail, StockReservations res
         return RedirectToPage(new { id });
     }
 
+    /// <summary>Кнопка «следующий шаг» наверху карточки: подтвердить, передать в доставку, выполнен.</summary>
+    public async Task<IActionResult> OnPostNextAsync(int id)
+    {
+        var next = await OrderSteps.AdvanceAsync(db, reservations, mail, id, $"{Request.Scheme}://{Request.Host}");
+        TempData.Flash(next is { } status ? $"Заказ №{id}: статус «{status.Label()}». Покупателю с подтверждённой почтой ушло письмо." : $"Заказ №{id} уже нельзя продвинуть дальше.");
+        return RedirectToPage(new { id });
+    }
+
     private Task<Order?> Load(int id) =>
-        db.Orders.Include(o => o.User).Include(o => o.Items).ThenInclude(i => i.Variant)
+        db.Orders.Include(o => o.User).Include(o => o.PickupStore)
+            .Include(o => o.Items).ThenInclude(i => i.Variant).ThenInclude(v => v.Product).ThenInclude(p => p.Images)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(o => o.Id == id);
 }

@@ -27,6 +27,9 @@ public class CatalogFilter
     public IReadOnlyList<string> Categories { get; init; } = [];
     public bool InStockOnly { get; init; }
 
+    /// <summary>Группа фасовки из <see cref="PackSize"/> или пусто. Работает только на странице раздела.</summary>
+    public string Pack { get; init; } = "";
+
     // Как ввёл покупатель: чтобы показать в поле обратно ровно это, даже если число не разобралось.
     public string PriceMinRaw { get; init; } = "";
     public string PriceMaxRaw { get; init; } = "";
@@ -37,7 +40,7 @@ public class CatalogFilter
     public decimal? PriceMax => ParsePrice(PriceMaxRaw);
 
     public bool HasActiveFilters =>
-        Brands.Count > 0 || Categories.Count > 0 || InStockOnly || PriceMin is not null || PriceMax is not null;
+        Brands.Count > 0 || Categories.Count > 0 || InStockOnly || Pack.Length > 0 || PriceMin is not null || PriceMax is not null;
 
     public static CatalogFilter FromQuery(IQueryCollection query)
     {
@@ -47,6 +50,7 @@ public class CatalogFilter
             Brands = NonEmpty(query["brand"]),
             Categories = NonEmpty(query["category"]),
             InStockOnly = query["in_stock"] == "1",
+            Pack = PackSize.Order.Contains(query["pack"].ToString()) ? query["pack"].ToString() : "",
             PriceMinRaw = query["price_min"].ToString().Trim(),
             PriceMaxRaw = query["price_max"].ToString().Trim(),
             Sort = SortOptions.Any(o => o.Value == sort) ? sort : DefaultSort,
@@ -128,20 +132,23 @@ public static class CatalogQuery
 
     public static IQueryable<Product> ApplySort(this IQueryable<Product> products, string sort)
     {
+        // Сначала то, что можно купить сейчас: «Нет в наличии» уходит в конец списка при любой сортировке.
+        var ordered = products.OrderBy(p => !p.Variants.Any(v => v.IsActive && v.StockQty > v.ReservedQty));
+
         // Товары без цены при сортировке по цене всегда в конце: иначе «сначала дешевле»
         // начиналось бы с позиций «цена уточняется».
         return sort switch
         {
-            "price_asc" => products
-                .OrderBy(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price) == null)
+            "price_asc" => ordered
+                .ThenBy(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price) == null)
                 .ThenBy(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price))
                 .ThenBy(p => p.Name),
-            "price_desc" => products
-                .OrderBy(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price) == null)
+            "price_desc" => ordered
+                .ThenBy(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price) == null)
                 .ThenByDescending(p => p.Variants.Where(v => v.IsActive && v.Price != null).Min(v => v.Price))
                 .ThenBy(p => p.Name),
-            "new" => products.OrderByDescending(p => p.CreatedAt).ThenBy(p => p.Name),
-            _ => products.OrderBy(p => p.Name).ThenBy(p => p.Id),
+            "new" => ordered.ThenByDescending(p => p.CreatedAt).ThenBy(p => p.Name),
+            _ => ordered.ThenBy(p => p.Name).ThenBy(p => p.Id),
         };
     }
 }

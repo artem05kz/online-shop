@@ -6,13 +6,27 @@
         ? "Попробуйте изменить фильтры или сбросить их."
         : "Попробуйте другое название или артикул.";
 }
-<div class="catalog-layout">
-    <partial name="_Filters" model="Model" />
+@* На страницах раздела и поиска все фильтры — кнопками над товарами (_CategoryNav), и боковая панель не нужна.
+   Старая панель слева (_Filters) осталась на случай других списков. *@
+@{
+    var sidebar = Model.Category is null && Model.Query is null;
+}
+<div class="catalog-layout@(sidebar ? "" : " is-wide")">
+    @if (sidebar)
+    {
+        <partial name="_Filters" model="Model" />
+    }
 
     <div>
+        @* На странице раздела число товаров в шапке, а сортировка в строке фильтров (_CategoryNav). *@
+        @if (sidebar)
+        {
         <div class="toolbar">
-            <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
-                    aria-expanded="false" aria-controls="filters">Фильтры</button>
+            @if (Model.Category is null)
+            {
+                <button type="button" class="btn btn-ghost btn-sm filters-toggle" id="filters-toggle"
+                        aria-expanded="false" aria-controls="filters">Фильтры</button>
+            }
             <span class="count">Найдено: @pager.TotalCount</span>
             <form class="sort" method="get">
                 @foreach (var (name, value) in QueryStrings.Except(Context.Request.Query, "sort", "page"))
@@ -28,6 +42,7 @@
                 </select>
             </form>
         </div>
+        }
 
         @if (pager.Items.Count > 0)
         {
@@ -55,10 +70,18 @@
         }
         else
         {
-            <div class="empty">
-                <h2>Ничего не нашлось</h2>
-                <p>@emptyHint</p>
-            </div>
+            var reset = Model.Query is { Length: > 0 } rq ? Context.Request.Path + "?q=" + Uri.EscapeDataString(rq) : Context.Request.Path.ToString();
+            <section class="co-card search-empty">
+                <span class="search-empty-ico">@Icons.Get("search", 26)</span>
+                <div>
+                    <h2>Ничего не нашлось</h2>
+                    <p>@emptyHint</p>
+                    @if (Model.Filter.HasActiveFilters)
+                    {
+                        <div class="search-empty-actions"><a class="btn" href="@reset">Сбросить фильтры</a></div>
+                    }
+                </div>
+            </section>
         }
     </div>
 </div>

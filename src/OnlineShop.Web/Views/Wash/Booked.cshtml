@@ -1,0 +1,100 @@
+@model WashBookedViewModel
+@using System.Globalization
+@inject StorefrontLayout StorefrontLayout
+@{
+    ViewData["Title"] = "Запись на мойку";
+    var b = Model.Booking;
+    var ru = CultureInfo.GetCultureInfo("ru-RU");
+    var shop = (await StorefrontLayout.GetAsync()).Contact;
+    var active = b.Holds;
+}
+@*
+    Запись на мойку: что, где и когда, статус, отмена. Ниже — средства для машины из раздела «Для авто»:
+    человек пришёл записаться на мойку и видит, что здесь же можно купить автохимию.
+*@
+<section class="placed wash-booked@(active ? "" : " is-off")" role="status">
+    <span class="placed-ico">@Icons.Get(active ? "check" : "x", 30)</span>
+    <div class="placed-text">
+        @if (Model.JustBooked)
+        {
+            <h1>Вы записаны на мойку</h1>
+            <p>Администратор позвонит на номер <b>@PhoneNumbers.Display(b.Phone)</b> и подтвердит запись.</p>
+        }
+        else
+        {
+            <h1>Запись на мойку</h1>
+            <p>Статус: <b>@b.Status.Text()</b></p>
+        }
+        @* Перенос и отмена — по номеру самой мойки (из 2ГИС), не по общему номеру магазина. *@
+        @if (Model.Wash is { Phone.Length: > 0 } wash)
+        {
+            <p class="placed-call">Нужно перенести время? Звоните на мойку: <a href="tel:+@wash.Phone">@PhoneNumbers.Display(wash.Phone)</a></p>
+        }
+        else if (shop is { Phone.Length: > 0 })
+        {
+            <p class="placed-call">Нужно перенести время? Звоните: <a href="tel:@shop.PhoneLink">@shop.Phone</a></p>
+        }
+        @if (active)
+        {
+            <p class="placed-call">Приезжайте ко времени: если опоздаете больше чем на @CarWashes.LateMinutes минут, место может занять другой клиент.</p>
+        }
+    </div>
+    <dl class="wash-ticket">
+        <div><dt>Когда</dt><dd>@b.StartsAt.ToString("dddd, d MMMM", ru)<br><b>@b.StartsAt.ToString("HH:mm")</b>–@b.EndsAt.ToString("HH:mm")</dd></div>
+        <div><dt>Где</dt><dd>@b.WashName<br><span>@(Model.Wash?.Address ?? "")</span></dd></div>
+        <div><dt>Услуга</dt><dd>@b.ServiceName<br><span>около @b.Minutes мин</span></dd></div>
+    </dl>
+    <div class="placed-actions">
+        @if (active)
+        {
+            <button class="btn btn-outline" type="button" data-copy-link>@Icons.Get("link", 16) <span>Скопировать ссылку</span></button>
+        }
+        else
+        {
+            <a class="btn" href="@OnlineShop.Web.Controllers.WashController.PageUrl">Записаться снова</a>
+        }
+        @if (Model.CanCancel)
+        {
+            <form method="post" action="@OnlineShop.Web.Controllers.WashController.LinkPath(b)/cancel" asp-antiforgery="true" data-confirm="Отменить запись на мойку?">
+                <button class="placed-cancel" type="submit">Отменить запись</button>
+            </form>
+        }
+    </div>
+    @if (active)
+    {
+        <p class="placed-link">Запись видна по этой ссылке. Сохраните её, чтобы проверить статус или отменить запись.</p>
+    }
+</section>
+
+@if (Model.Products.Count > 0)
+{
+    <section class="section wash-upsell">
+        <div class="section-head">
+            <h2>Пока ждёте — для ухода за машиной</h2>
+            <a class="more" href="@Url.Action("Home", "Catalog")">Весь каталог</a>
+        </div>
+        <p class="wash-upsell-lead">Те же средства, которыми моют на нашей мойке. Можно забрать в магазине или заказать доставку.</p>
+        <div class="product-grid">
+            @foreach (var product in Model.Products)
+            {
+                <partial name="_ProductCard" model="product" />
+            }
+        </div>
+    </section>
+}
+
+@section Scripts {
+    <script nonce="@Context.CspNonce()">
+        // «Скопировать ссылку»: адрес этой страницы в буфер обмена.
+        document.querySelector('[data-copy-link]')?.addEventListener('click', async (e) => {
+            const label = e.currentTarget.querySelector('span');
+            try {
+                await navigator.clipboard.writeText(location.href);
+                label.textContent = 'Ссылка скопирована';
+            } catch {
+                label.textContent = 'Скопируйте адрес страницы';
+            }
+            setTimeout(() => { label.textContent = 'Скопировать ссылку'; }, 2500);
+        });
+    </script>
+}

@@ -3,38 +3,129 @@
 @{
     ViewData["Title"] = "Контакты сайта";
     ViewData["AdminSection"] = "contacts";
+    var c = Model.Live;
 }
+@*
+    Контакты сайта (25.11.2026). Сверху — набор, который сейчас видят покупатели: слева как он выглядит в шапке
+    и внизу сайта, справа плитки с каждым контактом («Проверить» открывает звонок, WhatsApp, Instagram как у покупателя).
+    Пустой контакт — жёлтая плитка «не указан». Реквизиты продавца нужны для политики конфиденциальности.
+    Ниже запасные наборы (например, на праздники): «Сделать основным» — и они на сайте.
+*@
 <div class="admin-head">
     <h1>Контакты сайта</h1>
-    <a class="btn" href="/admin/contacts/add">Добавить набор</a>
+    @if (c is not null)
+    {
+        <a class="btn" href="/admin/contacts/@c.Id">@Icons.Get("pencil", 18) Изменить контакты</a>
+    }
 </div>
-<p class="admin-count">Контакты показываются в шапке и внизу каждой страницы. Оставьте галочку «На сайте» только у одного набора.</p>
 
-<form id="changelist-form" method="post" asp-page-handler="SaveList">
-    <div class="admin-table-wrap">
-        <table class="admin-table" id="result_list">
-            <thead><tr><th>Название набора</th><th>Телефон</th><th>Почта</th><th>WhatsApp</th><th>Instagram</th><th>На сайте</th></tr></thead>
-            <tbody>
-                @for (var i = 0; i < Model.Rows.Count; i++)
-                {
-                    var row = Model.Rows[i];
-                    <tr>
-                        <td><input type="hidden" asp-for="Rows[i].Id"><a asp-page="Edit" asp-route-id="@row.Id">@row.Title</a></td>
-                        <td>@row.Phone</td>
-                        <td>@row.Email</td>
-                        <td>@row.Whatsapp</td>
-                        <td>@row.Instagram</td>
-                        <td><input asp-for="Rows[i].IsActive"></td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+@if (c is null)
+{
+    <div class="admin-box o-empty">
+        <p>@Icons.Get("alert", 20) На сайте сейчас нет контактов: в шапке и внизу страниц пусто.</p>
+        <p style="margin-top:14px;">
+            @if (Model.Others.Count > 0)
+            {
+                <span>Сделайте основным один из наборов ниже или </span>
+            }
+            <a href="/admin/contacts/add">добавьте новый набор</a>.
+        </p>
     </div>
-    <div class="admin-actions">
-        <span class="admin-count">Всего: @Model.Rows.Count</span>
-        @if (Model.Rows.Count > 0)
-        {
-            <button class="btn push" type="submit">Сохранить</button>
-        }
+}
+else
+{
+    var tiles = new (string Icon, string Label, string Value, string? Link, string Empty)[]
+    {
+        ("phone", "Телефон", c.Phone, c.PhoneLink.Length > 0 ? "tel:" + c.PhoneLink : null, "Без телефона покупатель не сможет позвонить"),
+        ("whatsapp", "WhatsApp", c.Whatsapp, c.WhatsappLink.Length > 0 ? c.WhatsappLink : null, "Кнопка «Написать в WhatsApp» не покажется"),
+        ("instagram", "Instagram", c.Instagram, c.InstagramLink.Length > 0 ? c.InstagramLink : null, "Кнопка Instagram не покажется"),
+        ("send", "Telegram", c.Telegram, c.TelegramLink.Length > 0 ? c.TelegramLink : null, "необязательно"),
+        ("phone", "Второй телефон", c.PhoneExtra, null, "необязательно"),
+        ("mail", "Почта", c.Email, c.Email.Length > 0 ? "mailto:" + c.Email : null, "необязательно"),
+        ("clock", "Часы работы", c.WorkingHours, null, "Покупатель не узнает, когда вы работаете"),
+        ("pin", "Город", c.City, null, "не указан"),
+    };
+    var legalOk = c.LegalName.Length > 0 && c.Bin.Length > 0 && c.LegalAddress.Length > 0;
+
+    <section class="cn-live">
+        <div class="cn-preview" aria-label="Как это видно на сайте">
+            <p class="cn-preview-label">Так видно на сайте · набор «@c.Title»</p>
+            <div class="cn-head-mock">
+                <span class="cn-logo"></span>
+                <span class="cn-bar"></span>
+                <span class="cn-head-phone"><b>@(c.Phone.Length > 0 ? c.Phone : "телефон не указан")</b><small>Звонок и WhatsApp</small></span>
+            </div>
+            <div class="cn-foot-mock">
+                <b class="cn-foot-phone">@(c.Phone.Length > 0 ? c.Phone : "—")</b>
+                <span class="cn-foot-buttons">
+                    @if (c.WhatsappLink.Length > 0) { <span class="cn-pill is-white">@Icons.Get("whatsapp", 14) Написать в WhatsApp</span> }
+                    @if (c.InstagramLink.Length > 0) { <span class="cn-pill">@Icons.Get("instagram", 14) Instagram</span> }
+                    @if (c.TelegramLink.Length > 0) { <span class="cn-pill">@Icons.Get("send", 14) Telegram</span> }
+                </span>
+                <small>@c.City · @(c.WorkingHours.Length > 0 ? c.WorkingHours : "часы не указаны")</small>
+            </div>
+        </div>
+
+        <ul class="cn-tiles">
+            @foreach (var t in tiles)
+            {
+                var empty = string.IsNullOrWhiteSpace(t.Value);
+                var optional = t.Empty == "необязательно";
+                <li class="cn-tile@(empty ? optional ? " is-optional" : " is-missing" : "")">
+                    <span class="cn-ico">@Icons.Get(t.Icon, 18)</span>
+                    <span class="cn-text">
+                        <small>@t.Label</small>
+                        <b>@(empty ? optional ? "не указан" : "не указан" : t.Value)</b>
+                        @if (empty && !optional) { <em>@t.Empty</em> }
+                    </span>
+                    @if (!empty && t.Link is not null)
+                    {
+                        <a class="cn-check" href="@t.Link" target="_blank" rel="noopener" title="Проверить: открыть, как у покупателя" aria-label="Проверить @t.Label">@Icons.Get("external", 15)</a>
+                    }
+                </li>
+            }
+            <li class="cn-tile cn-legal@(legalOk ? "" : " is-missing")">
+                <span class="cn-ico">@Icons.Get("home", 18)</span>
+                <span class="cn-text">
+                    <small>Реквизиты продавца</small>
+                    <b>@(c.LegalName.Length > 0 ? c.LegalName : "не заполнены")@(c.Bin.Length > 0 ? $" · БИН/ИИН {c.Bin}" : "")</b>
+                    <em>@(legalOk ? c.LegalAddress : "Нужны для «Политики конфиденциальности»: покупатель должен знать, кто хранит его данные")</em>
+                </span>
+                <a class="cn-check" href="/privacy" target="_blank" rel="noopener">Политика @Icons.Get("external", 14)</a>
+            </li>
+        </ul>
+    </section>
+}
+
+<section class="cn-others">
+    <div class="cn-others-head">
+        <h2>Запасные наборы</h2>
+        <a class="btn btn-ghost btn-sm" href="/admin/contacts/add">@Icons.Get("plus", 16) Добавить набор</a>
     </div>
-</form>
+    @if (Model.Others.Count == 0)
+    {
+        <p class="vl-hint">@Icons.Get("info", 16) <span>Набор можно подготовить заранее — например, другой номер на праздники — и включить одной кнопкой.</span></p>
+    }
+    else
+    {
+        <ul class="o-list">
+            @foreach (var o in Model.Others)
+            {
+                <li class="ad-row cn-row">
+                    <span class="ct-ico">@Icons.Get("phone", 20)</span>
+                    <div class="ct-main">
+                        <a class="ct-title" href="/admin/contacts/@o.Id">@o.Title</a>
+                        <small>@string.Join(" · ", new[] { o.Phone, o.Whatsapp.Length > 0 ? "WhatsApp " + o.Whatsapp : "", o.Instagram.Length > 0 ? "Instagram " + o.Instagram : "" }.Where(x => x.Length > 0).DefaultIfEmpty("контакты не заполнены"))</small>
+                    </div>
+                    <form method="post" asp-page-handler="MakeLive" asp-route-id="@o.Id" data-confirm="Показывать на сайте набор «@o.Title»? Текущий станет запасным.">
+                        <button class="btn btn-sm" type="submit">@Icons.Get("check", 16) Сделать основным</button>
+                    </form>
+                    <a class="btn btn-sm wash-second" href="/admin/contacts/@o.Id">@Icons.Get("pencil", 16) Изменить</a>
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@o.Id" data-confirm="Удалить набор «@o.Title»?">
+                        <button class="btn btn-sm wash-second is-cancel" type="submit" aria-label="Удалить набор">@Icons.Get("trash", 16)</button>
+                    </form>
+                </li>
+            }
+        </ul>
+    }
+</section>
